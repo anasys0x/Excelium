@@ -795,7 +795,10 @@
 <p class="admonition-title">Informations générales</p>
 <p><strong>Session</strong>: Été 2026<br />
 <strong>Auteur(s)</strong>: Anas Mrani Alaoui(20257568) ; Farah Romdhane(20288662)<!-- Nom de chaque membre (matricule)  --><br />
-<strong>Thème(s)</strong>: <!-- Thèmes principaux abordés dans le projet  --><br />
+<strong>Thème(s)</strong>: 
+- Développement d'application web full-stack
+- Ingénierie et transformation de données
+- Validation et qualité des données<!-- Thèmes principaux abordés dans le projet  --><br />
 <strong>Superviseur(s)</strong>: Louis Edouard Lafontant<!-- Nom du superviseur (affiliation)  --><br />
 <strong>Collaborateur(s):</strong> <!-- Nom de(s) collaborateur(s) et partenaire(s)` -->  </p>
 </div>
@@ -826,18 +829,130 @@ exploitables.</p>
 interactive, capable d'assurer la persistance, la structuration et la gestion complète
 des données qu'il contient ?</p>
 <h3 id="proposition-et-objectifs">Proposition et objectifs<a class="headerlink" href="#proposition-et-objectifs" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p>Présentez votre proposition de projet et les objectifs visés. Expliquez en quoi votre approche répond à la problématique identifiée. 
-Assurez-vous d'avoir, dans la mesure du possible, des objectifs mesurables, raisonnnables dans le temps et non redondants entre eux.</p>
-</blockquote>
+<p>La solution proposée est une application web full-stack structurée autour d'un pipeline en cinq étapes qui transforme un fichier Excel statique en une application de gestion de données complète.</p>
+<p><strong>Pipeline proposé :</strong></p>
+<ol>
+<li><strong>Importation</strong> : Upload du fichier Excel via interface web, parsing automatique de la structure</li>
+<li><strong>Validation guidée</strong> : Assistant interactif pour sélection de feuille, mapping des colonnes, validation des types</li>
+<li><strong>Transformation</strong> : Normalisation des données selon le mapping validé</li>
+<li><strong>Stockage</strong> : Persistance dans une base de données relationnelle via transaction atomique</li>
+<li><strong>Gestion CRUD</strong> : Interface web pour consulter, créer, modifier et supprimer les enregistrements</li>
+</ol>
+<p><strong>Différenciation clé :</strong> Contrairement aux solutions existantes (Airtable, NocoDB, Baserow) qui effectuent l'import automatiquement sans validation préalable, notre approche propose un processus de validation guidé avant toute persistance, garantissant l'intégrité des données dès l'import.</p>
+<p><strong>Objectifs mesurables :</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Objectif</th>
+<th>Critère de succès</th>
+<th>Échéance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>O1</td>
+<td>Parser correctement un fichier Excel (.xlsx)</td>
+<td>Extraction complète de la structure (feuilles, colonnes, types) sans perte de données</td>
+<td>Semaine X (A discuter avec Mr Louis)</td>
+</tr>
+<tr>
+<td>O2</td>
+<td>Implémenter le processus de validation guidé</td>
+<td>Assistant fonctionnel en 4 étapes avec prévisualisation</td>
+<td>Semaine X (A discuter avec Mr Louis)</td>
+</tr>
+<tr>
+<td>O3</td>
+<td>Générer et peupler une base de données</td>
+<td>Schéma créé automatiquement, données importées sans erreur</td>
+<td>Semaine X (A discuter avec Mr Louis)</td>
+</tr>
+<tr>
+<td>O4</td>
+<td>Créer une interface CRUD fonctionnelle</td>
+<td>Toutes les opérations (Create, Read, Update, Delete) opérationnelles</td>
+<td>Semaine X (A discuter avec Mr Louis)</td>
+</tr>
+<tr>
+<td>O5</td>
+<td>Valider la robustesse du système</td>
+<td>Import réussi de 5 fichiers Excel variés sans crash</td>
+<td>Semaine X (A discuter avec Mr Louis)</td>
+</tr>
+</tbody>
+</table>
 <h3 id="methodologie">Méthodologie<a class="headerlink" href="#methodologie" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p>Expliquez comment vous comptez aborder le projet : démarche générale, grandes étapes prévues, itérations, types de validations envisagées.</p>
-</blockquote>
+<p><strong>Approche générale :</strong> Développement itératif avec cycles courts d'une semaine, suivant une méthodologie agile adaptée au travail en binôme.</p>
+<p><strong>Phases du projet :</strong></p>
+<ol>
+<li><strong>Semaines 1-2 : Analyse et conception</strong></li>
+<li>Étude des solutions existantes</li>
+<li>Définition des besoins fonctionnels et non-fonctionnels</li>
+<li>
+<p>Choix de la stack technique après prototypage rapide</p>
+</li>
+<li>
+<p><strong>Semaines 3-4 : Parsing et extraction</strong></p>
+</li>
+<li>Développement du module de lecture Excel</li>
+<li>Détection automatique de la structure</li>
+<li>
+<p>Tests sur fichiers variés</p>
+</li>
+<li>
+<p><strong>Semaines 5-6 : Validation guidée</strong></p>
+</li>
+<li>Implémentation de l'assistant d'importation</li>
+<li>Interface de mapping colonnes</li>
+<li>
+<p>Validation des types avec correction</p>
+</li>
+<li>
+<p><strong>Semaines 7-8 : Persistance et transformation</strong></p>
+</li>
+<li>Génération dynamique du schéma de base de données</li>
+<li>Transformation et normalisation des données</li>
+<li>
+<p>Transaction atomique avec rollback</p>
+</li>
+<li>
+<p><strong>Semaines 9-10 : Interface CRUD</strong></p>
+</li>
+<li>Développement des opérations Create, Read, Update, Delete</li>
+<li>Recherche et pagination</li>
+<li>
+<p>Interface utilisateur responsive</p>
+</li>
+<li>
+<p><strong>Semaines 11-12 : Tests et documentation</strong></p>
+</li>
+<li>Tests d'intégration</li>
+<li>Correction des bugs</li>
+<li>Rédaction du rapport final</li>
+</ol>
 <h3 id="validation-et-evaluation">Validation et Évaluation<a class="headerlink" href="#validation-et-evaluation" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p>Indiquez comment vous évaluerez que votre solution répond aux objectifs du projet (ex. scénarios d’usage, tests, retours utilisateurs, indicateurs qualitatifs ou quantitatifs).</p>
-</blockquote>
+<p><strong>Critères de validation du MVP :</strong></p>
+<ol>
+<li><strong>Import réussi</strong> : Le système parse et importe correctement 5 fichiers Excel test de structures différentes sans erreur</li>
+<li><strong>Intégrité des données</strong> : Aucune perte ni corruption de données entre le fichier source et la base de données</li>
+<li><strong>Validation guidée</strong> : L'utilisateur peut corriger les mappings et types détectés avant confirmation</li>
+<li><strong>CRUD fonctionnel</strong> : Toutes les opérations sont opérationnelles et testées</li>
+<li><strong>Robustesse</strong> : Le système gère proprement les cas limites (cellules vides, types mixtes, données invalides)</li>
+</ol>
+<p><strong>Méthodes de validation :</strong></p>
+<ul>
+<li><strong>Tests fonctionnels</strong> : Scénarios utilisateur couvrant l'ensemble du pipeline (import → validation → stockage → CRUD)</li>
+<li><strong>Tests de données</strong> : Dataset de 10 fichiers Excel variés (simples, complexes, multi-feuilles, avec erreurs)</li>
+<li><strong>Validation manuelle</strong> : Vérification visuelle de la cohérence entre fichier Excel source et données en base</li>
+<li><strong>Tests de charge</strong> : Import de fichiers jusqu'à 1000 lignes pour évaluer les performances</li>
+</ul>
+<p><strong>Indicateurs de succès :</strong></p>
+<ul>
+<li>Taux de réussite d'import : &gt; 95% sur les fichiers test</li>
+<li>Temps de traitement : &lt; x secondes(a discuter ave le prof egalement) pour un fichier de x lignes</li>
+<li>Taux de détection correcte des types : &gt; 90%</li>
+</ul>
 <h2 id="equipe">Équipe<a class="headerlink" href="#equipe" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Anas Mrani Alaoui</li>
