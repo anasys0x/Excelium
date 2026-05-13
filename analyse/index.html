@@ -1,0 +1,1170 @@
+
+<!doctype html>
+<html lang="fr" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Template de site web pour le cours IFT3150">
+      
+      
+        <meta name="author" content="Louis-Edouard Lafontant">
+      
+      
+        <link rel="canonical" href="https://ift3150-template.github.io/analyse/">
+      
+      
+        <link rel="prev" href="../suivi/">
+      
+      
+        <link rel="next" href="../realisation/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Études préliminaires - Site de suivi IFT3150</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#etudes-preliminaires" class="md-skip">
+          Aller au contenu
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="En-tête">
+    <a href=".." title="Site de suivi IFT3150" class="md-header__button md-logo" aria-label="Site de suivi IFT3150" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Site de suivi IFT3150
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Études préliminaires
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Rechercher" placeholder="Rechercher" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Recherche">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Partager" aria-label="Partager" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Effacer" aria-label="Effacer" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initialisation de la recherche
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ift3150-template/ift3150-template.github.io" title="Aller au dépôt" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ift3150-template
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Onglets" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Vue d'ensemble
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../suivi/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Suivi
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Études préliminaires
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../realisation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Réalisation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../evaluation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Évaluation
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Site de suivi IFT3150" class="md-nav__button md-logo" aria-label="Site de suivi IFT3150" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Site de suivi IFT3150
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ift3150-template/ift3150-template.github.io" title="Aller au dépôt" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ift3150-template
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vue d'ensemble
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../suivi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Suivi
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Études préliminaires
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Études préliminaires
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table des matières">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table des matières
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#structure-suggeree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structure suggérée
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Structure suggérée">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#comprehension-du-probleme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compréhension du problème
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#analyse-des-solutions-ou-approches-existantes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analyse des solutions ou approches existantes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Analyse des solutions ou approches existantes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#airtable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Airtable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nocodb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NocoDB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#baserow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Baserow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contraintes-et-besoins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contraintes et besoins
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Contraintes et besoins">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#besoins-fonctionnels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Besoins fonctionnels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#besoins-non-fonctionnels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Besoins non fonctionnels
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explorations-techniques-ou-conceptuelles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explorations techniques ou conceptuelles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choix-retenus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choix retenus
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Références
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../realisation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Réalisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Évaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table des matières">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table des matières
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#structure-suggeree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structure suggérée
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Structure suggérée">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#comprehension-du-probleme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compréhension du problème
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#analyse-des-solutions-ou-approches-existantes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analyse des solutions ou approches existantes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Analyse des solutions ou approches existantes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#airtable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Airtable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nocodb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NocoDB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#baserow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Baserow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contraintes-et-besoins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contraintes et besoins
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Contraintes et besoins">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#besoins-fonctionnels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Besoins fonctionnels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#besoins-non-fonctionnels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Besoins non fonctionnels
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explorations-techniques-ou-conceptuelles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explorations techniques ou conceptuelles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choix-retenus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choix retenus
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Références
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<style>
+    @media screen and (min-width: 76em) {
+        .md-sidebar--primary {
+            display: none !important;
+        }
+    }
+</style>
+
+<h1 id="etudes-preliminaires">Études préliminaires<a class="headerlink" href="#etudes-preliminaires" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><img alt="💡" class="emojione" src="https://cdnjs.cloudflare.com/ajax/libs/emojione/2.2.7/assets/png/1f4a1.png" title=":bulb:" /> Cette page sert à documenter les recherches, analyses et explorations réalisées avant ou durant le projet
+Elle ne remplace pas le rapport final, mais permet de conserver une trace de votre démarche et des réflexions ayant guidé le projet.    </p>
+</blockquote>
+<h2 id="structure-suggeree">Structure suggérée<a class="headerlink" href="#structure-suggeree" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>La structure suivante est donnée à titre indicatif.<br />
+Vous pouvez l'adapter selon la nature de votre projet.</p>
+</blockquote>
+<h3 id="comprehension-du-probleme">Compréhension du problème<a class="headerlink" href="#comprehension-du-probleme" title="Permanent link">&para;</a></h3>
+<p>Dans plusieurs organisations, les données sont encore gérées principalement dans des fichiers Excel. Ces fichiers sont simples à créer et à modifier, mais ils deviennent rapidement difficiles à maintenir lorsque le volume de données augmente ou lorsque plusieurs utilisateurs doivent consulter, corriger ou mettre à jour les informations.</p>
+<p>Un fichier Excel peut contenir plusieurs feuilles, colonnes, lignes, cellules et formules. Cependant, ces données restent souvent isolées dans un fichier statique. Il devient donc difficile d'assurer leur cohérence, de suivre les modifications, de valider les formats, de centraliser les informations et de les exploiter dans une application web.</p>
+<p>De plus, lorsqu'une organisation souhaite passer d'un fichier Excel vers une solution plus structurée, la transformation manuelle des données vers une base de données peut être longue, répétitive et sujette aux erreurs. Il faut lire le fichier, identifier les feuilles, comprendre les colonnes, extraire les lignes, traiter les formules et convertir le tout en données exploitables.</p>
+<p><strong>Problématique centrale</strong> : Comment transformer un fichier Excel statique en une application web dynamique et interactive, capable d'assurer la persistance, la structuration et la gestion complète des données qu'il contient ?</p>
+<h3 id="analyse-des-solutions-ou-approches-existantes">Analyse des solutions ou approches existantes<a class="headerlink" href="#analyse-des-solutions-ou-approches-existantes" title="Permanent link">&para;</a></h3>
+<h4 id="airtable">Airtable<a class="headerlink" href="#airtable" title="Permanent link">&para;</a></h4>
+<p>Airtable est une plateforme cloud américaine lancée en 2012 qui combine la simplicité visuelle d'un tableur avec la puissance d'une base de données. Son interface intuitive permet à des utilisateurs non techniques de créer et gérer des bases de données en ligne, d'organiser des données sous plusieurs vues (grille, kanban, calendrier, galerie) et de collaborer en temps réel.</p>
+<p><strong>Forces</strong> :
+- Import natif de fichiers Excel et CSV
+- Gestion des types de champs
+- API REST automatiquement générée
+- Interface intuitive accessible aux non-techniciens
+- Collaboration en temps réel
+- Vues multiples (grille, kanban, calendrier, galerie)</p>
+<p><strong>Limites</strong> :
+- Outil SaaS hébergé sur les serveurs d'Airtable
+- Aucun contrôle sur l'infrastructure ni sur le code source
+- Modèle de tarification par utilisateur coûteux à grande échelle
+- Possibilités de personnalisation limitées aux options proposées par la plateforme</p>
+<p><strong>Technologies</strong> : Plateforme SaaS propriétaire</p>
+<h4 id="nocodb">NocoDB<a class="headerlink" href="#nocodb" title="Permanent link">&para;</a></h4>
+<p>NocoDB est une alternative open source à Airtable, née en 2021, qui se distingue par sa capacité à se connecter directement à des bases de données relationnelles existantes telles que PostgreSQL, MySQL ou SQLite, et à les transformer en interface de type tableur.</p>
+<p><strong>Forces</strong> :
+- Peut être auto-hébergé sur ses propres serveurs
+- Contrôle total sur les données et l'infrastructure
+- Support de l'import de fichiers Excel et CSV
+- Gestion CRUD via une interface web
+- Génération automatique d'APIs REST et GraphQL pour chaque table
+- Code open source</p>
+<p><strong>Limites</strong> :
+- S'adresse davantage à un profil technique
+- Configuration et déploiement nécessitent des connaissances en administration de serveurs et en bases de données
+- Pas de processus de validation guidé lors de l'importation
+- Les corrections de structure se font généralement après l'import</p>
+<p><strong>Technologies</strong> : Open source, connexion directe aux bases de données relationnelles (PostgreSQL, MySQL, SQLite)</p>
+<h4 id="baserow">Baserow<a class="headerlink" href="#baserow" title="Permanent link">&para;</a></h4>
+<p>Baserow est une plateforme open source de gestion de données lancée en 2020, positionnée comme une alternative à Airtable accessible aussi bien aux utilisateurs techniques que non techniques.</p>
+<p><strong>Forces</strong> :
+- Interface de type tableur pour créer et gérer des bases de données
+- Support de l'import Excel et CSV
+- Détection automatique des types de colonnes
+- Collaboration en temps réel entre plusieurs utilisateurs
+- Peut être utilisé en mode SaaS via sa version hébergée
+- Peut être auto-hébergé sur ses propres serveurs grâce à son code open source
+- Expose une API REST pour chaque table</p>
+<p><strong>Limites</strong> :
+- Importation de manière directe et automatique
+- Pas d'étapes interactives de validation avant la persistance des données en base
+- Corrections et ajustements se font après l'import</p>
+<p><strong>Technologies</strong> : Open source, mode SaaS ou auto-hébergé</p>
+<h3 id="contraintes-et-besoins">Contraintes et besoins<a class="headerlink" href="#contraintes-et-besoins" title="Permanent link">&para;</a></h3>
+<h4 id="besoins-fonctionnels">Besoins fonctionnels<a class="headerlink" href="#besoins-fonctionnels" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Besoin</th>
+<th>Description</th>
+<th>Justification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Importation d'un fichier Excel</td>
+<td>L'utilisateur dépose un fichier .xlsx via l'interface. Le système vérifie automatiquement son format et sa structure dès la réception.</td>
+<td>C'est le point d'entrée central du système. Sans importation, aucune donnée ne peut être traitée ou gérée.</td>
+</tr>
+<tr>
+<td>Sélection de la feuille</td>
+<td>Le système liste les feuilles disponibles du fichier et permet à l'utilisateur d'en sélectionner une, avec un aperçu du nombre de lignes et colonnes.</td>
+<td>Un fichier Excel peut contenir plusieurs feuilles aux structures différentes. Laisser l'utilisateur choisir évite toute importation incorrecte.</td>
+</tr>
+<tr>
+<td>Mise en correspondance des colonnes</td>
+<td>Le système détecte les colonnes et propose une correspondance avec les champs de la base de données. L'utilisateur peut confirmer ou corriger chaque correspondance.</td>
+<td>Les noms de colonnes dans un fichier Excel sont rarement identiques aux noms de champs attendus en base. La correspondance manuelle garantit un mapping précis et contrôlé.</td>
+</tr>
+<tr>
+<td>Validation des types de données</td>
+<td>Le système propose un type pour chaque colonne (texte, entier, décimal, date, booléen). L'utilisateur valide ou corrige. Toute incohérence est signalée.</td>
+<td>Des types incorrects entraînent des erreurs d'insertion ou des données corrompues en base. La validation préventive protège l'intégrité des données.</td>
+</tr>
+<tr>
+<td>Confirmation et importation</td>
+<td>L'utilisateur confirme explicitement avant l'insertion. L'opération s'effectue dans une transaction atomique avec rollback en cas d'échec.</td>
+<td>Évite toute insertion accidentelle et garantit qu'aucune donnée partielle ne subsiste en base en cas d'erreur durant le processus.</td>
+</tr>
+<tr>
+<td>Consultation des données</td>
+<td>Les enregistrements sont affichés dans un tableau paginé permettant de naviguer entre les pages et de visualiser toutes les valeurs.</td>
+<td>La consultation est l'opération la plus fréquente du CRUD. Un affichage structuré et paginé est indispensable pour des données volumineuses.</td>
+</tr>
+<tr>
+<td>Recherche et filtrage</td>
+<td>L'utilisateur peut rechercher des enregistrements par mot-clé sur l'ensemble des colonnes. Les résultats s'affichent dynamiquement.</td>
+<td>Facilite la navigation dans les données et permet de retrouver rapidement un enregistrement précis sans parcourir l'intégralité du tableau.</td>
+</tr>
+<tr>
+<td>Ajout d'un enregistrement</td>
+<td>Un formulaire permet de créer manuellement un nouvel enregistrement avec validation des champs selon les types définis.</td>
+<td>L'application doit permettre l'enrichissement des données au-delà du fichier Excel initial, rendant la base de données dynamique et évolutive.</td>
+</tr>
+<tr>
+<td>Modification d'un enregistrement</td>
+<td>Un formulaire pré-rempli permet de modifier les valeurs d'un enregistrement existant avec les mêmes règles de validation que lors de la création.</td>
+<td>Les données peuvent évoluer après importation. La modification permet de corriger des erreurs ou mettre à jour des informations sans réimporter tout le fichier.</td>
+</tr>
+<tr>
+<td>Suppression d'un enregistrement</td>
+<td>L'utilisateur peut supprimer un enregistrement après confirmation explicite pour éviter toute suppression accidentelle.</td>
+<td>La suppression est une opération irréversible. Une confirmation préalable est nécessaire pour protéger l'intégrité et éviter la perte involontaire de données.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="besoins-non-fonctionnels">Besoins non fonctionnels<a class="headerlink" href="#besoins-non-fonctionnels" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Besoin</th>
+<th>Description</th>
+<th>Justification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sécurité</td>
+<td>Le système doit accepter seulement les fichiers autorisés, par exemple .xlsx, et protéger les données enregistrées.</td>
+<td>Les fichiers Excel peuvent contenir des données sensibles comme des informations sur des employés, clients ou produits.</td>
+</tr>
+<tr>
+<td>Simplicité d'utilisation</td>
+<td>L'interface doit être claire et facile à utiliser, même pour un utilisateur non technique.</td>
+<td>L'objectif est de permettre à l'utilisateur de gérer ses données sans avoir à manipuler directement une base de données.</td>
+</tr>
+<tr>
+<td>Fiabilité</td>
+<td>Le système doit éviter la perte ou la mauvaise transformation des données pendant l'importation.</td>
+<td>Les données importées doivent rester cohérentes entre le fichier Excel, la base de données et l'interface web.</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>L'importation et l'affichage des données doivent rester rapides pour des fichiers de taille raisonnable.</td>
+<td>Un fichier Excel peut contenir plusieurs centaines ou milliers de lignes, donc le système doit éviter les ralentissements importants.</td>
+</tr>
+<tr>
+<td>Maintenabilité</td>
+<td>Le code doit être organisé en modules séparés : importation, transformation, API, base de données et interface.</td>
+<td>Cela facilite la correction des erreurs et l'ajout de nouvelles fonctionnalités plus tard.</td>
+</tr>
+<tr>
+<td>Compatibilité</td>
+<td>Le système doit supporter au minimum les fichiers Excel au format .xlsx.</td>
+<td>Ce format est courant et compatible avec les bibliothèques modernes de lecture Excel.</td>
+</tr>
+<tr>
+<td>Traçabilité</td>
+<td>Le système doit garder une trace minimale des importations, par exemple la date, le nom du fichier et le nombre de lignes importées.</td>
+<td>Cela permet de mieux suivre les données insérées dans le système.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="explorations-techniques-ou-conceptuelles">Explorations techniques ou conceptuelles<a class="headerlink" href="#explorations-techniques-ou-conceptuelles" title="Permanent link">&para;</a></h3>
+<p>La solution proposée est une application web full-stack articulée autour d'un pipeline en cinq étapes :</p>
+<p><strong>1. Importation</strong> : L'utilisateur dépose son fichier Excel via une interface d'upload. Le système parse le fichier côté serveur et détecte automatiquement sa structure (feuilles disponibles, colonnes, types de données).</p>
+<p><strong>2. Processus de validation guidé</strong> : Avant toute persistance des données, l'utilisateur est accompagné à travers un assistant d'importation en plusieurs étapes : sélection de la feuille à importer, confirmation et correction du mapping des colonnes, validation des types de données par colonne, puis prévisualisation de l'ensemble des données dans un tableau de révision. Ce processus garantit que seules des données valides et conformes sont enregistrées.</p>
+<p><strong>3. Transformation</strong> : Une fois la validation confirmée, les données sont normalisées selon le mapping défini et préparées pour l'insertion en base de données.</p>
+<p><strong>4. Stockage</strong> : Les données transformées sont persistées dans une base de données relationnelle, rendant l'information durable, requêtable et indépendante du fichier source.</p>
+<p><strong>5. Gestion via interface web</strong> : Une interface claire permet à l'utilisateur de parcourir les données, d'effectuer des recherches, et d'exécuter les opérations CRUD : création, lecture, mise à jour et suppression d'enregistrements.</p>
+<h3 id="choix-retenus">Choix retenus<a class="headerlink" href="#choix-retenus" title="Permanent link">&para;</a></h3>
+<p>Les choix techniques définitifs seront effectués lors de la semaine 2 après prototypage rapide des différentes options. Les décisions seront documentées ici une fois finalisées.</p>
+<h3 id="references">Références<a class="headerlink" href="#references" title="Permanent link">&para;</a></h3>
+<p>Les références techniques et ressources utilisées seront ajoutées au fur et à mesure de l'avancement du projet.</p>
+<ul>
+<li>
+<p><a href="https://www.youtube.com/watch?v=cNlJCQHSmbE">FastAPI, Flask or Django - Which Should You Use? - 
+Tech With Tim
+</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=P6HCyxSyFpY"> How to Read Excel Files with Python (Pandas Tutorial) - Dave Ebbelaar</a></p>
+</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Retour en haut de la page
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      &copy; 2026 <b>DIRO</b> &ndash; Template de site pour le cours IFT3150 <br>Département d'informatique et de recherche opérationnelle <br>Université de Montréal
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "search.share", "content.tabs.link", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copi\u00e9 dans le presse-papier", "clipboard.copy": "Copier dans le presse-papier", "search.result.more.one": "1 de plus sur cette page", "search.result.more.other": "# de plus sur cette page", "search.result.none": "Aucun document trouv\u00e9", "search.result.one": "1 document trouv\u00e9", "search.result.other": "# documents trouv\u00e9s", "search.result.placeholder": "Taper pour d\u00e9marrer la recherche", "search.result.term.missing": "Non trouv\u00e9", "select.version": "S\u00e9lectionner la version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
