@@ -14,23 +14,44 @@ title: Vue d'ensemble du projet
 
 !!! info "Informations générales"
     **Session**: Été 2026  
-    **Auteur(s)**: <!-- Nom de chaque membre (matricule)  -->  
+    **Auteur(s)**: Anas Mrani Alaoui(20257568) ; Farah Romdhane(20288662)<!-- Nom de chaque membre (matricule)  -->  
     **Thème(s)**: <!-- Thèmes principaux abordés dans le projet  -->  
-    **Superviseur(s)**: <!-- Nom du superviseur (affiliation)  -->  
+    **Superviseur(s)**: Louis Edouard Lafontant<!-- Nom du superviseur (affiliation)  -->  
     **Collaborateur(s):** <!-- Nom de(s) collaborateur(s) et partenaire(s)` -->  
 
 ## Description du projet
 
-> :bulb: N'oubliez pas d'effacer ou mettre en commentaires les notes (`>`) en début de section
+Ce projet consiste à concevoir et développer une application web complète permettant la
+gestion dynamique de données issues d'un fichier Excel. L'application offre à l'utilisateur la
+possibilité d'importer un fichier au format .xlsx ou .xls, d'en extraire automatiquement la
+structure (feuilles, colonnes, lignes) et de transformer ces données en enregistrements
+structurés persistants dans une base de données relationnelle. Une interface web intuitive
+permet ensuite de consulter, ajouter, modifier et supprimer ces données via des opérations
+CRUD complètes.
 
 ### Contexte
 
-> Présentez le contexte général dans lequel s’inscrit votre projet (social, organisationnel, technologique, éducatif, environnemental, etc.).
+Dans plusieurs organisations, les données sont encore gérées principalement dans des
+fichiers Excel. Ces fichiers sont simples à créer et à modifier, mais ils deviennent rapidement
+difficiles à maintenir lorsque le volume de données augmente ou lorsque plusieurs
+utilisateurs doivent consulter, corriger ou mettre à jour les informations.
+
+Un fichier Excel peut contenir plusieurs feuilles, colonnes, lignes, cellules et formules.
+Cependant, ces données restent souvent isolées dans un fichier statique. Il devient donc
+difficile d’assurer leur cohérence, de suivre les modifications, de valider les formats, de
+centraliser les informations et de les exploiter dans une application web.
+
+De plus, lorsqu’une organisation souhaite passer d’un fichier Excel vers une solution plus
+structurée, la transformation manuelle des données vers une base de données peut être
+longue, répétitive et sujette aux erreurs. Il faut lire le fichier, identifier les feuilles, comprendre
+les colonnes, extraire les lignes, traiter les formules et convertir le tout en données
+exploitables.
 
 ### Problématique
 
-> Décrivez le problème central ou la question de recherche que votre projet cherche à adresser, pourquoi s'y intéresser et les faiblesses des solutions actuelles. 
-> Le problème doit pouvoir être compris indépendamment de la solution envisagée.
+Comment transformer un fichier Excel statique en une application web dynamique et
+interactive, capable d'assurer la persistance, la structuration et la gestion complète
+des données qu'il contient ?
 
 ### Proposition et objectifs
 
@@ -48,7 +69,8 @@ title: Vue d'ensemble du projet
 
 ## Équipe
 
-> Présentez les membres de l’équipe et le rôle principal de chacun dans le projet.
+- Anas Mrani Alaoui
+- Farah Romdhane
 
 ## Échéancier
 
