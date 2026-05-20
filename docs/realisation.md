@@ -62,3 +62,11 @@ title: Travail réalisé
 > - nouvelles contraintes ;
 > - simplifications ;
 > - améliorations apportées.
+
+---
+
+## Modèle de données
+
+### Structure d’un fichier Excel
+
+![Modèle de données — structure Excel](ressources/modèle_de_données.png)
