@@ -1,20 +1,20 @@
 # Excelium
 
-> 🚧 Projet en cours de développement — IFT3150 Été 2026
+> Projet en cours de développement — IFT3150 Été 2026
 
 Application web pour transformer des fichiers Excel en base de données avec interface CRUD complète.
 
-## 📋 Description
+## Description
 
 Excelium permet d'importer un fichier Excel (.xlsx), d'en extraire automatiquement la structure, et de générer une application web de gestion de données avec validation guidée et opérations CRUD.
 
-## 🔗 Documentation
+## Documentation
 
 La documentation complète du projet est disponible sur le site de suivi :
 
 **[https://anasys0x.github.io/Excelium/](https://anasys0x.github.io/Excelium/)**
 
-## 👥 Équipe
+## Équipe
 
 - Anas Mrani Alaoui
 - Farah Romdhane
@@ -23,11 +23,11 @@ La documentation complète du projet est disponible sur le site de suivi :
 **Session :** Été 2026  
 **Cours :** IFT3150 — Projet informatique
 
-## 📅 Statut actuel
+## Statut actuel
 
-- ✅ Semaine 1 : Documentation et analyse préliminaire
-- 🔄 Semaine 2 : Choix de la stack technique en cours
+- ✅ Semaine 1 : Documentation et analyse préliminaire.
+- ✅ Semaine 2 : Choix de la stack technique, comparaison des solutions existantes, modélisation des données.
 
 ---
 
-*Dernière mise à jour : 13 Mai 2026*
+*Dernière mise à jour : 20 Mai 2026*
