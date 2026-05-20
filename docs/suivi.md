@@ -58,22 +58,48 @@ title: Suivi du projet
             - Avantage : API moderne et performante, séparation claire des responsabilités
        > On en discute cette semaine, dépendamment de la courbe d'apprentissage, de la rapidité de développement, de la qualité du parsing Excel et de la maintenabilité.
         - À finaliser semaine 2 après prototypage rapide des trois approches
+
+---
+## Semaine 2 (14–20 Mai)
+
+### Retours sur la semaine 1
+- Airtable, NocoDB et Baserow appartiennent à une même catégorie de solutions no-code/low-code de gestion de données. Elles permettent de transformer des données structurées, notamment issues de fichiers Excel ou CSV, en bases de données accessibles via une interface web intuitive.
+
+### Travail réalisé
+
+!!! abstract "Avancement"
+    - [x] Comparaison des librairies de parsing Excel
+        - **Apache POI (Java)** : robuste, mature, supporte `.xls` et `.xlsx`, mais plus complexe et verbeux.
+        - **openpyxl (Python)** : simple, léger, lisible, orienté `.xlsx`.
+        - Tests réalisés : lecture/modification, formules, valeurs calculées, dépendances entre feuilles, lignes et colonnes.
+        - [Voir la comparaison openpyxl / Apache POI](/ressources/openpyxl_apache-poi.pdf){:target="_blank"}
+
+    - [x] Analyse de **LlamaPress / Excel-to-Webapp**
+    - Analyse réalisée à partir de tests effectués directement sur [LlamaPress Excel-to-App](https://llamapress.ai/excel-to-app){:target="_blank"}
+        - Outil proche de notre objectif : importer un fichier Excel et générer une application web exploitable.
+        - [Voir la capture LlamaPress](/ressources/llamapress.png){:target="_blank"}
+
+    - [x] Analyse d’**Airtable**
+        - Import Excel/CSV → base de données visuelle → interface web.
+        - Fonctionnalités observées : vues en grille, formulaires, filtres, regroupements, tableaux de bord et automatisations.
+        - Limite : solution no-code déjà structurée, moins orientée vers la génération personnalisée d’une webapp complète.
+        - [Voir l’analyse Airtable](ressources/airtable-flow.pdf){:target="_blank"}
+
+    - [x] Modélisation des données : diagramme de classes de la structure Excel
+        - `Classeur` : fichier Excel complet, composé de plusieurs feuilles.
+        - `Feuille` : onglet contenant lignes, colonnes et cellules.
+        - `Ligne` : ensemble horizontal de cellules.
+        - `Colonne` : ensemble vertical de cellules, avec nom et type inféré.
+        - `Cellule` : valeur atomique avec position, contenu, type et formule éventuelle.
+        - Relations principales : `Classeur` → `Feuille`, `Feuille` → `Ligne` / `Colonne`, `Ligne` → `Cellule`.
 ### Décisions et ajustements
 
-> À compléter uniquement si des choix structurants ont été faits
-> ou si l’orientation du projet a évolué.
-
 !!! info "Décisions"
-    - Abandon de l’approche X jugée trop complexe
-    - Reformulation de la problématique suite aux premières analyses
+    - **openpyxl** retenu comme librairie de parsing Excel (légèreté et adéquation avec la stack Python)
+    - Le modèle de données à 5 classes (`Classeur`, `Feuille`, `Ligne`, `Colonne`, `Cellule`) constitue la base de la couche de lecture du fichier Excel
+    - **Stack technique potentiel** : React (frontend) + FastAPI (backend) + openpyxl (parsing Excel) + PostgreSQL (BDD) + SQLAlchemy (ORM)
 
 ### Difficultés rencontrées
 
 > À compléter uniquement si des obstacles ont eu un impact réel
-> sur l’avancement du projet.
-
-!!! warning "Difficultés"
-    - Problème de configuration du plugin Mermaid
-        - Confusion entre `mkdocs-mermaid2-plugin` (pip)
-          et `mermaid2` (nom du plugin)
-        - Résolu après nettoyage et configuration correcte dans `mkdocs.yml`
+> sur l'avancement du projet.
