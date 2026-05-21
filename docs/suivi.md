@@ -72,12 +72,12 @@ title: Suivi du projet
         - **Apache POI (Java)** : robuste, mature, supporte `.xls` et `.xlsx`, mais plus complexe et verbeux.
         - **openpyxl (Python)** : simple, léger, lisible, orienté `.xlsx`.
         - Tests réalisés : lecture/modification, formules, valeurs calculées, dépendances entre feuilles, lignes et colonnes.
-        - [Voir la comparaison openpyxl / Apache POI](/ressources/openpyxl_apache-poi.pdf){:target="_blank"}
+        - [Voir la comparaison openpyxl / Apache POI](ressources/openpyxl_apache-poi.pdf){:target="_blank"}
 
     - [x] Analyse de **LlamaPress / Excel-to-Webapp**
     - Analyse réalisée à partir de tests effectués directement sur [LlamaPress Excel-to-App](https://llamapress.ai/excel-to-app){:target="_blank"}
         - Outil proche de notre objectif : importer un fichier Excel et générer une application web exploitable.
-        - [Voir la capture LlamaPress](/ressources/llamapress.png){:target="_blank"}
+        - [Voir la capture LlamaPress](ressources/llamapress.png){:target="_blank"}
 
     - [x] Analyse d’**Airtable**
         - Import Excel/CSV → base de données visuelle → interface web.
