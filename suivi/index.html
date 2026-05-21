@@ -495,6 +495,45 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semaine-2-1420-mai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semaine 2 (14–20 Mai)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Semaine 2 (14–20 Mai)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#retours-sur-la-semaine-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retours sur la semaine 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#travail-realise_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Travail réalisé
+      
+    </span>
+  </a>
+  
+</li>
+        
           <li class="md-nav__item">
   <a href="#decisions-et-ajustements" class="md-nav__link">
     <span class="md-ellipsis">
@@ -671,6 +710,45 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semaine-2-1420-mai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semaine 2 (14–20 Mai)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Semaine 2 (14–20 Mai)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#retours-sur-la-semaine-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retours sur la semaine 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#travail-realise_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Travail réalisé
+      
+    </span>
+  </a>
+  
+</li>
+        
           <li class="md-nav__item">
   <a href="#decisions-et-ajustements" class="md-nav__link">
     <span class="md-ellipsis">
@@ -796,34 +874,71 @@ N'oubliez pas d’effacer ou de mettre en commentaires les notes (<code>&gt;</co
 </li>
 </ul>
 </div>
+<hr />
+<h2 id="semaine-2-1420-mai">Semaine 2 (14–20 Mai)<a class="headerlink" href="#semaine-2-1420-mai" title="Permanent link">&para;</a></h2>
+<h3 id="retours-sur-la-semaine-1">Retours sur la semaine 1<a class="headerlink" href="#retours-sur-la-semaine-1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Airtable, NocoDB et Baserow appartiennent à une même catégorie de solutions no-code/low-code de gestion de données. Elles permettent de transformer des données structurées, notamment issues de fichiers Excel ou CSV, en bases de données accessibles via une interface web intuitive.</li>
+</ul>
+<h3 id="travail-realise_1">Travail réalisé<a class="headerlink" href="#travail-realise_1" title="Permanent link">&para;</a></h3>
+<div class="admonition abstract">
+<p class="admonition-title">Avancement</p>
+<ul class="task-list">
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Comparaison des librairies de parsing Excel</p>
+<ul>
+<li><strong>Apache POI (Java)</strong> : robuste, mature, supporte <code>.xls</code> et <code>.xlsx</code>, mais plus complexe et verbeux.</li>
+<li><strong>openpyxl (Python)</strong> : simple, léger, lisible, orienté <code>.xlsx</code>.</li>
+<li>Tests réalisés : lecture/modification, formules, valeurs calculées, dépendances entre feuilles, lignes et colonnes.</li>
+<li><a href="/ressources/openpyxl_apache-poi.pdf" target="_blank">Voir la comparaison openpyxl / Apache POI</a></li>
+</ul>
+</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Analyse de <strong>LlamaPress / Excel-to-Webapp</strong></p>
+</li>
+<li>
+<p>Analyse réalisée à partir de tests effectués directement sur <a href="https://llamapress.ai/excel-to-app" target="_blank">LlamaPress Excel-to-App</a></p>
+<ul>
+<li>Outil proche de notre objectif : importer un fichier Excel et générer une application web exploitable.</li>
+<li><a href="/ressources/llamapress.png" target="_blank">Voir la capture LlamaPress</a></li>
+</ul>
+</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Analyse d’<strong>Airtable</strong></p>
+<ul>
+<li>Import Excel/CSV → base de données visuelle → interface web.</li>
+<li>Fonctionnalités observées : vues en grille, formulaires, filtres, regroupements, tableaux de bord et automatisations.</li>
+<li>Limite : solution no-code déjà structurée, moins orientée vers la génération personnalisée d’une webapp complète.</li>
+<li><a href="../ressources/airtable-flow.pdf" target="_blank">Voir l’analyse Airtable</a></li>
+</ul>
+</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Modélisation des données : diagramme de classes de la structure Excel</p>
+<ul>
+<li><code>Classeur</code> : fichier Excel complet, composé de plusieurs feuilles.</li>
+<li><code>Feuille</code> : onglet contenant lignes, colonnes et cellules.</li>
+<li><code>Ligne</code> : ensemble horizontal de cellules.</li>
+<li><code>Colonne</code> : ensemble vertical de cellules, avec nom et type inféré.</li>
+<li><code>Cellule</code> : valeur atomique avec position, contenu, type et formule éventuelle.</li>
+<li>Relations principales : <code>Classeur</code> → <code>Feuille</code>, <code>Feuille</code> → <code>Ligne</code> / <code>Colonne</code>, <code>Ligne</code> → <code>Cellule</code>.</li>
+</ul>
+</li>
+</ul>
+</div>
 <h3 id="decisions-et-ajustements">Décisions et ajustements<a class="headerlink" href="#decisions-et-ajustements" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p>À compléter uniquement si des choix structurants ont été faits
-ou si l’orientation du projet a évolué.</p>
-</blockquote>
 <div class="admonition info">
 <p class="admonition-title">Décisions</p>
 <ul>
-<li>Abandon de l’approche X jugée trop complexe</li>
-<li>Reformulation de la problématique suite aux premières analyses</li>
+<li><strong>openpyxl</strong> retenu comme librairie de parsing Excel (légèreté et adéquation avec la stack Python)</li>
+<li>Le modèle de données à 5 classes (<code>Classeur</code>, <code>Feuille</code>, <code>Ligne</code>, <code>Colonne</code>, <code>Cellule</code>) constitue la base de la couche de lecture du fichier Excel</li>
+<li><strong>Stack technique potentiel</strong> : React (frontend) + FastAPI (backend) + openpyxl (parsing Excel) + PostgreSQL (BDD) + SQLAlchemy (ORM)</li>
 </ul>
 </div>
 <h3 id="difficultes-rencontrees">Difficultés rencontrées<a class="headerlink" href="#difficultes-rencontrees" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p>À compléter uniquement si des obstacles ont eu un impact réel
-sur l’avancement du projet.</p>
+sur l'avancement du projet.</p>
 </blockquote>
-<div class="admonition warning">
-<p class="admonition-title">Difficultés</p>
-<ul>
-<li>Problème de configuration du plugin Mermaid<ul>
-<li>Confusion entre <code>mkdocs-mermaid2-plugin</code> (pip)
-  et <code>mermaid2</code> (nom du plugin)</li>
-<li>Résolu après nettoyage et configuration correcte dans <code>mkdocs.yml</code></li>
-</ul>
-</li>
-</ul>
-</div>
 
 
 
