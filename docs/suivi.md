@@ -114,7 +114,7 @@ title: Suivi du projet
         - Clarification d’une ambiguïté liée à la représentation d’un fichier Excel comme tableau 2D classique, avec des en-têtes en colonnes et des lignes de données.
 
 
-### Décisions et ajustements
+### Décisions et ajustements - Semaine 3
 
 !!! info "Décisions"
     - Le diagramme de classe a été simplifié afin de mieux correspondre au périmètre du MVP.
@@ -150,14 +150,14 @@ title: Suivi du projet
             - `database_builder.py` pour l’exécution locale dans SQLite.
         - Création d’une structure de base pour les modèles du projet.
 
-### Décisions et ajustements
+### Décisions et ajustements - Semaine 4
 
 !!! info "Décisions"
     - Le MVP reste volontairement simple pour valider le pipeline principal avant d’ajouter des fonctionnalités avancées.
     - SQLite est utilisé localement pour tester rapidement la création de tables.
     - L’insertion des données et l’intégration avec une base plus complète seront traitées dans les prochaines itérations.
 
-
+---
 ### Décisions et ajustements
 
 !!! info "Décisions"
