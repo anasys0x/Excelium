@@ -92,6 +92,72 @@ title: Suivi du projet
         - `Colonne` : ensemble vertical de cellules, avec nom et type inféré.
         - `Cellule` : valeur atomique avec position, contenu, type et formule éventuelle.
         - Relations principales : `Classeur` → `Feuille`, `Feuille` → `Ligne` / `Colonne`, `Ligne` → `Cellule`.
+
+---
+## Semaine 3 (21–27 Mai)
+
+### Travail réalisé
+
+!!! abstract "Avancement"
+    - [x] Révision de la modélisation du projet
+        - Clarification du rôle des principales classes liées à la structure Excel.
+        - Ajustement du modèle pour mieux représenter les feuilles, lignes, colonnes et cellules.
+
+    - [x] Retravail du diagramme de classe
+        - Ajout de la classe `Ligne` afin de mieux représenter les enregistrements du fichier Excel.
+        - Suppression des éléments jugés trop complexes pour une première version, notamment la gestion détaillée des dépendances entre cellules.
+        - Clarification des relations entre `Classeur`, `Feuille`, `Ligne`, `Colonne` et `Cellule`.
+
+
+    - [x] Familiarisation avec `openpyxl` et clarification de certaines ambiguïtés
+        - Prise en main de `openpyxl` pour comprendre comment accéder aux feuilles, aux lignes, aux colonnes et aux cellules d’un fichier Excel.
+        - Clarification d’une ambiguïté liée à la représentation d’un fichier Excel comme tableau 2D classique, avec des en-têtes en colonnes et des lignes de données.
+
+
+### Décisions et ajustements
+
+!!! info "Décisions"
+    - Le diagramme de classe a été simplifié afin de mieux correspondre au périmètre du MVP.
+    - La classe `Ligne` est conservée, car elle représente naturellement un enregistrement potentiel dans la base de données.
+    - La gestion avancée des formules et dépendances entre cellules est mise de côté pour la première itération.
+
+---
+## Semaine 4 (28 Mai–03 Juin)
+
+### Travail réalisé
+
+!!! abstract "Avancement"
+    - [x] Finalisation du diagramme de classe
+        - Validation de la structure générale du modèle de données.
+        - Stabilisation des principales classes du projet : `Classeur`, `Feuille`, `Ligne`, `Colonne` et `Cellule`.
+
+    - [x] Mise en place d’une première itération du MVP
+        - Lecture d’un fichier Excel local avec `openpyxl`.
+        - Extraction des feuilles disponibles.
+        - Sélection de la feuille active.
+        - Extraction et nettoyage des noms de colonnes.
+        - Lecture des lignes de données.
+        - Détection simple des types Python des colonnes.
+        - Conversion des types Python vers des types SQL.
+        - Génération d’une requête `CREATE TABLE`.
+        - Exécution de la requête dans une base SQLite locale.
+
+    - [x] Organisation initiale du code
+        - Séparation progressive du pipeline en plusieurs services :
+            - `excel_reader.py` pour la lecture du fichier Excel.
+            - `type_detector.py` pour la détection des types.
+            - `sql_mapper.py` pour la conversion vers les types SQL.
+            - `database_builder.py` pour l’exécution locale dans SQLite.
+        - Création d’une structure de base pour les modèles du projet.
+
+### Décisions et ajustements
+
+!!! info "Décisions"
+    - Le MVP reste volontairement simple pour valider le pipeline principal avant d’ajouter des fonctionnalités avancées.
+    - SQLite est utilisé localement pour tester rapidement la création de tables.
+    - L’insertion des données et l’intégration avec une base plus complète seront traitées dans les prochaines itérations.
+
+
 ### Décisions et ajustements
 
 !!! info "Décisions"
@@ -101,5 +167,6 @@ title: Suivi du projet
 
 ### Difficultés rencontrées
 
-> À compléter uniquement si des obstacles ont eu un impact réel
-> sur l'avancement du projet.
+    - Difficulté à structurer directement les classes du modèle tout en intégrant `openpyxl`.
+    - Besoin nécessaire de clarifier la génération de SQL simple et l’utilisation d’un ORM
+    - Confusion entre les objets fournis par `openpyxl` et les classes propres au projet.
