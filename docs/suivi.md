@@ -167,6 +167,6 @@ title: Suivi du projet
 
 ### Difficultés rencontrées
 
-    - Difficulté à structurer directement les classes du modèle tout en intégrant `openpyxl`.
+    - Difficulté à structurer directement les classes du modèle tout en intégrant "openpyxl".
     - Besoin nécessaire de clarifier la génération de SQL simple et l’utilisation d’un ORM
     - Confusion entre les objets fournis par `openpyxl` et les classes propres au projet.
