@@ -69,4 +69,4 @@ title: Travail réalisé
 
 ### Structure d’un fichier Excel
 
-![Modèle de données — structure Excel](ressources/modèle_de_données.png)
+![Modèle de données — structure Excel](ressources/DiagrammeDeClasse.png)
