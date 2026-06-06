@@ -86,7 +86,7 @@ def load_workbook_model(path):
 
                 value = excel_cell.value
 
-                if value is not None:
+                if value is not None and str(value).strip() != "":
                     row_is_empty = False
 
                 formula = None
