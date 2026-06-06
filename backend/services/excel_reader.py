@@ -1,45 +1,111 @@
+from pathlib import Path
+
 from openpyxl import load_workbook
 
-from src.excelium.services.sql_mapper import map_all_columns_to_sql, create_table_sql
+from models.workbook import Workbook
+from models.worksheet import Worksheet
+from models.row import Row
+from models.column import Column
+from models.cell import Cell
 
 
-def open_workbook(path: str):
+def clean_header(header):
+    if header is None:
+        return ""
+
+    return str(header).lower().strip().replace(" ", "_")
+
+
+def load_workbook_model(path):
+
     wb = load_workbook(path)
-    return wb
 
-def get_worksheets(workbook):
-    worksheet_names  = []
-    ws = workbook.worksheets
-    for sheet_name in ws:
-        worksheet_names.append(sheet_name.title)
-    return worksheet_names
+    workbook = Workbook(
+        file_name=Path(path).name,
+        file_path=str(path)
+    )
 
-def get_active_worksheet(workbook):
-    return workbook.active
+    for sheet_index, ws in enumerate(wb.worksheets):
 
-def get_headers(worksheet):
-    cols = [cell.value for cell in worksheet[1]]
-    return cols
+        worksheet = Worksheet(
+            name=ws.title,
+            index=sheet_index
+        )
 
-def clean_headers(headers):
-    header = [str(e).lower().strip().replace(" ", "_") for e in headers]
-    return header
+        # Détection simple du header
+        first_row = [cell.value for cell in ws[1]]
 
-def get_data(worksheet):
-    data = []
-    for row in worksheet.iter_rows(min_row=2, values_only=True):
-        #On arrete des qu'une ligne entiere ne contient que des Nones (cases vides)
-        if all(cell is None for cell in row):
-            break
-        data.append(list(row))
-    return data
+        worksheet.has_header = any(
+            value is not None
+            for value in first_row
+        )
 
-def get_column_values(data, column_index):
-    values = []
-    for row in data:
-        values.append(row[column_index])
-    return values
+        # Création des colonnes
+        for column_index in range(ws.max_column):
 
+            if worksheet.has_header:
 
+                header_name = clean_header(
+                    first_row[column_index]
+                )
 
+                if header_name == "":
+                    header_name = f"column_{column_index + 1}"
 
+            else:
+
+                header_name = f"column_{column_index + 1}"
+
+            column = Column(
+                name=header_name,
+                index=column_index,
+                letter=ws.cell(
+                    row=1,
+                    column=column_index + 1
+                ).column_letter
+            )
+
+            worksheet.add_column(column)
+
+        # Début des données
+        start_row = 2 if worksheet.has_header else 1
+
+        # Création des lignes
+        for row_index in range(start_row, ws.max_row + 1):
+
+            row = Row(row_index)
+
+            row_is_empty = True
+
+            for column_index in range(1, ws.max_column + 1):
+
+                excel_cell = ws.cell(
+                    row=row_index,
+                    column=column_index
+                )
+
+                value = excel_cell.value
+
+                if value is not None:
+                    row_is_empty = False
+
+                formula = None
+
+                if isinstance(value, str) and value.startswith("="):
+                    formula = value
+
+                cell = Cell(
+                    value=value,
+                    row_index=row_index,
+                    column_index=column_index,
+                    formula=formula
+                )
+
+                row.add_cell(cell)
+
+            if not row_is_empty:
+                worksheet.add_row(row)
+
+        workbook.add_worksheet(worksheet)
+
+    return workbook

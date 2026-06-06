@@ -1,43 +1,121 @@
-from src.excelium.services.excel_reader import get_column_values
+from datetime import date, datetime
+
+from models.excel_type import Type
+from transforms.type_transform_factory import TypeTransformFactory
+
+
+def get_column_values(worksheet, column):
+
+    values = []
+
+    for row in worksheet.get_rows():
+
+        cell = row.cells[column.index]
+
+        if cell.value is not None:
+            values.append(cell.value)
+
+    return values
 
 
 def detect_column_type(values):
-    value_type = []
+
+    found_types = set()
+
     for value in values:
-        if value is None:
+
+        if isinstance(value, str):
+            value = value.strip()
+
+        if value == "":
             continue
-        elif isinstance(value, bool):
-            if bool not in value_type:
-                value_type.append(bool)
+
+        if isinstance(value, bool):
+            found_types.add(Type.BOOL)
+
         elif isinstance(value, int):
-            if int not in value_type:
-                value_type.append(int)
+            found_types.add(Type.INT)
+
         elif isinstance(value, float):
-            if float not in value_type:
-                value_type.append(float)
+            found_types.add(Type.FLOAT)
+
+        elif isinstance(value, (date, datetime)):
+            found_types.add(Type.DATE)
+
         elif isinstance(value, str):
-            if str not in value_type:
-                value_type.append(str)
 
-    if int in value_type and float in value_type and len(value_type) == 2:
-        return float
-    elif len(value_type) == 0:
-        return str
-    elif len(value_type) > 1:
-        return str
-    return value_type[0]
+            if is_date_string(value):
+                found_types.add(Type.DATE)
+
+            else:
+                found_types.add(Type.STRING)
+
+    # colonne vide
+    if len(found_types) == 0:
+        return Type.STRING
+
+    # int + float => float
+    if found_types == {Type.INT, Type.FLOAT}:
+        return Type.FLOAT
+
+    # plusieurs types différents
+    if len(found_types) > 1:
+        return Type.MIXED
+
+    return found_types.pop()
 
 
-def detect_all_column_types(headers, data):
-    col_type = {}
-    for index, header in enumerate(headers):
-        values = get_column_values(data, index)
-        col_type[header] = detect_column_type(values)
+def detect_worksheet_types(worksheet):
 
-    return col_type
+    for column in worksheet.get_columns():
 
-def get_column_values(data, column_index):
-    values = []
-    for row in data:
-        values.append(row[column_index])
-    return values
+        values = get_column_values(
+            worksheet,
+            column
+        )
+
+        if column.name == "date":
+            print("VALEURS DATE =", values)
+
+        detected_type = detect_column_type(values)
+
+        column.set_detected_type(
+            detected_type
+        )
+        column.set_transform(
+            TypeTransformFactory.create(detected_type)
+        )
+
+
+def detect_workbook_types(workbook):
+
+    for worksheet in workbook.get_worksheets():
+
+        detect_worksheet_types(
+            worksheet
+        )
+
+def is_date_string(value):
+
+    if not isinstance(value, str):
+        return False
+
+    value = value.strip()
+
+    formats = [
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%m/%d/%Y",
+        "%Y-%m-%d %H:%M:%S"
+    ]
+
+    for fmt in formats:
+        try:
+            datetime.strptime(value, fmt)
+            return True
+        except ValueError:
+            pass
+
+    return False

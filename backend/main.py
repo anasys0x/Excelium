@@ -1,22 +1,32 @@
 from pathlib import Path
 
-from src.excelium.services.excel_reader import open_workbook, get_active_worksheet, get_headers, clean_headers, get_data
-from src.excelium.services.type_detector import detect_all_column_types
-from src.excelium.services.sql_mapper import map_all_columns_to_sql, create_table_sql
-from src.excelium.services.database_builder import execute_sql
+from services.excel_reader import load_workbook_model
+from services.type_detector import detect_workbook_types
+from services.database_builder import generate_create_table_sql
 
-project_root = Path(__file__).resolve().parents[2]
+project_root = Path(__file__).resolve().parents[1]
 excel_path = project_root / "data" / "excel.xlsx"
 
-excel = open_workbook(excel_path)
-clients = get_active_worksheet(excel)
-lines = get_data(clients)
-headers = clean_headers(get_headers(clients))
+workbook = load_workbook_model(excel_path)
+detect_workbook_types(workbook)
 
-my_dict = detect_all_column_types(headers, lines)
-mapping = map_all_columns_to_sql(my_dict)
+for worksheet in workbook.get_worksheets():
 
-create_sql = create_table_sql("clients", mapping)
-print(create_sql)
+    print(worksheet.name)
 
-execute_sql(create_sql)
+    print("Colonnes :")
+
+    for column in worksheet.get_columns():
+        print(
+            column.name,
+            "->",
+            column.detected_type
+        )
+
+    print("Nombre de lignes :", len(worksheet.get_rows()))
+    
+    sql = generate_create_table_sql(
+        worksheet
+    )
+
+    print(sql)
