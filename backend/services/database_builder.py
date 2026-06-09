@@ -11,8 +11,15 @@ def generate_create_table_sql(worksheet):
         if sql_type is None:
             continue
 
-        columns_sql.append(
+        column_definition = (
             f"{column.name} {sql_type.value}"
+        )
+
+        if column.is_primary_key:
+            column_definition += " PRIMARY KEY"
+
+        columns_sql.append(
+            column_definition
         )
 
     columns_text = ", ".join(columns_sql)
@@ -55,7 +62,8 @@ def generate_insert_sql(worksheet):
 
         sql = (
             f"INSERT INTO {table_name} "
-            f"VALUES ({values_text});"
+            f"VALUES ({values_text})"
+            f"ON CONFLICT DO NOTHING;"
         )
 
         inserts.append(sql)
