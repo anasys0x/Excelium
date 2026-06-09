@@ -65,6 +65,9 @@ def load_workbook_model(path):
                 ).column_letter
             )
 
+            if header_name == "id":
+                column.set_primary_key(True)
+
             worksheet.add_column(column)
 
         # Début des données

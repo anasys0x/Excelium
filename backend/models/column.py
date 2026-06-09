@@ -13,6 +13,8 @@ class Column:
         self.detected_type = None
         self.transform = None
 
+        self.is_primary_key = False
+
     def set_detected_type(self, detected_type):
         self.detected_type = detected_type
 
@@ -24,3 +26,6 @@ class Column:
             return None
 
         return self.transform.transform()
+    
+    def set_primary_key(self, is_primary_key):
+        self.is_primary_key = is_primary_key
