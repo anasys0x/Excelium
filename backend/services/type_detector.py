@@ -119,3 +119,36 @@ def is_date_string(value):
             pass
 
     return False
+
+def is_primary_key_candidate(column,values):
+
+    if len(values) == 0:
+        return False
+
+    if any(value is None for value in values):
+        return False
+
+    if len(values) != len(set(values)):
+        return False
+
+    return True
+
+def detect_primary_keys(workbook):
+
+    for worksheet in workbook.get_worksheets():
+
+        # Réinitialise toutes les colonnes
+        for column in worksheet.get_columns():
+            column.set_primary_key(False)
+
+        # Choisit la première colonne candidate comme PK
+        for column in worksheet.get_columns():
+
+            values = [
+                row.get_cells()[column.index].value
+                for row in worksheet.get_rows()
+            ]
+
+            if is_primary_key_candidate(column, values):
+                column.set_primary_key(True)
+                break

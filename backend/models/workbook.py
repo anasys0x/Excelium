@@ -18,3 +18,6 @@ class Workbook:
 
     def get_dependencies(self):
         return self.dependencies
+
+    def is_empty(self):
+        return len(self.worksheets) == 0
