@@ -1,9 +1,19 @@
+import psycopg2
+from errors import DatabaseExecutionError
+
 def execute_sql(conn, sql):
 
     cursor = conn.cursor()
 
-    cursor.execute(sql)
+    try:
+        cursor.execute(sql)
+        conn.commit()
 
-    conn.commit()
+    except psycopg2.Error as e:
+        conn.rollback()
+        raise DatabaseExecutionError(
+            f"Erreur SQL : {e.pgerror or str(e)}\n  Requête : {sql[:120]}"
+        )
 
-    cursor.close()
+    finally:
+        cursor.close()

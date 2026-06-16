@@ -22,3 +22,6 @@ class Worksheet:
     
     def set_has_header(self, has_header):
         self.has_header = has_header
+
+    def is_empty(self):
+        return len(self.rows) == 0
