@@ -1,11 +1,16 @@
 from pathlib import Path
 
 from services.excel_reader import load_workbook_model
-from services.type_detector import*
-from services.database_builder import*
+from services.type_detector import detect_workbook_types
+from services.pk_detector import detect_primary_keys
+from services.database_builder import generate_create_table_sql, generate_insert_sql
 from services.database_execute import execute_sql
 from services.database_connection import get_connection
-from services.dependency_detector import*
+from services.dependency_detector import (
+    detect_intra_dependencies,
+    detect_inter_dependencies,
+    column_index_to_letter
+)
 from errors import ExceliumError
 
 project_root = Path(__file__).resolve().parents[1]
@@ -58,32 +63,33 @@ try:
 
     for worksheet in workbook.get_worksheets():
 
-        print()
-        print(worksheet.name)
+        print(f"\n=== Feuille : {worksheet.name} ===")
 
         if worksheet.is_empty():
-            print(f"[AVERTISSEMENT] La feuille '{worksheet.name}' est vide — ignorée")
+            print(f"  [AVERTISSEMENT] La feuille '{worksheet.name}' est vide — ignorée")
             continue
 
-        print("Colonnes :")
+        for table in worksheet.get_tables():
 
-        for column in worksheet.get_columns():
-            print(column.name, "->", column.detected_type)
+            print(f"\n  Tableau : {table.name}")
+            print(f"  Header  : {table.get_header()}")
+            print("  Colonnes :")
 
-        print("Nombre de lignes :", len(worksheet.get_rows()))
+            for column in table.get_columns():
+                print(f"    {column.name} -> {column.detected_type}")
 
-        sql = generate_create_table_sql(worksheet)
-        print(sql)
+            print(f"  Nombre de lignes : {len(table.get_rows())}")
 
-        execute_sql(conn, sql)
-        print("Table créée avec succès !")
+            sql = generate_create_table_sql(table)
+            print(f"  {sql}")
 
-        insert_sqls = generate_insert_sql(worksheet)
+            execute_sql(conn, sql)
+            print("  Table créée avec succès !")
 
-        for insert_sql in insert_sqls:
-            execute_sql(conn, insert_sql)
+            for insert_sql in generate_insert_sql(table):
+                execute_sql(conn, insert_sql)
 
-        print("Données importées avec succès !")
+            print("  Données importées avec succès !")
 
 except ExceliumError as e:
     print(f"\n[ERREUR] {e}")
