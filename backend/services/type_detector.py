@@ -74,8 +74,6 @@ def detect_worksheet_types(worksheet):
             column
         )
 
-        if column.name == "date":
-            print("VALEURS DATE =", values)
 
         detected_type = detect_column_type(values)
 
