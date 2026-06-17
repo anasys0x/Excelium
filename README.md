@@ -1,4 +1,4 @@
-![Excelium](https://github.com/anasys0x/Excelium/blob/main/excelium.png)
+![Excelium](https://github.com/anasys0x/Excelium/blob/main/excelium.png?raw=true)
 
 <h1 align="center">Excelium</h1>
 
