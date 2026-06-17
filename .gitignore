@@ -178,3 +178,17 @@ cython_debug/
 *.db
 *.sqlite
 *.sqlite3
+
+# Express
+node_modules/
+
+# Fichiers de log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fichiers de build
+dist/
+build/
+coverage/
