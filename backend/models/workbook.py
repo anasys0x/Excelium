@@ -3,7 +3,6 @@ class Workbook:
     def __init__(self, file_name, file_path):
         self.file_name = file_name
         self.file_path = file_path
-
         self.worksheets = []
         self.dependencies = []
 
@@ -12,7 +11,7 @@ class Workbook:
 
     def get_worksheets(self):
         return self.worksheets
-    
+
     def add_dependency(self, dependency):
         self.dependencies.append(dependency)
 

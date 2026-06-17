@@ -4,24 +4,13 @@ class Worksheet:
         self.name = name
         self.index = index
 
-        self.rows = []
-        self.columns = []
-        self.has_header = False
+        self.tables = []
 
-    def add_row(self, row):
-        self.rows.append(row)
+    def add_table(self, table):
+        self.tables.append(table)
 
-    def add_column(self, column):
-        self.columns.append(column)
-
-    def get_rows(self):
-        return self.rows
-
-    def get_columns(self):
-        return self.columns
-    
-    def set_has_header(self, has_header):
-        self.has_header = has_header
+    def get_tables(self):
+        return self.tables
 
     def is_empty(self):
-        return len(self.rows) == 0
+        return len(self.tables) == 0

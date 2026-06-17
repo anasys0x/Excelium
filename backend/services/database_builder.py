@@ -1,45 +1,35 @@
-def generate_create_table_sql(worksheet):
+def generate_create_table_sql(table):
 
-    table_name = worksheet.name.lower().replace(" ", "_")
+    table_name = table.name.lower().replace(" ", "_")
 
     columns_sql = []
 
-    for column in worksheet.get_columns():
+    for column in table.get_columns():
 
         sql_type = column.get_sql_type()
 
         if sql_type is None:
             continue
 
-        column_definition = (
-            f"{column.name} {sql_type.value}"
-        )
+        column_definition = f"{column.name} {sql_type.value}"
 
         if column.is_primary_key:
             column_definition += " PRIMARY KEY"
 
-        columns_sql.append(
-            column_definition
-        )
+        columns_sql.append(column_definition)
 
     columns_text = ", ".join(columns_sql)
 
-    sql = (
-        f"CREATE TABLE IF NOT EXISTS "
-        f"{table_name} "
-        f"({columns_text});"
-    )
+    return f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_text});"
 
-    return sql
-    
-def generate_insert_sql(worksheet):
 
-    
-    table_name = worksheet.name.lower().replace(" ", "_")
+def generate_insert_sql(table):
+
+    table_name = table.name.lower().replace(" ", "_")
 
     inserts = []
 
-    for row in worksheet.get_rows():
+    for row in table.get_rows():
 
         values = []
 
@@ -49,23 +39,15 @@ def generate_insert_sql(worksheet):
                 values.append("NULL")
 
             elif isinstance(cell.value, str):
-                values.append(
-                    f"'{cell.value}'"
-                )
+                values.append(f"'{cell.value}'")
 
             else:
-                values.append(
-                    str(cell.value)
-                )
+                values.append(str(cell.value))
 
         values_text = ", ".join(values)
 
-        sql = (
-            f"INSERT INTO {table_name} "
-            f"VALUES ({values_text})"
-            f"ON CONFLICT DO NOTHING;"
+        inserts.append(
+            f"INSERT INTO {table_name} VALUES ({values_text}) ON CONFLICT DO NOTHING;"
         )
-
-        inserts.append(sql)
 
     return inserts
