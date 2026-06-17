@@ -158,15 +158,35 @@ title: Suivi du projet
     - L’insertion des données et l’intégration avec une base plus complète seront traitées dans les prochaines itérations.
 
 ---
+
+## Semaine 5 (10–17 Juin)
+
+### Travail réalisé
+
+!!! abstract "Avancement"
+    - [x] Robustesse du backend — Farah Romdhane
+        - Détection des dépendances inter-feuilles (formules de type `Feuille!A1`)
+        - Support des feuilles sans en-tête (colonnes nommées automatiquement `column_1`, `column_2`…)
+        - Support de plusieurs tableaux sur une même feuille, séparés par des lignes vides
+        - Détection et remontée des erreurs de lecture
+
+    - [x] Export et interface de visualisation — Anas Mrani Alaoui
+        - Ajout de `backend/export.py` : sérialise le classeur analysé en JSON via les services existants
+        - Ajout de `api/index.js` : serveur Express faisant le bridge entre le frontend et le script Python
+        - Ajout de `frontend/index.html` + `style.css` : interface minimale permettant d’uploader un `.xlsx` et de le visualiser
+        - **Stack retenue** : Express (API bridge) + Python subprocess (analyse) + HTML/CSS/JS vanilla (frontend prototype)
+
 ### Décisions et ajustements
 
 !!! info "Décisions"
     - **openpyxl** retenu comme librairie de parsing Excel (légèreté et adéquation avec la stack Python)
     - Le modèle de données à 5 classes (`Classeur`, `Feuille`, `Ligne`, `Colonne`, `Cellule`) constitue la base de la couche de lecture du fichier Excel
     - **Stack technique potentiel** : React (frontend) + FastAPI (backend) + openpyxl (parsing Excel) + PostgreSQL (BDD) + SQLAlchemy (ORM)
+    - Ajout de Express et l'exposition de la route `/api/workbook` recevant le fichier `.xlsx`, lançant le script Python en subprocess et retournant le JSON au frontend
 
 ### Difficultés rencontrées
 
     - Difficulté à structurer directement les classes du modèle tout en intégrant "openpyxl".
     - Besoin nécessaire de clarifier la génération de SQL simple et l’utilisation d’un ORM
     - Confusion entre les objets fournis par `openpyxl` et les classes propres au projet.
+
