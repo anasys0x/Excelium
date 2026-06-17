@@ -612,6 +612,34 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semaine-5-1017-juin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semaine 5 (10–17 Juin)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Semaine 5 (10–17 Juin)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#travail-realise_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Travail réalisé
+      
+    </span>
+  </a>
+  
+</li>
+        
           <li class="md-nav__item">
   <a href="#decisions-et-ajustements" class="md-nav__link">
     <span class="md-ellipsis">
@@ -905,6 +933,34 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semaine-5-1017-juin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semaine 5 (10–17 Juin)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Semaine 5 (10–17 Juin)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#travail-realise_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Travail réalisé
+      
+    </span>
+  </a>
+  
+</li>
+        
           <li class="md-nav__item">
   <a href="#decisions-et-ajustements" class="md-nav__link">
     <span class="md-ellipsis">
@@ -1172,6 +1228,31 @@ N'oubliez pas d’effacer ou de mettre en commentaires les notes (<code>&gt;</co
 </ul>
 </div>
 <hr />
+<h2 id="semaine-5-1017-juin">Semaine 5 (10–17 Juin)<a class="headerlink" href="#semaine-5-1017-juin" title="Permanent link">&para;</a></h2>
+<h3 id="travail-realise_4">Travail réalisé<a class="headerlink" href="#travail-realise_4" title="Permanent link">&para;</a></h3>
+<div class="admonition abstract">
+<p class="admonition-title">Avancement</p>
+<ul class="task-list">
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Robustesse du backend — Farah Romdhane</p>
+<ul>
+<li>Détection des dépendances inter-feuilles (formules de type <code>Feuille!A1</code>)</li>
+<li>Support des feuilles sans en-tête (colonnes nommées automatiquement <code>column_1</code>, <code>column_2</code>…)</li>
+<li>Support de plusieurs tableaux sur une même feuille, séparés par des lignes vides</li>
+<li>Détection et remontée des erreurs de lecture</li>
+</ul>
+</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Export et interface de visualisation — Anas Mrani Alaoui</p>
+<ul>
+<li>Ajout de <code>backend/export.py</code> : sérialise le classeur analysé en JSON via les services existants</li>
+<li>Ajout de <code>api/index.js</code> : serveur Express faisant le bridge entre le frontend et le script Python</li>
+<li>Ajout de <code>frontend/index.html</code> + <code>style.css</code> : interface minimale permettant d’uploader un <code>.xlsx</code> et de le visualiser</li>
+<li><strong>Stack retenue</strong> : Express (API bridge) + Python subprocess (analyse) + HTML/CSS/JS vanilla (frontend prototype)</li>
+</ul>
+</li>
+</ul>
+</div>
 <h3 id="decisions-et-ajustements">Décisions et ajustements<a class="headerlink" href="#decisions-et-ajustements" title="Permanent link">&para;</a></h3>
 <div class="admonition info">
 <p class="admonition-title">Décisions</p>
@@ -1179,6 +1260,7 @@ N'oubliez pas d’effacer ou de mettre en commentaires les notes (<code>&gt;</co
 <li><strong>openpyxl</strong> retenu comme librairie de parsing Excel (légèreté et adéquation avec la stack Python)</li>
 <li>Le modèle de données à 5 classes (<code>Classeur</code>, <code>Feuille</code>, <code>Ligne</code>, <code>Colonne</code>, <code>Cellule</code>) constitue la base de la couche de lecture du fichier Excel</li>
 <li><strong>Stack technique potentiel</strong> : React (frontend) + FastAPI (backend) + openpyxl (parsing Excel) + PostgreSQL (BDD) + SQLAlchemy (ORM)</li>
+<li>Ajout de Express et l'exposition de la route <code>/api/workbook</code> recevant le fichier <code>.xlsx</code>, lançant le script Python en subprocess et retournant le JSON au frontend</li>
 </ul>
 </div>
 <h3 id="difficultes-rencontrees">Difficultés rencontrées<a class="headerlink" href="#difficultes-rencontrees" title="Permanent link">&para;</a></h3>
