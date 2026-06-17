@@ -2,14 +2,7 @@ from datetime import date, datetime
 
 from models.excel_type import Type
 from transforms.type_transform_factory import TypeTransformFactory
-
-
-# ─── Constantes ───────────────────────────────────────────────────────────────
-
-DATE_FORMATS = [
-    "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d",
-    "%Y/%m/%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S",
-]
+from constants import DATE_FORMATS
 
 
 # ─── Détection de type de colonne ─────────────────────────────────────────────
@@ -68,8 +61,7 @@ def detect_table_types(table):
 
 
 def detect_workbook_types(workbook):
-    for worksheet in workbook.get_worksheets():
-        for table in worksheet.get_tables():
-            detect_table_types(table)
+    for table in workbook.get_all_tables():
+        detect_table_types(table)
 
 

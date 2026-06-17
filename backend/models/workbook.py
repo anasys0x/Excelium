@@ -18,5 +18,12 @@ class Workbook:
     def get_dependencies(self):
         return self.dependencies
 
+    def get_all_tables(self):
+        return [
+            table
+            for worksheet in self.worksheets
+            for table in worksheet.get_tables()
+        ]
+
     def is_empty(self):
         return len(self.worksheets) == 0

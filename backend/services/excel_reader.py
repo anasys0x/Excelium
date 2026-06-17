@@ -11,14 +11,7 @@ from models.row import Row
 from models.column import Column
 from models.cell import Cell
 from errors import ExcelReadError
-
-
-# ─── Constantes ───────────────────────────────────────────────────────────────
-
-DATE_FORMATS = [
-    "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d",
-    "%Y/%m/%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S",
-]
+from constants import DATE_FORMATS
 
 
 # ─── Utilitaires ──────────────────────────────────────────────────────────────

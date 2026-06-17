@@ -1,4 +1,5 @@
 from models.excel_type import Type
+from services.type_detector import get_column_values
 
 
 # ─── Constantes ───────────────────────────────────────────────────────────────
@@ -38,29 +39,25 @@ def primary_key_score(column, detected_type):
 
 
 def detect_primary_keys(workbook):
-    for worksheet in workbook.get_worksheets():
-        for table in worksheet.get_tables():
+    for table in workbook.get_all_tables():
 
-            for column in table.get_columns():
-                column.set_primary_key(False)
+        for column in table.get_columns():
+            column.set_primary_key(False)
 
-            best_column = None
-            best_score = -1
+        best_column = None
+        best_score = -1
 
-            for column in table.get_columns():
-                values = [
-                    row.get_cells()[column.index].value
-                    for row in table.get_rows()
-                ]
+        for column in table.get_columns():
+            values = get_column_values(table, column)
 
-                if not is_primary_key_candidate(values):
-                    continue
+            if not is_primary_key_candidate(values):
+                continue
 
-                score = primary_key_score(column, column.detected_type)
+            score = primary_key_score(column, column.detected_type)
 
-                if score > best_score:
-                    best_score = score
-                    best_column = column
+            if score > best_score:
+                best_score = score
+                best_column = column
 
-            if best_column is not None:
-                best_column.set_primary_key(True)
+        if best_column is not None:
+            best_column.set_primary_key(True)
