@@ -1,8 +1,8 @@
 from transforms.type_transform import TypeTransform
-from models.sql_type import SQLType
+from models.relational.relational_type import RelationalType
 
 
 class IntTransform(TypeTransform):
 
     def transform(self):
-        return SQLType.INTEGER
+        return RelationalType.INTEGER

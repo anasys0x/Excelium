@@ -1,8 +1,8 @@
 from transforms.type_transform import TypeTransform
-from models.sql_type import SQLType
+from models.relational.relational_type import RelationalType
 
 
 class StringTransform(TypeTransform):
 
     def transform(self):
-        return SQLType.VARCHAR
+        return RelationalType.VARCHAR

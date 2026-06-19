@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from models.excel_type import Type
+from models.excel.excel_type import Type
 from transforms.type_transform_factory import TypeTransformFactory
 from constants import DATE_FORMATS
 

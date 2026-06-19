@@ -29,7 +29,7 @@ class Table:
     def get_header(self):
         if not self.has_header:
             return []
-        return [col.name for col in self.columns]
+        return [col.name for col in self.get_columns()]
 
     def is_empty(self):
         return len(self.rows) == 0

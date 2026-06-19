@@ -1,4 +1,4 @@
-from models.excel_type import Type
+from models.excel.excel_type import Type
 
 from transforms.int_transform import IntTransform
 from transforms.float_transform import FloatTransform

@@ -1,41 +1,34 @@
-from models.excel_type import Type
+import re
 from services.type_detector import get_column_values
 
 
-# ─── Constantes ───────────────────────────────────────────────────────────────
+# ─── Patterns stricts de nom PK ───────────────────────────────────────────────
 
-PK_NAME_KEYWORDS = {"id", "code", "num", "number", "key", "ref", "uuid", "no"}
+PK_NAME_PATTERNS = [
+    r'^id$',
+    r'_id$',
+    r'^code$',
+    r'_code$',
+    r'_no$',
+    r'^uuid$',
+]
+
+_compiled = [re.compile(p) for p in PK_NAME_PATTERNS]
+
+
+def matches_pk_name(name):
+    name = name.lower()
+    return any(p.search(name) for p in _compiled)
 
 
 # ─── Fonctions ────────────────────────────────────────────────────────────────
 
-def is_primary_key_candidate(values):
+def is_unique_non_null(values):
     if not values:
         return False
     if any(v is None for v in values):
         return False
-    if len(values) != len(set(values)):
-        return False
-    return True
-
-
-def primary_key_score(column, detected_type):
-    score = 0
-    name = column.name.lower()
-
-    if any(
-        kw == name or name.startswith(kw + "_") or name.endswith("_" + kw)
-        for kw in PK_NAME_KEYWORDS
-    ):
-        score += 3
-
-    if detected_type == Type.INT:
-        score += 2
-
-    if column.index == 0:
-        score += 1
-
-    return score
+    return len(values) == len(set(values))
 
 
 def detect_primary_keys(workbook):
@@ -44,20 +37,8 @@ def detect_primary_keys(workbook):
         for column in table.get_columns():
             column.set_primary_key(False)
 
-        best_column = None
-        best_score = -1
-
         for column in table.get_columns():
             values = get_column_values(table, column)
-
-            if not is_primary_key_candidate(values):
-                continue
-
-            score = primary_key_score(column, column.detected_type)
-
-            if score > best_score:
-                best_score = score
-                best_column = column
-
-        if best_column is not None:
-            best_column.set_primary_key(True)
+            if matches_pk_name(column.name) and is_unique_non_null(values):
+                column.set_primary_key(True)
+                break

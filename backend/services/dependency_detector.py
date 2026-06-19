@@ -1,6 +1,6 @@
 import re
-from models.cell_dependency import CellDependency
-from models.dependency_type import DependencyType
+from models.excel.cell_dependency import CellDependency
+from models.excel.dependency_type import DependencyType
 
 
 def find_cell(table, column_letter, row_index):
