@@ -1,6 +1,0 @@
-{
-  "include": ["."],
-  "pythonVersion": "3.11",
-  "pythonPlatform": "Windows",
-  "extraPaths": ["."]
-}
