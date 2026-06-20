@@ -5,12 +5,30 @@ from services.type_detector import get_column_values
 # ─── Patterns stricts de nom PK ───────────────────────────────────────────────
 
 PK_NAME_PATTERNS = [
-    r'^id$',
-    r'_id$',
-    r'^code$',
-    r'_code$',
-    r'_no$',
-    r'^uuid$',
+    # Anglais
+    r'^id$',            # id
+    r'^id_',            # id_employe, id_client
+    r'_id$',            # employee_id, order_id
+    r'^uuid$',          # uuid
+    r'_uuid$',          # employe_uuid
+    r'^code$',          # code
+    r'_code$',          # product_code
+    r'_no$',            # employe_no, order_no
+    r'_num$',           # employe_num
+    r'_number$',        # order_number, invoice_number
+    r'_key$',           # product_key, surrogate_key
+    r'_ref$',           # order_ref, client_ref
+    r'_pk$',            # employe_pk
+
+    # Français
+    r'^matricule$',     # matricule
+    r'_matricule$',     # employe_matricule
+    r'^numero$',        # numero
+    r'_numero$',        # employe_numero
+    r'^identifiant$',   # identifiant
+    r'_identifiant$',   # employe_identifiant
+    r'^reference$',     # reference
+    r'_reference$',     # commande_reference
 ]
 
 _compiled = [re.compile(p) for p in PK_NAME_PATTERNS]

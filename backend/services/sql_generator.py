@@ -100,3 +100,20 @@ def generate_insert_sql(table):
         columns,
         table.get_rows()
     )
+
+
+def generate_fk_sql(relational_db):
+    statements = []
+    for table in relational_db.get_tables():
+        table_name = table.name.lower().replace(" ", "_")
+        for constraint in table.get_constraints():
+            from models.relational.foreign_key import ForeignKey
+            if isinstance(constraint, ForeignKey):
+                constraint_name = f"fk_{table_name}_{constraint.column_name}"
+                statements.append(
+                    f"ALTER TABLE {table_name} DROP CONSTRAINT IF EXISTS {constraint_name};"
+                )
+                statements.append(
+                    f"ALTER TABLE {table_name} ADD CONSTRAINT {constraint_name} {constraint.to_sql()};"
+                )
+    return statements
