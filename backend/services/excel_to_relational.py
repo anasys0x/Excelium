@@ -10,7 +10,8 @@ from services.excel_reader import load_workbook_model
 from services.type_detector import detect_workbook_types
 from services.pk_detector import detect_primary_keys
 from services.dependency_detector import detect_intra_dependencies, detect_inter_dependencies
-from services.sql_generator import generate_create_table_sql, generate_sync_sql
+from services.sql_generator import generate_create_table_sql, generate_sync_sql, generate_fk_sql
+from services.fk_detector import detect_foreign_keys
 from services.database_connection import get_connection
 from services.database_execute import execute_sql, table_exists
 from errors import ExceliumError
@@ -121,6 +122,7 @@ class ExcelToRelational:
             detect_inter_dependencies(workbook)
 
             relational_db = convert_workbook(workbook)
+            detect_foreign_keys(workbook, relational_db)
 
             self._display(workbook, relational_db)
             self._execute(conn, relational_db)
@@ -174,3 +176,7 @@ class ExcelToRelational:
                 execute_sql(conn, sql)
 
             print(f"  Table '{table.name}' synchronisée ({len(inserts)} lignes).")
+
+        for fk_sql in generate_fk_sql(relational_db):
+            execute_sql(conn, fk_sql)
+            print(f"  {fk_sql}")
