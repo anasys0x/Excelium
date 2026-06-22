@@ -1,8 +1,13 @@
-from services.type_detector import get_column_values
+from models.excel.excel_type import Type
 from models.relational.foreign_key import ForeignKey
+from services.type_detector import get_column_values
 
 
 # ─── Détection de clés étrangères ─────────────────────────────────────────────
+
+# FK seulement sur des types qui ont du sens comme identifiants
+_FK_COMPATIBLE_TYPES = {Type.INT, Type.STRING}
+
 
 def get_pk_column(table):
     for col in table.get_columns():
@@ -20,9 +25,9 @@ def values_are_subset(col_values, pk_values):
 
 def detect_foreign_keys(excel_workbook, relational_db):
     excel_tables = excel_workbook.get_all_tables()
-    rel_tables = relational_db.get_tables()
+    rel_tables   = relational_db.get_tables()
 
-    # Construire un index : nom_colonne_pk → (rel_table, excel_table)
+    # Pass 1 — construire un index : nom_colonne_pk → (rel_table, pk_col, pk_values)
     pk_index = {}
     for rel_table, excel_table in zip(rel_tables, excel_tables):
         pk_col = get_pk_column(rel_table)
@@ -34,26 +39,34 @@ def detect_foreign_keys(excel_workbook, relational_db):
             ]
             pk_index[pk_col.name] = (rel_table, pk_col, pk_values)
 
-    # Pour chaque table, chercher les colonnes qui référencent un PK
+    # Pass 2 — chercher les colonnes qui référencent un PK
     for rel_table, excel_table in zip(rel_tables, excel_tables):
         for excel_col in excel_table.get_columns():
+
             if excel_col.is_primary_key:
                 continue
 
+            # Même nom qu'une PK d'une autre table ?
             if excel_col.name not in pk_index:
+                continue
+
+            # Type compatible avec un identifiant (INT ou STRING uniquement)
+            if excel_col.detected_type not in _FK_COMPATIBLE_TYPES:
                 continue
 
             ref_rel_table, ref_pk_col, pk_values = pk_index[excel_col.name]
 
+            # Pas une FK sur soi-même
             if ref_rel_table.name == rel_table.name:
                 continue
 
             col_values = get_column_values(excel_table, excel_col)
 
+            # Toutes les valeurs de la colonne doivent exister dans la PK référencée
             if not values_are_subset(col_values, pk_values):
                 continue
 
-            # FK détectée → on la set sur la TableColumn relationnelle
+            # FK confirmée → on la set sur la TableColumn relationnelle
             rel_col = next(
                 (c for c in rel_table.get_columns() if c.name == excel_col.name),
                 None

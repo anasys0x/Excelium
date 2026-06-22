@@ -13,8 +13,9 @@ from services.dependency_detector import detect_intra_dependencies, detect_inter
 from services.sql_generator import generate_create_table_sql, generate_sync_sql, generate_fk_sql
 from services.fk_detector import detect_foreign_keys
 from services.database_connection import get_connection
-from services.database_execute import execute_sql, table_exists
+from services.database_execute import execute_sql, execute_sql_params, table_exists, get_table_columns
 from errors import ExceliumError
+from utils import slugify
 
 
 # ─── Mapping ExcelType → RelationalType ──────────────────────────────────────
@@ -187,27 +188,30 @@ class ExcelToRelational:
             print(f"  Nombre de lignes : {len(table.get_rows())}")
 
     def _execute(self, conn, relational_db):
-        # Pour chaque table : crée si elle n'existe pas, puis synchronise les données
+        # Pour chaque table : crée si elle n'existe pas, migre si schéma changé, puis synchronise
         for table in relational_db.get_tables():
 
-            if not table_exists(conn, table.name):
+            if not table_exists(conn, slugify(table.name)):
                 create_sql = generate_create_table_sql(table)
                 execute_sql(conn, create_sql)
                 print(f"\n  {create_sql}")
                 print("  Table créée avec succès !")
+            else:
+                # Table existe → ajouter les colonnes manquantes si l'Excel a évolué
+                self._sync_schema(conn, table)
 
-            # Sync intelligente :
-            # before = TRUNCATE si pas de PK réel
-            # inserts = upserts si PK réel, INSERTs simples sinon
-            # after = DELETE des lignes supprimées de l'Excel (si PK réel)
+            # Sync intelligente — chaque statement est un tuple (sql, params)
+            # before = (TRUNCATE CASCADE, None) si SERIAL
+            # inserts = (upsert %s, params) si PK réel, (INSERT %s, params) sinon
+            # after = (DELETE NOT IN, params) si PK réel
             before, inserts, after = generate_sync_sql(table)
 
-            for sql in before:
-                execute_sql(conn, sql)
-            for sql in inserts:
-                execute_sql(conn, sql)
-            for sql in after:
-                execute_sql(conn, sql)
+            for sql, _ in before:
+                execute_sql(conn, sql)  # DDL, pas de params
+            for sql, params in inserts:
+                execute_sql_params(conn, sql, params)
+            for sql, params in after:
+                execute_sql_params(conn, sql, params)
 
             print(f"  Table '{table.name}' synchronisée ({len(inserts)} lignes).")
 
@@ -216,3 +220,20 @@ class ExcelToRelational:
         for fk_sql in generate_fk_sql(relational_db):
             execute_sql(conn, fk_sql)
             print(f"  {fk_sql}")
+
+    def _sync_schema(self, conn, table):
+        """Adds columns that exist in Excel but are missing from the DB table.
+        Never removes columns — DB may contain data not present in Excel.
+        """
+        existing = get_table_columns(conn, slugify(table.name))
+        for col in table.get_columns():
+            col_slug = slugify(col.name)
+            if col_slug not in existing:
+                if col.is_serial:
+                    continue  # SERIAL ne peut pas être ajouté après création
+                alter = (
+                    f"ALTER TABLE {slugify(table.name)} "
+                    f"ADD COLUMN IF NOT EXISTS {col_slug} {col.relational_type.value};"
+                )
+                execute_sql(conn, alter)
+                print(f"  [SCHEMA] Colonne ajoutée : {col_slug}")
