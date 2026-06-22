@@ -1,25 +1,19 @@
-def generate_create_table_sql(table):
-    table_name = table.name.lower().replace(" ", "_")
+from datetime import date, datetime
 
-    columns_sql = []
-    for col in table.get_columns():
-        if col.is_serial:
-            columns_sql.append(f"{col.name} SERIAL PRIMARY KEY")
-        else:
-            definition = f"{col.name} {col.relational_type.value}"
-            if col.is_primary_key:
-                definition += " PRIMARY KEY"
-            columns_sql.append(definition)
-
-    return f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(columns_sql)});"
+from utils import slugify
 
 
-def _format_value(value):
-    if value is None:
-        return "NULL"
-    if isinstance(value, str):
-        return f"'{value.replace(chr(39), chr(39)*2)}'"
-    return str(value)
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _to_param(value):
+    """Converts a Python value to a psycopg2-safe parameter.
+    Dates are converted to ISO string so PostgreSQL accepts them correctly.
+    """
+    if isinstance(value, datetime):
+        return value.strftime('%Y-%m-%d')
+    if isinstance(value, date):
+        return value.strftime('%Y-%m-%d')
+    return value
 
 
 def _get_pk_column(table):
@@ -29,91 +23,116 @@ def _get_pk_column(table):
     return None
 
 
+# ─── DDL ─────────────────────────────────────────────────────────────────────
+
+def generate_create_table_sql(table):
+    table_name = slugify(table.name)
+
+    columns_sql = []
+    for col in table.get_columns():
+        col_name = slugify(col.name)
+        if col.is_serial:
+            columns_sql.append(f"{col_name} SERIAL PRIMARY KEY")
+        else:
+            definition = f"{col_name} {col.relational_type.value}"
+            if col.is_primary_key:
+                definition += " PRIMARY KEY"
+            columns_sql.append(definition)
+
+    return f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(columns_sql)});"
+
+
+# ─── DML — parameterized ─────────────────────────────────────────────────────
+
 def generate_sync_sql(table):
+    """Returns (before, inserts, after) where each item is a (sql, params) tuple.
+
+    Without real PK : TRUNCATE CASCADE + simple INSERTs
+    With real PK    : upserts (ON CONFLICT DO UPDATE) + DELETE of removed rows
     """
-    Retourne (statements_avant_insert, inserts, statements_après_insert).
-    - Sans PK réel : TRUNCATE + INSERTs simples
-    - Avec PK réel : upserts + DELETE des lignes supprimées
-    """
-    table_name = table.name.lower().replace(" ", "_")
+    table_name = slugify(table.name)
     pk_col = _get_pk_column(table)
     columns = [col for col in table.get_columns() if not col.is_serial]
 
     if pk_col is None:
-        # Pas de PK réel → TRUNCATE + INSERT
-        before = [f"TRUNCATE TABLE {table_name} RESTART IDENTITY;"]
+        # CASCADE handles FK references to this SERIAL table
+        before = [(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE;", None)]
         inserts = _generate_inserts(table_name, columns, table.get_rows())
-        after = []
-        return before, inserts, after
+        return before, inserts, []
 
-    # PK réel → upsert + DELETE
+    # Real PK → upsert + DELETE of rows no longer in Excel
     non_pk_cols = [col for col in columns if col.name != pk_col.name]
-    column_names = ", ".join(col.name for col in columns)
+    col_names_sql = ", ".join(slugify(col.name) for col in columns)
+    placeholders = ", ".join(["%s"] * len(columns))
+    pk_slug = slugify(pk_col.name)
 
     inserts = []
     pk_values = []
 
     for row in table.get_rows():
-        values = [_format_value(row.get(col.name)) for col in columns]
-        pk_val = _format_value(row.get(pk_col.name))
+        params = tuple(_to_param(row.get(col.name)) for col in columns)
+        pk_val = _to_param(row.get(pk_col.name))
         pk_values.append(pk_val)
 
         if non_pk_cols:
             update_set = ", ".join(
-                f"{col.name} = EXCLUDED.{col.name}" for col in non_pk_cols
+                f"{slugify(col.name)} = EXCLUDED.{slugify(col.name)}"
+                for col in non_pk_cols
             )
-            inserts.append(
-                f"INSERT INTO {table_name} ({column_names}) VALUES ({', '.join(values)}) "
-                f"ON CONFLICT ({pk_col.name}) DO UPDATE SET {update_set};"
+            sql = (
+                f"INSERT INTO {table_name} ({col_names_sql}) VALUES ({placeholders}) "
+                f"ON CONFLICT ({pk_slug}) DO UPDATE SET {update_set};"
             )
         else:
-            inserts.append(
-                f"INSERT INTO {table_name} ({column_names}) VALUES ({', '.join(values)}) "
-                f"ON CONFLICT ({pk_col.name}) DO NOTHING;"
+            sql = (
+                f"INSERT INTO {table_name} ({col_names_sql}) VALUES ({placeholders}) "
+                f"ON CONFLICT ({pk_slug}) DO NOTHING;"
             )
+        inserts.append((sql, params))
 
-    # Supprimer les lignes qui ne sont plus dans l'Excel
     after = []
     if pk_values:
-        after.append(
-            f"DELETE FROM {table_name} WHERE {pk_col.name} NOT IN ({', '.join(pk_values)});"
-        )
+        placeholders_pk = ", ".join(["%s"] * len(pk_values))
+        after.append((
+            f"DELETE FROM {table_name} WHERE {pk_slug} NOT IN ({placeholders_pk});",
+            tuple(pk_values)
+        ))
 
     return [], inserts, after
 
 
 def _generate_inserts(table_name, columns, rows):
-    column_names = ", ".join(col.name for col in columns)
+    col_names_sql = ", ".join(slugify(col.name) for col in columns)
+    placeholders = ", ".join(["%s"] * len(columns))
     inserts = []
     for row in rows:
-        values = [_format_value(row.get(col.name)) for col in columns]
-        inserts.append(
-            f"INSERT INTO {table_name} ({column_names}) VALUES ({', '.join(values)});"
-        )
+        params = tuple(_to_param(row.get(col.name)) for col in columns)
+        inserts.append((
+            f"INSERT INTO {table_name} ({col_names_sql}) VALUES ({placeholders});",
+            params
+        ))
     return inserts
 
 
-def generate_insert_sql(table):
-    columns = [col for col in table.get_columns() if not col.is_serial]
-    return _generate_inserts(
-        table.name.lower().replace(" ", "_"),
-        columns,
-        table.get_rows()
-    )
-
+# ─── FK constraints ───────────────────────────────────────────────────────────
 
 def generate_fk_sql(relational_db):
+    """Returns plain SQL strings (no user data, safe to build as strings)."""
     statements = []
     for table in relational_db.get_tables():
-        table_name = table.name.lower().replace(" ", "_")
+        table_name = slugify(table.name)
         for constraint in table.get_constraints():
             from models.relational.foreign_key import ForeignKey
             if isinstance(constraint, ForeignKey):
-                constraint_name = f"fk_{table_name}_{constraint.column_name}"
+                col_name  = slugify(constraint.column_name)
+                ref_table = slugify(constraint.ref_table)
+                ref_col   = slugify(constraint.ref_column)
+                cname = f"fk_{table_name}_{col_name}"
                 statements.append(
-                    f"ALTER TABLE {table_name} DROP CONSTRAINT IF EXISTS {constraint_name};"
+                    f"ALTER TABLE {table_name} DROP CONSTRAINT IF EXISTS {cname};"
                 )
                 statements.append(
-                    f"ALTER TABLE {table_name} ADD CONSTRAINT {constraint_name} {constraint.to_sql()};"
+                    f"ALTER TABLE {table_name} ADD CONSTRAINT {cname} "
+                    f"FOREIGN KEY ({col_name}) REFERENCES {ref_table} ({ref_col});"
                 )
     return statements
