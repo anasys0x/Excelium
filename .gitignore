@@ -196,3 +196,6 @@ yarn-error.log*
 dist/
 build/
 coverage/
+
+# Fichiers mac
+.DS_Store
