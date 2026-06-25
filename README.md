@@ -12,8 +12,8 @@
 
 - Python 3.11+
 - Node.js v18+
-- PostgreSQL (pour l'insertion en base)
-- `openpyxl` — parsing Excel
+- PostgreSQL
+- Backend : FastAPI · Uvicorn · openpyxl · psycopg2 — Frontend : React · Vite · TypeScript
 
 ---
 
@@ -28,12 +28,14 @@ Installe les dépendances Python :
 
 ```bash
 pip install -r backend/requirements.txt
+# si besoin, les dépendances de l'API :
+pip install fastapi uvicorn python-multipart psycopg2-binary python-dotenv
 ```
 
-Installe les dépendances de l'API :
+Installe les dépendances du frontend :
 
 ```bash
-cd api
+cd frontend
 npm install
 ```
 
@@ -41,14 +43,35 @@ npm install
 
 ## Lancer l'application
 
-Lance l'API Express (dans un terminal) :
+**1. Backend** — lance l'API FastAPI (dans un terminal) :
 
 ```bash
-cd api
-node index.js
+cd backend
+uvicorn api:app --reload
 ```
 
-Ouvre `http://localhost:3011` dans ton navigateur, glisse un fichier `.xlsx` et visualise les tables détectées.
+L'API tourne sur `http://localhost:8000` (documentation interactive sur `/docs`).
+
+**2. Frontend** — lance le serveur web (dans un autre terminal) :
+
+```bash
+cd frontend
+npm run dev
+```
+
+Ouvre l'URL affichée (`http://localhost:5173`), glisse un fichier `.xlsx`, configure tes tables (renommage des colonnes, clé, réorganisation), puis crée la base de données.
+
+### Configuration (`backend/.env`)
+
+Crée un fichier `backend/.env` avec les paramètres de connexion PostgreSQL :
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=excelium
+DB_USER=postgres
+DB_PASSWORD=ton_mot_de_passe
+```
 
 ---
 
@@ -66,18 +89,28 @@ python3 backend/export.py data/excel.xlsx
 
 ```
 Excelium/
-├── api/
-│   └── index.js              # Serveur Express — bridge entre frontend et Python
 ├── backend/
-│   ├── export.py             # Script d'export JSON
+│   ├── api.py                # API FastAPI — endpoints /parse et /create
 │   ├── main.py               # Point d'entrée CLI (insertion PostgreSQL)
+│   ├── export.py             # Script d'export JSON
+│   ├── constants.py          # Constantes (formats de date…)
 │   ├── errors.py             # Hiérarchie d'exceptions
-│   ├── models/               # Workbook, Worksheet, Column, Row, Cell, CellDependency
-│   ├── services/             # excel_reader, type_detector, dependency_detector, database_*
-│   └── transforms/           # Conversion Excel type → SQL type (Strategy pattern)
-├── frontend/
-│   ├── index.html            # Interface de visualisation
-│   └── style.css
+│   ├── utils.py              # Utilitaires (slugify…)
+│   ├── models/
+│   │   ├── excel/            # Workbook, Worksheet, Table, Column, Row, Cell
+│   │   ├── relational/       # Modèle relationnel (tables, contraintes, FK/PK)
+│   │   └── transforms/       # Conversion type Excel → SQL (Strategy pattern)
+│   └── services/             # excel_reader, type_detector, pk/fk_detector,
+│                             # sql_generator, db_creator, database_*
+├── frontend/                 # React + Vite + TypeScript
+│   └── src/
+│       ├── App.tsx           # Orchestration des étapes (import → config → création)
+│       ├── index.css         # Thèmes clair/sombre (variables CSS)
+│       └── components/
+│           ├── DropZone.tsx, StepIndicator.tsx
+│           ├── layout/SplitView.tsx
+│           ├── table/TablePreview.tsx
+│           └── steps/        # StepSheetSelector, StepKeySelector, StepTableConfirmation
 ├── data/                     # Fichiers Excel de test
 └── docs/                     # Documentation MkDocs
 ```
@@ -91,6 +124,7 @@ Excelium/
 - ✅ Semaine 3 : Révision de la modélisation, retravail du diagramme de classe et clarification de certaines ambiguïtés.
 - ✅ Semaine 4 : Finalisation du diagramme de classe et réalisation d'une première itération du MVP.
 - ✅ Semaine 5 : Robustesse du backend et première interface de visualisation.
+- ✅ Semaine 6 : Interface web React (import par glisser-déposer, sélection des feuilles, configuration des tables, thème clair/sombre) et API FastAPI (`/parse`, `/create`) connectée à PostgreSQL.
 
 ---
 
@@ -110,3 +144,7 @@ La documentation complète est disponible sur :
 **Superviseur :** Louis-Edouard Lafontant  
 **Session :** Été 2026  
 **Cours :** IFT3150 — Projet informatique
+
+---
+
+*Dernière mise à jour : 25 juin 2026*
