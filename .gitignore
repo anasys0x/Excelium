@@ -199,3 +199,6 @@ coverage/
 
 # Fichiers mac
 .DS_Store
+
+# Contexte Claude (local, non versionné)
+.claude/
