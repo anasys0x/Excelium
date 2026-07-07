@@ -2,21 +2,20 @@ import { useState } from 'react'
 import type { TableConfig, ColumnConfig } from '../../App'
 import { typeLabel } from '../../lib/typeLabels'
 
-const ACCENT = 'var(--accent)'
+const ALL_TYPES = ['INT', 'FLOAT', 'STRING', 'DATE', 'BOOL', 'MIXED']
 
 const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
-  INT:    { bg: 'var(--badge-blue-bg)', color: 'var(--badge-blue-text)' },
-  FLOAT:  { bg: 'var(--badge-blue-bg)', color: 'var(--badge-blue-text)' },
-  STRING: { bg: 'var(--badge-green-bg)', color: 'var(--badge-green-text)' },
-  DATE:   { bg: 'var(--badge-amber-bg)', color: 'var(--amber-text)' },
+  INT:    { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
+  FLOAT:  { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
+  STRING: { bg: 'var(--badge-green-bg)',  color: 'var(--badge-green-text)'  },
+  DATE:   { bg: 'var(--badge-amber-bg)',  color: 'var(--amber-text)'        },
   BOOL:   { bg: 'var(--badge-violet-bg)', color: 'var(--badge-violet-text)' },
   MIXED:  { bg: 'var(--badge-orange-bg)', color: 'var(--badge-orange-text)' },
 }
 
-// Poignée à 6 points (2 colonnes × 3 lignes)
 function GripIcon() {
   return (
-    <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true" style={{ color: 'var(--text-faint)' }}>
+    <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
       {[3, 8, 13].map((cy) =>
         [2, 8].map((cx) => (
           <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1.4" fill="currentColor" />
@@ -26,19 +25,36 @@ function GripIcon() {
   )
 }
 
+interface FkTarget { value: string; label: string; tableName: string; colName: string }
+
 interface Props {
   config: TableConfig
+  allTables: TableConfig[]
   onChange: (config: TableConfig) => void
   onFocusColumn: (name: string | null) => void
 }
 
-function StepKeySelector({ config, onChange, onFocusColumn }: Props) {
+function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) {
+  const [dragIndex, setDragIndex]           = useState<number | null>(null)
+  const [overIndex, setOverIndex]           = useState<number | null>(null)
+  const [newFkCol, setNewFkCol]             = useState('')
+  const [newFkTarget, setNewFkTarget]       = useState('')
+  const [refusedTargets, setRefusedTargets] = useState<Record<string, string>>({})
 
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [overIndex, setOverIndex] = useState<number | null>(null)
+  const fkTargets: FkTarget[] = allTables
+    .filter((t) => t.id !== config.id)
+    .flatMap((t) =>
+      t.columns
+        .filter((c) => c.isPrimaryKey || c.isPkCandidate)
+        .map((c) => ({
+          value: `${t.tableName}::${c.name}`,
+          label: `${t.tableName}  →  ${c.name}`,
+          tableName: t.tableName,
+          colName: c.name,
+        }))
+    )
 
-  const updateTableName = (name: string) =>
-    onChange({ ...config, tableName: name })
+  const updateTableName = (name: string) => onChange({ ...config, tableName: name })
 
   const updateColumnName = (originalName: string, newName: string) => {
     const columns = config.columns.map((col) =>
@@ -47,53 +63,109 @@ function StepKeySelector({ config, onChange, onFocusColumn }: Props) {
     onChange({ ...config, columns })
   }
 
-  const updatePrimaryKey = (originalName: string) => {
-    const columns = config.columns.map((col) => ({
-      ...col,
-      isPrimaryKey: col.originalName === originalName,
-    }))
+  const updateColumnType = (originalName: string, newType: string) => {
+    const columns = config.columns.map((col) =>
+      col.originalName === originalName ? { ...col, type: newType } : col
+    )
     onChange({ ...config, columns })
   }
 
-  // Ajoute une colonne id auto-incrémentée (1 → N) en tête de tableau
-  const addAutoIdColumn = () => {
-    const autoCol: ColumnConfig = {
-      originalName: '__auto_id__',
-      name: 'id',
-      type: 'INT',
-      isPrimaryKey: true,
-      isAuto: true,
-    }
-    const others = config.columns.map((col) => ({ ...col, isPrimaryKey: false }))
-    const columns = [autoCol, ...others]
-    const rows = config.rows.map((row, i) => [i + 1, ...row])
-    onChange({ ...config, columns, rows })
+  const updatePrimaryKey = (originalName: string) => {
+    const columns = config.columns.map((col) => ({ ...col, isPrimaryKey: col.originalName === originalName }))
+    onChange({ ...config, columns })
   }
 
-  // Retire la colonne id automatique (et ses valeurs dans chaque ligne)
+  const excludeColumn = (originalName: string) => {
+    const columns = config.columns.map((col) =>
+      col.originalName === originalName ? { ...col, excluded: true, isPrimaryKey: false } : col
+    )
+    onChange({ ...config, columns })
+  }
+
+  const includeColumn = (originalName: string) => {
+    const columns = config.columns.map((col) =>
+      col.originalName === originalName ? { ...col, excluded: false } : col
+    )
+    onChange({ ...config, columns })
+  }
+
+  const confirmForeignKey = (originalName: string) => {
+    const columns = config.columns.map((col) =>
+      col.originalName === originalName ? { ...col, foreignKeyConfirmed: true, foreignKeyRefused: false } : col
+    )
+    onChange({ ...config, columns })
+  }
+
+  const refuseForeignKey = (originalName: string) => {
+    const columns = config.columns.map((col) =>
+      col.originalName === originalName ? { ...col, foreignKeyConfirmed: false, foreignKeyRefused: true } : col
+    )
+    onChange({ ...config, columns })
+  }
+
+  const relinkForeignKey = (originalName: string, refTable: string, refColumn: string) => {
+    const columns = config.columns.map((col) =>
+      col.originalName === originalName
+        ? { ...col, foreignKey: { refTable, refColumn }, foreignKeyConfirmed: true, foreignKeyRefused: false }
+        : col
+    )
+    setRefusedTargets((prev) => { const n = { ...prev }; delete n[originalName]; return n })
+    onChange({ ...config, columns })
+  }
+
+  const removeForeignKey = (originalName: string) => {
+    const columns = config.columns.map((col) =>
+      col.originalName === originalName
+        ? { ...col, foreignKey: null, foreignKeyConfirmed: false, foreignKeyRefused: false }
+        : col
+    )
+    setRefusedTargets((prev) => { const n = { ...prev }; delete n[originalName]; return n })
+    onChange({ ...config, columns })
+  }
+
+  const addForeignKey = () => {
+    if (!newFkCol || !newFkTarget) return
+    const [refTable, refColumn] = newFkTarget.split('::')
+    const columns = config.columns.map((col) =>
+      col.originalName === newFkCol
+        ? { ...col, foreignKey: { refTable, refColumn }, foreignKeyConfirmed: true }
+        : col
+    )
+    onChange({ ...config, columns })
+    setNewFkCol('')
+    setNewFkTarget('')
+  }
+
+  const addAutoIdColumn = () => {
+    const autoCol: ColumnConfig = {
+      originalName: '__auto_id__', name: 'id', type: 'INT',
+      isPrimaryKey: true, isAuto: true, isPkCandidate: true,
+    }
+    const others = config.columns.map((col) => ({ ...col, isPrimaryKey: false }))
+    onChange({ ...config, columns: [autoCol, ...others], rows: config.rows.map((row, i) => [i + 1, ...row]) })
+  }
+
   const removeAutoIdColumn = () => {
     const idx = config.columns.findIndex((col) => col.isAuto)
     if (idx === -1) return
-    const columns = config.columns.filter((col) => !col.isAuto)
-    const rows = config.rows.map((row) => row.filter((_, i) => i !== idx))
-    onChange({ ...config, columns, rows })
+    onChange({
+      ...config,
+      columns: config.columns.filter((col) => !col.isAuto),
+      rows: config.rows.map((row) => row.filter((_, i) => i !== idx)),
+    })
   }
 
-  // Déplace une colonne ET les cellules correspondantes dans chaque ligne
   const moveColumn = (from: number, to: number) => {
     if (from === to) return
-
     const columns = [...config.columns]
     const [movedCol] = columns.splice(from, 1)
     columns.splice(to, 0, movedCol)
-
     const rows = config.rows.map((row) => {
       const newRow = [...row]
       const [movedCell] = newRow.splice(from, 1)
       newRow.splice(to, 0, movedCell)
       return newRow
     })
-
     onChange({ ...config, columns, rows })
   }
 
@@ -103,246 +175,265 @@ function StepKeySelector({ config, onChange, onFocusColumn }: Props) {
     setOverIndex(null)
   }
 
-  const primaryKey = config.columns.find((col) => col.isPrimaryKey)
-  const hasAutoId  = config.columns.some((col) => col.isAuto)
+  const primaryKey   = config.columns.find((col) => col.isPrimaryKey && !col.excluded)
+  const hasAutoId    = config.columns.some((col) => col.isAuto)
+  const activeCols   = config.columns.filter((c) => !c.excluded)
+  const excludedCols = config.columns.filter((c) => c.excluded)
+
+  const pendingFks      = activeCols.filter((c) => c.foreignKey != null && !c.foreignKeyConfirmed && !c.foreignKeyRefused)
+  const confirmedFks    = activeCols.filter((c) => c.foreignKey != null && c.foreignKeyConfirmed)
+  const refusedFks      = config.columns.filter((c) => c.foreignKeyRefused)
+  const linkableColumns = activeCols.filter((c) => !c.isPrimaryKey && !c.isAuto && c.foreignKey == null && !c.foreignKeyRefused)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="key-selector">
 
-      {/* En-tête */}
       <div>
-        <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
-          Personnaliser
-        </h2>
-        <p style={{ fontSize: '13px', color: 'var(--text-2)', lineHeight: '1.5' }}>
-          Renommez les colonnes, réorganisez-les et choisissez l'identifiant unique.
+        <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>Personnaliser</h2>
+        <p className="section-desc">
+          Renommez les colonnes, ajustez les types, réorganisez et choisissez l'identifiant unique.
         </p>
       </div>
 
-      {/* Nom du tableau */}
       <div>
-        <label style={{
-          display: 'block',
-          fontSize: '11px',
-          fontWeight: 600,
-          color: 'var(--cell-text)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          marginBottom: '6px',
-        }}>
-          Nom du tableau
-        </label>
-        <input
-          type="text"
-          value={config.tableName}
-          onChange={(e) => updateTableName(e.target.value)}
-          style={{ width: '100%' }}
-        />
-        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-          Sera utilisé comme nom de table SQL.
-        </p>
+        <label className="section-label mb6">Nom du tableau</label>
+        <input type="text" value={config.tableName} onChange={(e) => updateTableName(e.target.value)} style={{ width: '100%' }} />
       </div>
 
-      {/* Colonnes */}
       <div>
-        <label style={{
-          display: 'block',
-          fontSize: '11px',
-          fontWeight: 600,
-          color: 'var(--cell-text)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          marginBottom: '4px',
-        }}>
-          Colonnes
-        </label>
+        <label className="section-label">Colonnes &amp; identifiant unique</label>
+        <p className="section-desc">
+          Cochez l'identifiant unique. Changez le type si nécessaire. Cliquez ✕ pour exclure une colonne.
+        </p>
 
-        {/* Légende */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '20px 28px 1fr auto',
-          gap: '8px',
-          padding: '5px 10px',
-          marginBottom: '4px',
-        }}>
-          <span />
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>Clé</span>
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Nom</span>
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Type</span>
+        <div className="col-legend">
+          <span /><span className="center">ID</span><span>Nom</span><span>Type</span><span />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          {config.columns.map((col: ColumnConfig, index) => {
-            const badge      = TYPE_BADGE[col.type] ?? { bg: 'var(--line)', color: 'var(--cell-text)' }
-            const isSelected = col.isPrimaryKey
-            const isDragging = dragIndex === index
-            const isOver     = overIndex === index && dragIndex !== null && dragIndex !== index
+        <div className="col-list">
+          {config.columns.filter((c) => !c.excluded).map((col: ColumnConfig, index) => {
+            const badge       = TYPE_BADGE[col.type] ?? { bg: 'var(--line)', color: 'var(--cell-text)' }
+            const isSelected  = col.isPrimaryKey
+            const isDragging  = dragIndex === index
+            const isOver      = overIndex === index && dragIndex !== null && dragIndex !== index
+            const isCandidate = col.isAuto || col.isPkCandidate === true
+            const isGrayed    = !isCandidate && !isSelected
 
             return (
               <div
                 key={col.originalName}
                 onDragOver={(e) => { e.preventDefault(); setOverIndex(index) }}
                 onDrop={(e) => { e.preventDefault(); handleDrop(index) }}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '20px 28px 1fr auto',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '7px 10px',
-                  borderRadius: '6px',
-                  // Bordure uniforme (pas de borderTop plus épais qui déborde)
-                  border: `1.5px solid ${isOver || isSelected ? ACCENT : 'var(--border)'}`,
-                  background: isOver ? 'var(--row-hover)' : isSelected ? 'var(--accent-soft)' : 'var(--surface)',
-                  opacity: isDragging ? 0.4 : 1,
-                  transition: 'border-color .15s, background .15s, opacity .15s',
-                }}
+                className={[
+                  'col-row',
+                  isSelected  ? 'selected'  : '',
+                  isOver      ? 'over'      : '',
+                  isDragging  ? 'dragging'  : '',
+                  isGrayed    ? 'grayed'    : '',
+                  isCandidate && !isSelected && !isOver ? 'candidate' : '',
+                ].filter(Boolean).join(' ')}
               >
-                {/* Poignée de déplacement (seule zone draggable) */}
                 <div
+                  className="col-grip"
                   draggable
-                  onDragStart={(e) => {
-                    setDragIndex(index)
-                    e.dataTransfer.effectAllowed = 'move'
-                  }}
+                  onDragStart={(e) => { setDragIndex(index); e.dataTransfer.effectAllowed = 'move' }}
                   onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
                   title="Glisser pour réorganiser"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'grab',
-                    height: '100%',
-                  }}
                 >
                   <GripIcon />
                 </div>
 
-                {/* Radio : identifiant unique */}
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <div className="col-radio-wrap">
                   <input
                     type="radio"
                     name="primaryKey"
                     checked={isSelected}
-                    onChange={() => updatePrimaryKey(col.originalName)}
-                    title="Définir comme identifiant unique"
-                    style={{ width: '15px', height: '15px', accentColor: ACCENT, cursor: 'pointer' }}
+                    onChange={() => isCandidate && updatePrimaryKey(col.originalName)}
+                    disabled={!isCandidate}
+                    title={isCandidate ? 'Choisir comme identifiant unique' : 'Cette colonne contient des doublons'}
+                    className="col-radio"
+                    style={{ cursor: isCandidate ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
 
-                {/* Champ nom — highlight la colonne au focus */}
                 <input
                   type="text"
                   value={col.name}
                   onChange={(e) => updateColumnName(col.originalName, e.target.value)}
                   onFocus={() => onFocusColumn(col.originalName)}
                   onBlur={() => onFocusColumn(null)}
-                  style={{
-                    width: '100%',
-                    padding: '4px 8px',
-                    fontSize: '13px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: '4px',
-                    background: 'var(--surface-alt)',
-                    color: 'var(--text)',
-                  }}
+                  className={`col-name-input${isGrayed ? ' grayed' : ''}`}
                 />
 
-                {/* Badge type */}
-                <span style={{
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  fontSize: '10px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontWeight: 500,
-                  background: badge.bg,
-                  color: badge.color,
-                  whiteSpace: 'nowrap',
-                }}>
-                  {typeLabel(col.type)}
-                </span>
+                <select
+                  value={col.type}
+                  onChange={(e) => updateColumnType(col.originalName, e.target.value)}
+                  className="app-select"
+                  style={{
+                    padding: '3px 6px', fontSize: '11px',
+                    background: badge.bg, color: badge.color,
+                    border: `1px solid ${badge.bg}`,
+                    opacity: isGrayed ? 0.5 : 1,
+                  }}
+                >
+                  {ALL_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
+                </select>
+
+                <button
+                  className="col-exclude-btn"
+                  onClick={() => excludeColumn(col.originalName)}
+                  disabled={col.isPrimaryKey || col.isAuto}
+                  title={col.isPrimaryKey ? "L'identifiant ne peut pas être exclu" : 'Exclure cette colonne'}
+                >
+                  ✕
+                </button>
               </div>
             )
           })}
         </div>
 
-        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
-          Glissez la poignée pour réorganiser. Cliquez sur un nom pour surligner la colonne dans le tableau.
-        </p>
+        {excludedCols.length > 0 && (
+          <div className="excluded-list">
+            <p className="excluded-note">Colonnes exclues (ne seront pas importées) :</p>
+            {excludedCols.map((col) => (
+              <div key={col.originalName} className="excluded-item">
+                <span className="excluded-name">{col.name}</span>
+                <button className="include-btn" onClick={() => includeColumn(col.originalName)}>Inclure</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="col-hint">Glissez la poignée pour réorganiser. Cliquez sur un nom pour surligner la colonne.</p>
       </div>
 
-      {/* Option : colonne id automatique */}
       {hasAutoId ? (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '8px',
-          padding: '10px 14px',
-          borderRadius: '6px',
-          background: 'var(--ok-bg)',
-          border: '1px solid var(--ok-border)',
-        }}>
-          <span style={{ fontSize: '12px', color: 'var(--badge-green-text)' }}>
-            Colonne <strong style={{ fontFamily: "'JetBrains Mono', monospace" }}>id</strong> automatique ajoutée (1 → {config.rows.length})
+        <div className="auto-id-present">
+          <span className="auto-id-label">
+            Colonne <strong>id</strong> automatique ajoutée (1 → {config.rows.length})
           </span>
-          <button
-            onClick={removeAutoIdColumn}
-            style={{
-              padding: '4px 10px',
-              background: 'var(--surface)',
-              color: 'var(--danger-text)',
-              border: '1px solid var(--danger-border)',
-              borderRadius: '5px',
-              fontSize: '12px',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Retirer
-          </button>
+          <button className="auto-id-remove" onClick={removeAutoIdColumn}>Retirer</button>
         </div>
       ) : (
-        <div style={{
-          padding: '12px 14px',
-          borderRadius: '6px',
-          background: 'var(--surface-alt)',
-          border: '1px dashed var(--border-strong)',
-        }}>
-          <p style={{ fontSize: '12px', color: 'var(--text-2)', marginBottom: '8px' }}>
-            Pas de colonne identifiant&nbsp;? Excelium peut en générer une, numérotée de 1 à {config.rows.length}.
+        <div className="auto-id-absent">
+          <p className="auto-id-absent-desc">
+            Aucune colonne identifiant&nbsp;? Excelium peut en générer une, numérotée de 1 à {config.rows.length}.
           </p>
-          <button
-            onClick={addAutoIdColumn}
-            style={{
-              width: '100%',
-              padding: '8px',
-              background: 'var(--surface)',
-              color: ACCENT,
-              border: `1px solid ${ACCENT}`,
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            + Ajouter un identifiant automatique
-          </button>
+          <button className="auto-id-btn" onClick={addAutoIdColumn}>+ Générer un identifiant automatique</button>
         </div>
       )}
 
-      {/* Statut clé principale */}
-      <div style={{
-        padding: '10px 14px',
-        borderRadius: '6px',
-        background: primaryKey ? 'var(--accent-soft)' : 'var(--warn-bg)',
-        border: `1px solid ${primaryKey ? 'var(--accent-border)' : 'var(--warn-border)'}`,
-        fontSize: '13px',
-        color: primaryKey ? 'var(--accent-text)' : 'var(--amber-text)',
-      }}>
+      <div>
+        <label className="section-label">Références vers d'autres feuilles</label>
+        <p className="section-desc">
+          Ces colonnes semblent faire référence à l'identifiant d'une autre feuille.
+          Confirmez ou refusez chaque suggestion.
+        </p>
+
+        {pendingFks.length > 0 && (
+          <div className="fk-list">
+            {pendingFks.map((col) => (
+              <div key={col.originalName} className="fk-suggestion">
+                <div className="fk-suggestion-tag">Suggestion du système</div>
+                <div className="fk-suggestion-body">
+                  La colonne{' '}
+                  <strong className="fk-col-name">{col.name}</strong>{' '}
+                  semble faire référence à{' '}
+                  <strong className="fk-ref-name">{col.foreignKey!.refTable}.{col.foreignKey!.refColumn}</strong>
+                </div>
+                <div className="fk-suggestion-actions">
+                  <button className="fk-confirm-btn" onClick={() => confirmForeignKey(col.originalName)}>✓ Confirmer</button>
+                  <button className="fk-refuse-btn"  onClick={() => refuseForeignKey(col.originalName)}>✗ Refuser</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {confirmedFks.length > 0 && (
+          <div className="fk-confirmed-list">
+            {confirmedFks.map((col) => (
+              <div key={col.originalName} className="fk-confirmed-item">
+                <span className="fk-confirmed-icon">✓</span>
+                <span className="fk-confirmed-body">
+                  <span className="fk-confirmed-col">{col.name}</span>
+                  <span className="fk-confirmed-sep">fait référence à</span>
+                  <span className="fk-confirmed-ref">{col.foreignKey!.refTable}.{col.foreignKey!.refColumn}</span>
+                </span>
+                <button className="fk-cancel-btn" onClick={() => refuseForeignKey(col.originalName)}>Annuler</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {refusedFks.length > 0 && (
+          <div className="fk-refused-list">
+            <p className="fk-refused-title">Liens refusés — changer la cible ou supprimer</p>
+            {refusedFks.map((col) => {
+              const defaultTarget = col.foreignKey
+                ? `${col.foreignKey.refTable}::${col.foreignKey.refColumn}`
+                : (fkTargets[0]?.value ?? '')
+              const currentTarget = refusedTargets[col.originalName] ?? defaultTarget
+              const [refTable, refColumn] = currentTarget.split('::')
+              return (
+                <div key={col.originalName} className="fk-refused-item">
+                  <div className="fk-refused-row">
+                    <span className="fk-refused-col">{col.name}</span>
+                    <span className="fk-refused-arrow">→</span>
+                    <select
+                      value={currentTarget}
+                      onChange={(e) => setRefusedTargets((prev) => ({ ...prev, [col.originalName]: e.target.value }))}
+                      className="app-select"
+                      style={{ flex: 1, minWidth: '140px' }}
+                    >
+                      {fkTargets.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                    <button
+                      className="fk-link-btn"
+                      onClick={() => relinkForeignKey(col.originalName, refTable, refColumn)}
+                      disabled={!currentTarget}
+                    >✓ Lier</button>
+                    <button className="fk-remove-btn" onClick={() => removeForeignKey(col.originalName)}>Supprimer</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {fkTargets.length > 0 && linkableColumns.length > 0 && (
+          <div className="fk-add-box">
+            <p className="fk-add-title">Ajouter un lien manuellement</p>
+            <div className="fk-add-row">
+              <select value={newFkCol} onChange={(e) => setNewFkCol(e.target.value)} className="app-select" style={{ flex: 1, minWidth: '120px' }}>
+                <option value="">Colonne de ce tableau…</option>
+                {linkableColumns.map((col) => <option key={col.originalName} value={col.originalName}>{col.name}</option>)}
+              </select>
+              <span className="fk-add-sep">fait référence à</span>
+              <select value={newFkTarget} onChange={(e) => setNewFkTarget(e.target.value)} className="app-select" style={{ flex: 1, minWidth: '150px' }}>
+                <option value="">Identifiant cible…</option>
+                {fkTargets.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              <button
+                className={`fk-add-btn${newFkCol && newFkTarget ? ' ready' : ' unready'}`}
+                onClick={addForeignKey}
+                disabled={!newFkCol || !newFkTarget}
+              >+ Lier</button>
+            </div>
+          </div>
+        )}
+
+        {pendingFks.length === 0 && confirmedFks.length === 0 && refusedFks.length === 0 && fkTargets.length === 0 && (
+          <div className="fk-empty">
+            <p>Aucune référence vers une autre feuille détectée.</p>
+          </div>
+        )}
+      </div>
+
+      <div className={`pk-status${primaryKey ? ' ok' : ''}`}>
         {primaryKey
-          ? <>Identifiant unique : <strong style={{ fontFamily: "'JetBrains Mono', monospace" }}>{primaryKey.name}</strong></>
-          : <>Sélectionnez une colonne comme identifiant unique avant de continuer.</>
+          ? <>Identifiant unique : <strong>{primaryKey.name}</strong></>
+          : <>Sélectionnez une colonne identifiant avant de continuer.</>
         }
       </div>
 
