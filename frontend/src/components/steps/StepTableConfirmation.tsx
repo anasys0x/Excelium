@@ -1,4 +1,5 @@
 import type { TableConfig } from '../../App'
+import { typeLabel } from '../../lib/typeLabels'
 
 const ACCENT = 'var(--accent)'
 
@@ -108,7 +109,7 @@ function StepTableConfirmation({ tables, onBack, onConfirm, isCreating = false, 
                         background: badge.bg,
                         color: badge.color,
                       }}>
-                        {col.type}
+                        {typeLabel(col.type)}
                       </span>
                     </span>
                   )
