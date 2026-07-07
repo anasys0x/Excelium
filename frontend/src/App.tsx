@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import './App.css'
 import DropZone from './components/DropZone'
 import SplitView from './components/layout/SplitView'
 import TablePreview from './components/table/TablePreview'
@@ -22,12 +23,18 @@ export interface ColumnConfig {
   type: string
   isPrimaryKey: boolean
   isAuto?: boolean
+  isPkCandidate?: boolean
+  pkScore?: number
+  foreignKey?: { refTable: string; refColumn: string } | null
+  foreignKeyConfirmed?: boolean
+  foreignKeyRefused?: boolean
+  excluded?: boolean
 }
 
 export interface TableConfig {
-  id: string          // identifiant stable `${sheetIndex}-${tableIndex}`
-  sheetName: string   // feuille d'origine
-  tableName: string   // nom du tableau (éditable)
+  id: string
+  sheetName: string
+  tableName: string
   columns: ColumnConfig[]
   rows: unknown[][]
 }
@@ -37,12 +44,17 @@ export interface SheetData {
   tables: TableConfig[]
 }
 
-interface ParsedColumn  { name: string; type: string }
+interface ParsedColumn  {
+  name: string
+  type: string
+  isPrimaryKey: boolean
+  isPkCandidate: boolean
+  pkScore: number
+  foreignKey?: { refTable: string; refColumn: string } | null
+}
 interface ParsedTable   { name: string; columns: ParsedColumn[]; rows: unknown[][] }
 interface ParsedSheet   { name: string; tables: ParsedTable[] }
 interface ParseResponse { sheets: ParsedSheet[] }
-
-const ACCENT = 'var(--accent)'
 
 function App() {
   const [step, setStep]                        = useState<Step>('upload')
@@ -60,7 +72,6 @@ function App() {
     () => (localStorage.getItem('excelium-theme') as Theme) ?? 'dark'
   )
 
-  // Applique le thème sur <html> et le persiste
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     localStorage.setItem('excelium-theme', theme)
@@ -69,19 +80,12 @@ function App() {
   const handleFileSelected = async (file: File) => {
     setIsLoading(true)
     setError(null)
-
     const formData = new FormData()
     formData.append('file', file)
-
     try {
-      const response = await fetch('http://localhost:8000/parse', {
-        method: 'POST',
-        body: formData,
-      })
+      const response = await fetch('http://localhost:8000/parse', { method: 'POST', body: formData })
       if (!response.ok) throw new Error()
-
       const data: ParseResponse = await response.json()
-
       const sheetsData: SheetData[] = data.sheets.map((sheet, si) => ({
         name: sheet.name,
         tables: sheet.tables.map((table, ti) => ({
@@ -92,16 +96,17 @@ function App() {
             originalName: col.name,
             name: col.name,
             type: col.type,
-            isPrimaryKey: col.name === 'id',
+            isPrimaryKey: col.isPrimaryKey,
+            isPkCandidate: col.isPkCandidate,
+            pkScore: col.pkScore,
+            foreignKey: col.foreignKey ?? null,
           })),
           rows: table.rows,
         })),
       }))
-
       setSheets(sheetsData)
       setSelectedNames(sheetsData.map((s) => s.name))
       setFocusedColumn(null)
-
       if (sheetsData.length === 1) {
         enterSheet(sheetsData[0])
         setStep('config')
@@ -115,7 +120,6 @@ function App() {
     }
   }
 
-  // Active une feuille et son premier tableau
   const enterSheet = (sheet: SheetData) => {
     setActiveSheetName(sheet.name)
     setActiveTableId(sheet.tables[0]?.id ?? null)
@@ -123,13 +127,27 @@ function App() {
   }
 
   const updateTable = (updated: TableConfig) => {
-    setSheets((prev) =>
-      prev.map((sheet) =>
-        sheet.name === updated.sheetName
-          ? { ...sheet, tables: sheet.tables.map((t) => (t.id === updated.id ? updated : t)) }
-          : sheet
-      )
-    )
+    setSheets((prev) => {
+      const oldTable = prev.flatMap((s) => s.tables).find((t) => t.id === updated.id)
+      const oldName  = oldTable?.tableName
+      const newName  = updated.tableName
+      const renamed  = oldTable != null && oldName !== newName
+      return prev.map((sheet) => ({
+        ...sheet,
+        tables: sheet.tables.map((t) => {
+          if (t.id === updated.id) return updated
+          if (!renamed) return t
+          return {
+            ...t,
+            columns: t.columns.map((col) =>
+              col.foreignKey?.refTable === oldName
+                ? { ...col, foreignKey: { ...col.foreignKey, refTable: newName } }
+                : col
+            ),
+          }
+        }),
+      }))
+    })
   }
 
   const toggleSheet = (name: string) => {
@@ -144,36 +162,33 @@ function App() {
     setStep('config')
   }
 
-  // Envoie la config finale au backend pour créer les tables PostgreSQL
   const handleCreate = async () => {
     setIsCreating(true)
     setCreateError(null)
-
     const payload = {
-      tables: allTables.map((t) => ({
-        tableName: t.tableName,
-        columns: t.columns.map((c) => ({
-          name: c.name,
-          type: c.type,
-          isPrimaryKey: c.isPrimaryKey,
-        })),
-        rows: t.rows,
-      })),
+      tables: allTables.map((t) => {
+        const includedIdx = t.columns.map((_, i) => i).filter((i) => !t.columns[i].excluded)
+        const includedCols = includedIdx.map((i) => t.columns[i])
+        return {
+          tableName: t.tableName,
+          columns: includedCols.map((c) => ({
+            name: c.name,
+            type: c.type,
+            isPrimaryKey: c.isPrimaryKey,
+            ...(c.foreignKey && c.foreignKeyConfirmed ? { foreignKey: c.foreignKey } : {}),
+          })),
+          rows: t.rows.map((row) => includedIdx.map((i) => row[i])),
+        }
+      }),
     }
-
     try {
       const response = await fetch('http://localhost:8000/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-
       const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data?.detail ?? 'Erreur inconnue lors de la création.')
-      }
-
+      if (!response.ok) throw new Error(data?.detail ?? 'Erreur inconnue lors de la création.')
       setCreatedTables(data.created ?? [])
       setStep('done')
     } catch (err) {
@@ -183,7 +198,6 @@ function App() {
     }
   }
 
-  // Réinitialise tout pour repartir d'un nouveau fichier
   const resetAll = () => {
     setSheets([])
     setSelectedNames([])
@@ -196,87 +210,80 @@ function App() {
     setStep('upload')
   }
 
-  // Données dérivées
   const showSelect      = sheets.length > 1
   const selectedSheets  = sheets.filter((s) => selectedSheetNames.includes(s.name))
   const allTables       = selectedSheets.flatMap((s) => s.tables)
   const activeSheet     = selectedSheets.find((s) => s.name === activeSheetName) ?? selectedSheets[0] ?? null
   const activeTable     = activeSheet?.tables.find((t) => t.id === activeTableId) ?? activeSheet?.tables[0] ?? null
-  const missingKeyCount = allTables.filter((t) => !t.columns.some((c) => c.isPrimaryKey)).length
+  const missingKeyCount = allTables.filter((t) => !t.columns.some((c) => c.isPrimaryKey && !c.excluded)).length
+
+  const tableNames         = allTables.map((t) => t.tableName)
+  const duplicateNames     = tableNames.filter((name, idx) => tableNames.indexOf(name) !== idx)
+  const emptyTableName     = allTables.some((t) => !t.tableName.trim())
+  const emptyColName       = allTables.some((t) => t.columns.filter((c) => !c.excluded).some((c) => !c.name.trim()))
+  const hasDuplicateColNames = allTables.some((t) => {
+    const names = t.columns.filter((c) => !c.excluded).map((c) => c.name.trim())
+    return new Set(names).size !== names.length
+  })
+  const canProceed = missingKeyCount === 0 && duplicateNames.length === 0
+    && !emptyTableName && !emptyColName && !hasDuplicateColNames
+
+  const confirmedLinks = allTables.flatMap((t) =>
+    t.columns
+      .filter((c) => c.foreignKey && c.foreignKeyConfirmed)
+      .map((c) => ({
+        fromTable: t.tableName, fromCol: c.name,
+        toTable: c.foreignKey!.refTable, toCol: c.foreignKey!.refColumn,
+      }))
+  )
 
   const indicatorSteps = showSelect
     ? [
-        { key: 'upload',  label: 'Importer'   },
-        { key: 'select',  label: 'Feuilles'   },
-        { key: 'config',  label: 'Configurer' },
-        { key: 'confirm', label: 'Créer'      },
+        { key: 'upload', label: 'Importer'   },
+        { key: 'select', label: 'Feuilles'   },
+        { key: 'config', label: 'Configurer' },
+        { key: 'confirm', label: 'Créer'     },
       ]
     : [
-        { key: 'upload',  label: 'Importer'   },
-        { key: 'config',  label: 'Configurer' },
-        { key: 'confirm', label: 'Créer'      },
+        { key: 'upload', label: 'Importer'   },
+        { key: 'config', label: 'Configurer' },
+        { key: 'confirm', label: 'Créer'     },
       ]
 
   return (
-    <div style={{ minHeight: '100svh', background: 'var(--bg-app)' }}>
+    <div className="app-shell">
 
-      <header style={{
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--surface)',
-        padding: '0 40px',
-        display: 'flex',
-        alignItems: 'center',
-        height: '56px',
-        gap: '12px',
-      }}>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: '15px', color: 'var(--accent-text)' }}>
-          Excelium
-        </span>
-        <span style={{ color: 'var(--border-strong)' }}>|</span>
-        <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Excel → Base de données</span>
-
+      <header className="app-header">
+        <span className="app-header-logo">Excelium</span>
+        <span className="app-header-sep">|</span>
+        <span className="app-header-tagline">Excel → Base de données</span>
         <button
+          className="app-theme-btn"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '6px 12px',
-            background: 'var(--surface-alt)',
-            color: 'var(--text-2)',
-            border: '1px solid var(--border)',
-            borderRadius: '999px',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
         >
           {theme === 'dark' ? '🌙 Dark Mode' : '☀️ Soft Sand'}
         </button>
       </header>
 
-      <main style={{ maxWidth: '1360px', margin: '0 auto', padding: '40px' }}>
+      <main className="app-main">
 
-        <StepIndicator steps={indicatorSteps} currentKey={step === 'done' || step === 'app' ? 'confirm' : step} />
+        {step !== 'app' && (
+          <StepIndicator steps={indicatorSteps} currentKey={step === 'done' ? 'confirm' : step} />
+        )}
 
         {/* Étape 1 : Importer */}
         {step === 'upload' && (
-          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
-            <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '6px' }}>
-              Importez votre fichier Excel
-            </h1>
-            <p style={{ color: 'var(--text-2)', fontSize: '14px', marginBottom: '24px', lineHeight: '1.6' }}>
+          <div className="upload-section">
+            <h1 className="upload-title">Importez votre fichier Excel</h1>
+            <p className="upload-desc">
               Déposez un fichier{' '}
-              <code style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)', padding: '1px 5px', borderRadius: '3px', fontFamily: 'monospace' }}>
-                .xlsx
-              </code>{' '}
+              <code className="upload-code">.xlsx</code>{' '}
               — Excelium détecte les feuilles, les colonnes et leurs types.
             </p>
             <DropZone onFileSelected={handleFileSelected} />
-            {isLoading && <p style={{ marginTop: '16px', color: 'var(--accent-text)', fontSize: '13px' }}>Analyse du fichier en cours…</p>}
-            {error && <p style={{ marginTop: '16px', color: 'var(--danger-text)', fontSize: '13px' }}>{error}</p>}
+            {isLoading && <p className="upload-loading">Analyse du fichier en cours…</p>}
+            {error    && <p className="upload-error">{error}</p>}
           </div>
         )}
 
@@ -294,74 +301,42 @@ function App() {
         {/* Étape 3 : Configurer */}
         {step === 'config' && activeSheet && activeTable && (
           <div>
-            {/* Onglets de feuilles (si plusieurs) */}
             {selectedSheets.length > 1 && (
-              <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid var(--border)' }}>
-                {selectedSheets.map((sheet) => {
-                  const isActive = sheet.name === activeSheet.name
-                  return (
-                    <button
-                      key={sheet.name}
-                      onClick={() => enterSheet(sheet)}
-                      style={{
-                        padding: '8px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: `2px solid ${isActive ? ACCENT : 'transparent'}`,
-                        color: isActive ? 'var(--accent-text)' : 'var(--text-muted)',
-                        fontSize: '13px',
-                        fontWeight: isActive ? 600 : 400,
-                        cursor: 'pointer',
-                        marginBottom: '-1px',
-                      }}
-                    >
-                      {sheet.name}
-                    </button>
-                  )
-                })}
+              <div className="config-tabs">
+                {selectedSheets.map((sheet) => (
+                  <button
+                    key={sheet.name}
+                    onClick={() => enterSheet(sheet)}
+                    className={`config-tab${sheet.name === activeSheet.name ? ' active' : ''}`}
+                  >
+                    {sheet.name}
+                  </button>
+                ))}
               </div>
             )}
 
-            {/* Contexte feuille stable : renommer un tableau ne renomme jamais la feuille */}
             {selectedSheets.length === 1 && activeSheet.tables.length > 1 && (
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+              <p className="config-sheet-label">
                 Feuille :{' '}
-                <strong style={{ color: 'var(--text)', fontFamily: "'JetBrains Mono', monospace" }}>
-                  {activeSheet.name}
-                </strong>
+                <strong>{activeSheet.name}</strong>
               </p>
             )}
 
-            {/* Sélecteur de tableau (si la feuille en a plusieurs) */}
             {activeSheet.tables.length > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Tableau :</span>
-                {activeSheet.tables.map((table) => {
-                  const isActive = table.id === activeTable.id
-                  return (
-                    <button
-                      key={table.id}
-                      onClick={() => { setActiveTableId(table.id); setFocusedColumn(null) }}
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: '999px',
-                        border: `1px solid ${isActive ? ACCENT : 'var(--border-strong)'}`,
-                        background: isActive ? 'var(--accent-soft)' : 'var(--surface)',
-                        color: isActive ? 'var(--accent-text)' : 'var(--text-2)',
-                        fontSize: '12px',
-                        fontWeight: isActive ? 600 : 400,
-                        fontFamily: "'JetBrains Mono', monospace",
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {table.tableName}
-                    </button>
-                  )
-                })}
+              <div className="config-table-selector">
+                <span className="config-table-label">Tableau :</span>
+                {activeSheet.tables.map((table) => (
+                  <button
+                    key={table.id}
+                    onClick={() => { setActiveTableId(table.id); setFocusedColumn(null) }}
+                    className={`config-pill${table.id === activeTable.id ? ' active' : ''}`}
+                  >
+                    {table.tableName}
+                  </button>
+                ))}
               </div>
             )}
 
-            {/* Édition directe : aperçu + panneau */}
             <SplitView
               left={
                 <TablePreview
@@ -373,49 +348,36 @@ function App() {
               right={
                 <StepKeySelector
                   config={activeTable}
+                  allTables={allTables}
                   onChange={updateTable}
                   onFocusColumn={setFocusedColumn}
                 />
               }
             />
 
-            {/* Navigation globale */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '28px' }}>
-              <button
-                onClick={() => setStep(showSelect ? 'select' : 'upload')}
-                style={{
-                  padding: '9px 18px',
-                  background: 'var(--surface)',
-                  color: 'var(--text-2)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
-              >
+            <div className="config-nav">
+              <button className="btn btn-secondary" onClick={() => setStep(showSelect ? 'select' : 'upload')}>
                 ← Retour
               </button>
 
               {missingKeyCount > 0 && (
-                <span style={{ fontSize: '12px', color: 'var(--amber-text)' }}>
+                <span className="config-nav-warn">
                   {missingKeyCount} table{missingKeyCount > 1 ? 's' : ''} sans identifiant
                 </span>
               )}
+              {duplicateNames.length > 0 && (
+                <span className="config-nav-error">
+                  Tableaux en double : {[...new Set(duplicateNames)].join(', ')}
+                </span>
+              )}
+              {emptyTableName    && <span className="config-nav-error">Nom de tableau vide</span>}
+              {emptyColName      && <span className="config-nav-error">Nom de colonne vide</span>}
+              {hasDuplicateColNames && <span className="config-nav-error">Colonnes en double dans un tableau</span>}
 
               <button
+                className="btn-primary btn-ml-auto"
                 onClick={() => setStep('confirm')}
-                disabled={missingKeyCount > 0}
-                style={{
-                  marginLeft: 'auto',
-                  padding: '9px 20px',
-                  background: missingKeyCount === 0 ? ACCENT : 'var(--border)',
-                  color: missingKeyCount === 0 ? '#FFFFFF' : 'var(--text-faint)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: missingKeyCount === 0 ? 'pointer' : 'not-allowed',
-                }}
+                disabled={!canProceed}
               >
                 Vérifier et créer →
               </button>
@@ -436,90 +398,66 @@ function App() {
 
         {/* Étape 5 : Terminé */}
         {step === 'done' && (
-          <div style={{ maxWidth: '560px', margin: '0 auto', textAlign: 'center' }}>
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              background: 'var(--ok-bg)',
-              border: '1px solid var(--ok-border)',
-              color: 'var(--badge-green-text)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '26px',
-              margin: '0 auto 16px',
-            }}>
-              ✓
+          <div className="done-section">
+            <div className="done-header">
+              <div className="done-check">✓</div>
+              <h1 className="done-title">Base de données créée</h1>
+              <p className="done-subtitle">
+                {createdTables.length} table{createdTables.length > 1 ? 's' : ''} créée{createdTables.length > 1 ? 's' : ''} avec succès
+                {confirmedLinks.length > 0 && (
+                  <> · <span className="done-green">{confirmedLinks.length} lien{confirmedLinks.length > 1 ? 's' : ''} entre feuilles</span></>
+                )}
+              </p>
             </div>
 
-            <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '6px' }}>
-              Base de données créée
-            </h1>
-            <p style={{ color: 'var(--text-2)', fontSize: '14px', marginBottom: '24px' }}>
-              {createdTables.length} table{createdTables.length > 1 ? 's' : ''} créée{createdTables.length > 1 ? 's' : ''} avec succès.
-            </p>
+            <div className="done-tables-card">
+              <div className="done-tables-head">Tables</div>
+              {createdTables.map((t) => {
+                const tableConfig = allTables.find((at) => at.tableName === t.table || at.tableName.toLowerCase().replace(/[^a-z0-9]/g, '_') === t.table)
+                const pk     = tableConfig?.columns.find((c) => c.isPrimaryKey)
+                const fkCols = tableConfig?.columns.filter((c) => c.foreignKey && c.foreignKeyConfirmed) ?? []
+                return (
+                  <div key={t.table} className="done-table-row">
+                    <div className="done-table-row-header">
+                      <span className="done-table-name">{t.table}</span>
+                      <span className="done-table-meta">{t.rows} ligne{t.rows > 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="done-badges">
+                      {pk && <span className="done-badge-pk">ID: {pk.name}</span>}
+                      {fkCols.map((c) => (
+                        <span key={c.originalName} className="done-badge-fk">
+                          {c.name} → {c.foreignKey!.refTable}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
 
-            <div style={{
-              textAlign: 'left',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              background: 'var(--surface)',
-              overflow: 'hidden',
-              marginBottom: '28px',
-            }}>
-              {createdTables.map((t, i) => (
-                <div key={t.table} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px 16px',
-                  borderTop: i === 0 ? 'none' : '1px solid var(--line)',
-                }}>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', color: 'var(--text)' }}>
-                    {t.table}
-                  </span>
-                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                    {t.rows} ligne{t.rows > 1 ? 's' : ''}
-                  </span>
+            {confirmedLinks.length > 0 && (
+              <div className="done-links-card">
+                <p className="done-links-title">Relations créées</p>
+                <div className="done-link-list">
+                  {confirmedLinks.map((lk, i) => (
+                    <div key={i} className="done-link-row">
+                      <span className="done-link-from">{lk.fromTable}.{lk.fromCol}</span>
+                      <span className="done-link-arrow">→</span>
+                      <span className="done-link-to">{lk.toTable}.{lk.toCol}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
-            <button
-              onClick={() => setStep('app')}
-              style={{
-                padding: '10px 22px',
-                background: ACCENT,
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Ouvrir l'application générée →
-            </button>
-            <button
-              onClick={resetAll}
-              style={{
-                marginLeft: '10px',
-                padding: '10px 22px',
-                background: 'var(--surface)',
-                color: 'var(--text-2)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: '6px',
-                fontSize: '13px',
-                cursor: 'pointer',
-              }}
-            >
-              Importer un autre fichier
-            </button>
+            <div className="done-actions">
+              <button className="btn btn-secondary" onClick={() => setStep('confirm')}>← Retour</button>
+              <button className="btn-primary" onClick={() => setStep('app')}>Ouvrir l'application générée →</button>
+              <button className="btn btn-secondary" onClick={resetAll}>Importer un autre fichier</button>
+            </div>
           </div>
         )}
 
-        {/* Application générée (aperçu sémantique en lecture seule) */}
         {step === 'app' && (
           <GeneratedApp tables={allTables} onBack={() => setStep('done')} />
         )}

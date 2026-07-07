@@ -72,6 +72,23 @@ def _build_create_sql(table_ident: str, columns: list[dict]) -> str:
     return f'CREATE TABLE {table_ident} ({", ".join(definitions)});'
 
 
+def _build_fk_statements(table_name: str, table_ident: str, columns: list[dict]) -> list[str]:
+    stmts = []
+    for col in columns:
+        fk = col.get("foreignKey")
+        if not fk:
+            continue
+        ref_table_ident = _ident(fk["refTable"])
+        ref_col_ident   = _ident(fk["refColumn"])
+        col_ident       = _ident(col["name"])
+        constraint_name = f'fk_{slugify(table_name)}_{slugify(col["name"])}'
+        stmts.append(
+            f'ALTER TABLE {table_ident} ADD CONSTRAINT "{constraint_name}" '
+            f'FOREIGN KEY ({col_ident}) REFERENCES {ref_table_ident} ({ref_col_ident});'
+        )
+    return stmts
+
+
 def create_tables(conn, tables: list[dict]) -> list[dict]:
     """Crée (recrée) chaque table et insère ses lignes. Tout ou rien (transaction)."""
     results = []
@@ -107,6 +124,15 @@ def create_tables(conn, tables: list[dict]) -> list[dict]:
                 "table": slugify(table["tableName"]),
                 "rows": len(rows),
             })
+
+        # Ajoute les contraintes FK après que toutes les tables existent
+        for table in tables:
+            table_ident = _ident(table["tableName"])
+            for stmt in _build_fk_statements(table["tableName"], table_ident, table["columns"]):
+                try:
+                    cursor.execute(stmt)
+                except Exception as fk_err:
+                    print(f"[FK warning] {fk_err}")
 
         conn.commit()
         return results
