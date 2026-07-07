@@ -6,8 +6,9 @@ import StepKeySelector from './components/steps/StepKeySelector'
 import StepSheetSelector from './components/steps/StepSheetSelector'
 import StepTableConfirmation from './components/steps/StepTableConfirmation'
 import StepIndicator from './components/StepIndicator'
+import GeneratedApp from './components/app/GeneratedApp'
 
-export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'done'
+export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'done' | 'app'
 export type Theme = 'dark' | 'light'
 
 interface CreatedTable {
@@ -258,7 +259,7 @@ function App() {
 
       <main style={{ maxWidth: '1360px', margin: '0 auto', padding: '40px' }}>
 
-        <StepIndicator steps={indicatorSteps} currentKey={step === 'done' ? 'confirm' : step} />
+        <StepIndicator steps={indicatorSteps} currentKey={step === 'done' || step === 'app' ? 'confirm' : step} />
 
         {/* Étape 1 : Importer */}
         {step === 'upload' && (
@@ -486,7 +487,7 @@ function App() {
             </div>
 
             <button
-              onClick={resetAll}
+              onClick={() => setStep('app')}
               style={{
                 padding: '10px 22px',
                 background: ACCENT,
@@ -498,9 +499,29 @@ function App() {
                 cursor: 'pointer',
               }}
             >
+              Ouvrir l'application générée →
+            </button>
+            <button
+              onClick={resetAll}
+              style={{
+                marginLeft: '10px',
+                padding: '10px 22px',
+                background: 'var(--surface)',
+                color: 'var(--text-2)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
               Importer un autre fichier
             </button>
           </div>
+        )}
+
+        {/* Application générée (aperçu sémantique en lecture seule) */}
+        {step === 'app' && (
+          <GeneratedApp tables={allTables} onBack={() => setStep('done')} />
         )}
 
       </main>
