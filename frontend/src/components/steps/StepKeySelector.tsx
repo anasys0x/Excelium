@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { TableConfig, ColumnConfig } from '../../App'
+import { typeLabel } from '../../lib/typeLabels'
 
 const ACCENT = 'var(--accent)'
 
@@ -258,7 +259,7 @@ function StepKeySelector({ config, onChange, onFocusColumn }: Props) {
                   color: badge.color,
                   whiteSpace: 'nowrap',
                 }}>
-                  {col.type}
+                  {typeLabel(col.type)}
                 </span>
               </div>
             )

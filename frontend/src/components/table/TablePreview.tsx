@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { ColumnConfig } from '../../App'
+import { typeLabel } from '../../lib/typeLabels'
 
 const ACCENT = 'var(--highlight)'
 
@@ -153,7 +154,7 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true }: Props) 
                           borderRadius: '3px',
                           flexShrink: 0,
                         }}>
-                          {col.type}
+                          {typeLabel(col.type)}
                         </span>
                       </div>
                     </th>

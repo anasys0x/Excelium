@@ -202,3 +202,7 @@ coverage/
 
 # Contexte Claude (local, non versionné)
 .claude/
+
+# La règle Python "lib/" (ligne 17) ne doit pas ignorer le code source frontend
+!frontend/src/lib/
+!frontend/src/lib/**
