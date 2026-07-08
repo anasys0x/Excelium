@@ -159,15 +159,26 @@ function compareValues(a: unknown, b: unknown): number {
   return String(a ?? '').localeCompare(String(b ?? ''), 'fr', { sensitivity: 'base' })
 }
 
+// Ordre d'affichage : indices des lignes triés selon le preset.
+// Permet de retrouver la ligne d'origine (CRUD) depuis une position affichée.
+export function presetSortOrder(
+  rows: unknown[][],
+  columns: AnalyzedColumn[],
+  preset: ArchetypePreset,
+): number[] {
+  const indices = rows.map((_, i) => i)
+  if (!preset.sort) return indices
+  const col = columns.find((c) => c.role === preset.sort!.role)
+  if (!col) return indices
+
+  const dir = preset.sort.direction === 'asc' ? 1 : -1
+  return indices.sort((a, b) => dir * compareValues(rows[a][col.index], rows[b][col.index]))
+}
+
 export function applyPresetSort(
   rows: unknown[][],
   columns: AnalyzedColumn[],
   preset: ArchetypePreset,
 ): unknown[][] {
-  if (!preset.sort) return rows
-  const col = columns.find((c) => c.role === preset.sort!.role)
-  if (!col) return rows
-
-  const dir = preset.sort.direction === 'asc' ? 1 : -1
-  return [...rows].sort((ra, rb) => dir * compareValues(ra[col.index], rb[col.index]))
+  return presetSortOrder(rows, columns, preset).map((i) => rows[i])
 }

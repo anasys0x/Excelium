@@ -6,28 +6,25 @@ interface Props {
   columns: AnalyzedColumn[]
   rows: unknown[][]
   onRowClick: (rowIndex: number) => void
+  onEdit?: (rowIndex: number) => void
+  onDelete?: (rowIndex: number) => void
 }
 
-function TableView({ columns, rows, onRowClick }: Props) {
+function TableView({ columns, rows, onRowClick, onEdit, onDelete }: Props) {
+  const hasCrud = onEdit || onDelete
+
   return (
-    <div style={{ borderRadius: '10px', border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--surface)' }}>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '13px' }}>
+    <div className="table-view">
+      <div className="table-scroll">
+        <table className="data-table">
           <thead>
             <tr>
               {columns.map((c) => (
-                <th key={c.index} style={{
-                  textAlign: isMetricRole(c.role) ? 'right' : 'left',
-                  padding: '10px 14px',
-                  background: 'var(--surface-alt)',
-                  borderBottom: '2px solid var(--border)',
-                  whiteSpace: 'nowrap',
-                  color: 'var(--text)',
-                  fontWeight: 600,
-                }}>
+                <th key={c.index} className={`data-th${isMetricRole(c.role) ? ' right' : ''}`}>
                   {c.name}
                 </th>
               ))}
+              {hasCrud && <th className="data-th-actions" />}
             </tr>
           </thead>
           <tbody>
@@ -36,25 +33,37 @@ function TableView({ columns, rows, onRowClick }: Props) {
               return (
                 <tr
                   key={ri}
-                  onClick={() => onRowClick(ri)}
-                  style={{ cursor: 'pointer', background: base, transition: 'background .12s' }}
+                  style={{ background: base, transition: 'background .12s' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--row-hover)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = base }}
                 >
                   {columns.map((c) => (
-                    <td key={c.index} style={{
-                      padding: '8px 14px',
-                      borderBottom: '1px solid var(--line)',
-                      textAlign: isMetricRole(c.role) ? 'right' : 'left',
-                      whiteSpace: 'nowrap',
-                      color: 'var(--cell-text)',
-                    }}>
+                    <td
+                      key={c.index}
+                      onClick={() => onRowClick(ri)}
+                      className={`data-td${isMetricRole(c.role) ? ' right' : ''}`}
+                    >
                       {renderCell(c.role, row[c.index])}
                     </td>
                   ))}
+                  {hasCrud && (
+                    <td className="data-td-actions">
+                      <div className="crud-actions">
+                        {onEdit   && <button className="crud-btn-edit"   onClick={(e) => { e.stopPropagation(); onEdit(ri) }}   title="Modifier">✎</button>}
+                        {onDelete && <button className="crud-btn-delete" onClick={(e) => { e.stopPropagation(); onDelete(ri) }} title="Supprimer">✕</button>}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               )
             })}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={columns.length + (hasCrud ? 1 : 0)} className="table-empty">
+                  Aucune donnée
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
