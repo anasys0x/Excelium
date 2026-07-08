@@ -190,3 +190,43 @@ title: Suivi du projet
     - Besoin nécessaire de clarifier la génération de SQL simple et l’utilisation d’un ORM
     - Confusion entre les objets fournis par `openpyxl` et les classes propres au projet.
 
+---
+
+## Semaine 6 (18–24 Juin)
+
+### Travail réalisé
+
+!!! abstract "Avancement"
+    - [x] Interface web React : import par glisser-déposer, sélection des feuilles, configuration des tables (renommage, types, clé primaire), thème clair/sombre
+    - [x] API FastAPI : `/parse` (analyse du fichier Excel) et `/create` (création des tables), connectée à PostgreSQL
+    - [x] Migration du prototype Express vers FastAPI
+
+---
+
+## Semaine 7 (25 Juin–01 Juillet)
+
+### Travail réalisé
+
+!!! abstract "Avancement"
+    - [x] Semaine de réflexion et préparation de la mise en commun II
+    - [x] Libellés de types lisibles pour l'utilisateur (Texte, Nombre, Date…)
+    - [x] Première version de l'application générée : détection sémantique des colonnes et rendu par widgets (vues Table, Galerie, Tableau de bord)
+
+---
+
+## Semaine 8 (02–08 Juillet)
+
+### Travail réalisé
+
+!!! abstract "Avancement"
+    - [x] CRUD complet sur les données live : ajout, modification et suppression de lignes depuis l'application générée, avec analyse d'impact des suppressions (références entre tables)
+    - [x] Détection améliorée des clés primaires et étrangères, panneau ERD, exports Excel et SQL
+    - [x] Archétypes de table : détection du type métier (Contacts, Ventes, Inventaire, Événements) et application d'un template adapté, modifiable par l'utilisateur
+    - [x] Vue personnalisée : widgets de formules type Excel (somme, moyenne, conditionnelles…) positionnables sur une grille
+
+### Décisions et ajustements - Semaine 8
+
+!!! info "Décisions"
+    - Les archétypes sont des presets déclaratifs réutilisant les vues existantes, pas des vues sur mesure
+    - La détection d'archétype reste une suggestion : l'utilisateur garde le choix du template
+

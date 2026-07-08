@@ -125,7 +125,8 @@ Excelium/
 - ✅ Semaine 4 : Finalisation du diagramme de classe et réalisation d'une première itération du MVP.
 - ✅ Semaine 5 : Robustesse du backend et première interface de visualisation.
 - ✅ Semaine 6 : Interface web React (import par glisser-déposer, sélection des feuilles, configuration des tables, thème clair/sombre) et API FastAPI (`/parse`, `/create`) connectée à PostgreSQL.
-- 🔃 Semaine 7 : Semaine de réflexion et préparation de la mise en commun II.
+- ✅ Semaine 7 : Semaine de réflexion et préparation de la mise en commun II.
+- ✅ Semaine 8 : Application générée complète, CRUD sur les données live avec détection PK/FK et analyse d'impact, exports Excel/SQL, archétypes de table (templates sémantiques) et vue personnalisée à formules sur grille.
 
 
 ---
@@ -149,4 +150,4 @@ La documentation complète est disponible sur :
 
 ---
 
-*Dernière mise à jour : 06 juillet 2026*
+*Dernière mise à jour : 07 juillet 2026*
