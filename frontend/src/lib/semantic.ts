@@ -11,10 +11,11 @@ export type SemanticRole =
   | 'currency'
   | 'percent'
   | 'category'
+  | 'status'
   | 'rating'
   | 'image'
 
-export type LayoutKind = 'table' | 'gallery' | 'dashboard'
+export type LayoutKind = 'table' | 'gallery' | 'dashboard' | 'cards'
 
 interface ColumnLike {
   name: string
@@ -33,6 +34,7 @@ const CURRENCY_RE = /(prix|price|montant|cost|cout|co[uû]t|total|salaire|amount
 const PERCENT_RE  = /(taux|percent|pourcent|%|\brate\b|ratio)/i
 const RATING_RE   = /(note|score|rating|[ée]toile|stars?|avis)/i
 const IMAGE_RE    = /(image|photo|avatar|logo|picture|thumbnail|cover|img)/i
+const STATUS_RE   = /(statut|status|[ée]tat$|^[ée]tat|\bstate\b|phase|stage|situation)/i
 const TITLE_RE    = /(^nom$|name|^titre$|title|libell|label|intitul|d[ée]signation)/i
 const IMAGE_URL_RE = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i
 
@@ -69,11 +71,13 @@ export function detectRole(column: ColumnLike, colIndex: number, rows: unknown[]
   // Texte → image, catégorie, titre, ou texte
   if (IMAGE_RE.test(name) || values.some((v) => IMAGE_URL_RE.test(String(v)))) return 'image'
 
-  // Catégorie : faible cardinalité
+  // Statut : nom évocateur + faible cardinalité (avant catégorie, plus spécifique)
   const distinct = new Set(values.map((v) => String(v).trim().toLowerCase()))
-  if (values.length >= 4 && distinct.size <= 12 && distinct.size <= Math.ceil(values.length / 2)) {
-    return 'category'
-  }
+  const lowCardinality = values.length >= 4 && distinct.size <= 12 && distinct.size <= Math.ceil(values.length / 2)
+  if (STATUS_RE.test(name) && lowCardinality) return 'status'
+
+  // Catégorie : faible cardinalité
+  if (lowCardinality) return 'category'
 
   if (TITLE_RE.test(name)) return 'title'
   return 'text'

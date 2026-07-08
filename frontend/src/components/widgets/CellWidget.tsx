@@ -33,6 +33,67 @@ function Badge({ children }: { children: ReactNode }) {
   )
 }
 
+// Statut sémantique : la couleur reflète le sens de la valeur
+const STATUS_POSITIVE_RE = /(actif|active|pay[ée]|valid|ok|termin|livr[ée]|confirm|dispo|en stock|approuv|accept|r[ée]ussi|complet|ouvert|oui|done|success)/i
+const STATUS_NEGATIVE_RE = /(inactif|annul|refus|rupture|bloqu|erreur|rejet|expir[ée]|[ée]chou|ferm[ée]|suspend|non|failed|cancel)/i
+
+function StatusBadge({ value }: { value: string }) {
+  const positive = STATUS_POSITIVE_RE.test(value)
+  const negative = !positive && STATUS_NEGATIVE_RE.test(value)
+
+  const palette = positive
+    ? { bg: 'var(--badge-green-bg)', color: 'var(--badge-green-text)' }
+    : negative
+      ? { bg: 'var(--warn-bg)', color: 'var(--danger-text)' }
+      : { bg: 'var(--badge-amber-bg)', color: 'var(--amber-text)' }
+
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '5px',
+      padding: '2px 8px',
+      borderRadius: '999px',
+      fontSize: '12px',
+      fontWeight: 500,
+      background: palette.bg,
+      color: palette.color,
+    }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }} />
+      {value}
+    </span>
+  )
+}
+
+// Barre de progression pour les pourcentages (0–100)
+function ProgressBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, value))
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minWidth: '110px' }}>
+      <span style={{
+        flex: 1,
+        height: '6px',
+        minWidth: '60px',
+        borderRadius: '999px',
+        background: 'var(--line)',
+        overflow: 'hidden',
+        display: 'inline-block',
+      }}>
+        <span style={{
+          display: 'block',
+          height: '100%',
+          width: `${pct}%`,
+          borderRadius: '999px',
+          background: 'var(--accent)',
+        }} />
+      </span>
+      <span style={{ fontSize: '12px', fontVariantNumeric: 'tabular-nums', color: 'var(--text-2)' }}>
+        {nf.format(value)} %
+      </span>
+    </span>
+  )
+}
+
 function Stars({ value }: { value: number }) {
   const n = Math.max(0, Math.min(5, Math.round(value)))
   return (
@@ -61,7 +122,7 @@ export function renderCell(role: SemanticRole, value: unknown): ReactNode {
       return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{cf.format(Number(value))}</span>
 
     case 'percent':
-      return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{nf.format(Number(value))} %</span>
+      return <ProgressBar value={Number(value)} />
 
     case 'date':
       return <span>{formatDate(value)}</span>
@@ -75,6 +136,9 @@ export function renderCell(role: SemanticRole, value: unknown): ReactNode {
 
     case 'category':
       return <Badge>{String(value)}</Badge>
+
+    case 'status':
+      return <StatusBadge value={String(value)} />
 
     case 'rating':
       return <Stars value={Number(value)} />
