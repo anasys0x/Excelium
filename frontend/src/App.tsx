@@ -140,7 +140,7 @@ function App() {
           return {
             ...t,
             columns: t.columns.map((col) =>
-              col.foreignKey?.refTable === oldName
+              col.foreignKey && col.foreignKey.refTable === oldName
                 ? { ...col, foreignKey: { ...col.foreignKey, refTable: newName } }
                 : col
             ),
