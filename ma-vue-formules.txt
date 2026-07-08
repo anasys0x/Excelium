@@ -1,0 +1,134 @@
+================================================================================
+ « MA VUE » — DASHBOARD PERSONNALISÉ À FORMULES EXCEL
+ Documentation de l'implémentation (6 juillet 2026)
+================================================================================
+
+OBJECTIF
+--------
+Permettre à l'utilisateur de composer SA propre vue : des widgets de formules
+type Excel (somme, moyenne, comptage…) qu'il place librement sur une grille
+aimantée (drag & drop + redimensionnement avec snapping), chaque widget
+choisissant sa table, sa colonne et éventuellement une condition.
+
+C'est une vue GLOBALE multi-tables : on peut afficher côte à côte le chiffre
+d'affaires (table ventes) et le nombre de clients (table clients).
+
+
+LES 12 FORMULES
+---------------
+  Agrégations   : SOMME, MOYENNE, NB, MIN, MAX
+  Statistiques  : MEDIANE, ECART_TYPE
+  Exploration   : NB_UNIQUE (valeurs distinctes), NB_VIDE (cellules vides)
+  Conditionnelles : NB_SI, SOMME_SI, MOYENNE_SI
+                    (opérateurs : =, ≠, >, <, contient)
+
+
+FICHIERS
+--------
+
+1. frontend/src/lib/formulas.ts                                     [NOUVEAU]
+   Le moteur, PUR (aucun React, aucun effet de bord) — testable en direct.
+
+   - FormulaWidget : la définition déclarative d'un widget
+       { id, formula, tableId, columnIndex, condition?, label? }
+   - evaluate(widget, tables) → { ok, value, formatted } ou { ok: false,
+     reason } : filtre les lignes par la condition (pour les .SI), extrait
+     la colonne, calcule.
+   - FORMATAGE SÉMANTIQUE : le résultat est formaté selon le RÔLE de la
+     colonne détecté par semantic.ts. Une SOMME sur une colonne « montant »
+     s'affiche « 12 450,00 € », sur un « taux » → « 42 % ». Les comptages
+     (NB, NB_SI…) restent des entiers simples. Réutilisation directe de la
+     couche sémantique existante.
+   - GESTION D'ERREURS (jamais de crash) :
+       table supprimée        → « Table introuvable »
+       colonne hors limites   → « Colonne introuvable »
+       aucune valeur numérique → « Aucune valeur numérique »
+     La carte affiche ⚠ + la raison au lieu de la valeur.
+   - describeWidget() : sous-titre lisible, ex.
+     « Somme si… · ventes.montant (si statut = payé) »
+
+2. frontend/src/components/app/WidgetEditor.tsx                     [NOUVEAU]
+   Le panneau (modal) de création/édition :
+     Formule → Table → Colonne → Condition (si .SI) → Titre optionnel
+   - Les colonnes proposées sont FILTRÉES : SOMME/MOYENNE/MIN/MAX/… ne
+     proposent que les colonnes numériques (INT/FLOAT) ; NB, NB_UNIQUE,
+     NB_VIDE, NB_SI proposent toutes les colonnes.
+   - Le bouton Ajouter est désactivé tant que le widget n'est pas valide
+     (colonne choisie, condition complète pour les .SI).
+   - Sert aussi à MODIFIER un widget existant (pré-rempli via `initial`).
+
+3. frontend/src/components/app/CustomView.tsx                       [NOUVEAU]
+   La vue « Ma vue » : grille aimantée + cartes widgets.
+   - Librairie : react-grid-layout v2 (celle de Grafana). ATTENTION : la
+     v2 est une réécriture récente, l'API diffère de la v1 des tutos :
+       · plus de WidthProvider → hook useContainerWidth()
+       · les options passent par gridConfig={{ cols, rowHeight, margin }}
+         et dragConfig={{ cancel: '.widget-action' }}
+       · Layout = LayoutItem[] (le type Layout EST le tableau)
+       · les types sont EMBARQUÉS (ne pas installer @types/react-grid-layout,
+         ce sont ceux de la v1, ils entrent en conflit)
+   - Grille 12 colonnes, rangées de 90 px, marges 12 px. Drag et resize
+     aimantés, collisions repoussées automatiquement par la lib.
+   - dragConfig.cancel='.widget-action' : les boutons ✎ / ✕ des cartes ne
+     déclenchent pas le drag.
+   - Nouveau widget → placé automatiquement sous les existants, puis
+     déplaçable où on veut.
+   - PERSISTANCE : { widgets, layout } sauvés dans localStorage à chaque
+     changement. La clé inclut les noms des tables du fichier importé
+     (« tablr:ma-vue:clients,ventes ») : chaque fichier Excel retrouve SA
+     vue au rechargement.
+   - État vide accueillant (« Compose ta propre vue ») quand 0 widget.
+
+4. frontend/src/components/app/GeneratedApp.tsx                     [MODIFIÉ]
+   - La barre d'onglets est maintenant TOUJOURS affichée : les tables +
+     un onglet « ✦ Ma vue » aligné à droite.
+   - activeTab : number (index de table) | 'custom' (Ma vue).
+   - La clé localStorage est calculée ici et passée à CustomView.
+
+
+ARCHITECTURE (séparation des responsabilités)
+---------------------------------------------
+  formulas.ts      QUOI calculer      (pur, testable)
+  WidgetEditor     COMMENT configurer (formulaire contrôlé)
+  CustomView       OÙ afficher        (grille + persistance)
+  GeneratedApp     QUAND afficher     (navigation onglets)
+
+  La DÉFINITION d'un widget (formule/table/colonne) et sa POSITION
+  ({x, y, w, h} en unités de grille) sont deux états séparés — données vs
+  présentation. On pourra plus tard persister en base l'un sans l'autre.
+
+
+DÉCISIONS DE CONCEPTION
+-----------------------
+- react-grid-layout plutôt que grille maison : drag/resize/collisions sont
+  un problème résolu ; notre valeur ajoutée est le moteur de formules et
+  le formatage sémantique, pas la physique du drag.
+- Vue globale (pas par table) : c'est le croisement des tables qui rend un
+  dashboard utile.
+- Immutabilité : tous les setState créent de nouveaux objets/tableaux ;
+  evaluate() ne modifie jamais les lignes.
+- Le moteur accepte une interface structurelle (FormulaTable) et non
+  TableConfig : lib/ ne dépend pas des composants React.
+
+LIMITES / SUITE POSSIBLE
+------------------------
+- Widgets « valeur seule » pour l'instant : pas encore de mini-graphiques
+  (sparkline, camembert par catégorie) — extension naturelle.
+- Pas de formules combinées (SOMME(a) / SOMME(b)) ni de références entre
+  widgets.
+- La persistance est locale au navigateur (localStorage) ; la porter en
+  base PostgreSQL permettrait de partager la vue.
+
+COMMENT TESTER
+--------------
+1. npm run dev (frontend) + uvicorn api:app --reload (backend)
+2. Importer un Excel → créer la base → « Ouvrir l'application générée »
+3. Onglet « ✦ Ma vue » → + Widget
+4. Essayer : SOMME sur ventes.montant → carte « 12 450,00 € »
+5. SOMME_SI avec condition statut = payé → total filtré
+6. Glisser les cartes : elles s'aimantent à la grille, se repoussent
+7. Redimensionner par le coin bas-droit
+8. Recharger la page → la vue est restaurée (localStorage)
+9. Supprimer une table (réimporter un autre fichier) → les widgets
+   orphelins affichent « ⚠ Table introuvable » sans crasher
+================================================================================

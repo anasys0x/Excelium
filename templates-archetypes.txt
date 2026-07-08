@@ -1,0 +1,157 @@
+================================================================================
+ TEMPLATES & WIDGETS — ARCHÉTYPES DE TABLE
+ Documentation de l'implémentation (6 juillet 2026)
+================================================================================
+
+OBJECTIF
+--------
+Enrichir l'application générée : au lieu d'afficher toutes les tables de la
+même façon, Tablr détecte maintenant le TYPE MÉTIER de chaque table (son
+« archétype ») et applique un template adapté. Une table de contacts
+ressemble à un annuaire, une table de ventes à un registre trié par date, etc.
+
+Principe retenu (approche A du brainstorming) :
+  - la détection est un module PUR (fonctions sans effet de bord, testables) ;
+  - chaque archétype est un PRESET DÉCLARATIF (un simple objet de config),
+    pas un composant sur mesure — les vues existantes sont réutilisées ;
+  - la détection n'est qu'une SUGGESTION : l'utilisateur garde toujours la
+    main via un sélecteur de template (heuristique Nielsen « contrôle et
+    liberté de l'utilisateur »).
+
+
+VUE D'ENSEMBLE DU FLUX
+----------------------
+  Excel → /parse → configuration → GeneratedApp
+                                       │
+                     analyzeColumns()  │  (semantic.ts — existant)
+                     rôle de chaque colonne : id, title, currency, status…
+                                       │
+                     detectArchetype() │  (archetype.ts — NOUVEAU)
+                     type de la table : contacts | sales | inventory |
+                                        events | generic
+                                       │
+                     ARCHETYPE_PRESETS │  layout par défaut, layouts en plus,
+                                       │  tri par défaut
+                                       ▼
+                     Rendu : TableView / GalleryView / CardListView /
+                             DashboardView + widgets par rôle (CellWidget)
+
+
+FICHIERS TOUCHÉS
+----------------
+
+1. frontend/src/lib/archetype.ts                                    [NOUVEAU]
+   Le cœur de la fonctionnalité. Trois responsabilités :
+
+   a) DÉTECTION — detectArchetype(columns, tableName)
+      Chaque archétype reçoit un SCORE à partir de signaux :
+      - noms de colonnes (regex) : email/téléphone → contacts,
+        stock/quantité → inventaire, lieu/réunion → événements,
+        client/commande → ventes ;
+      - rôles sémantiques déjà détectés : date + currency → ventes,
+        currency + quantité → inventaire ;
+      - nom de la table lui-même (indice fort, +3) : une table nommée
+        « clients » pousse vers Contacts, « ventes_2026 » vers Ventes.
+      Le meilleur score gagne S'IL atteint le seuil (4). Sinon la table
+      reste « generic » (comportement d'avant, rien ne casse).
+      Exemple : colonnes [nom, prenom, email, telephone]
+        → contacts = 3 (email) + 2 (téléphone) + 2 (nom/prénom) = 7 ✓
+
+   b) PRESETS — ARCHETYPE_PRESETS
+      Un objet de configuration par archétype :
+        contacts  → layout par défaut « cards », tri alphabétique (titre)
+        sales     → layout « table » + dashboard, tri par date décroissante
+        inventory → layout « cards » + dashboard, tri alphabétique
+        events    → layout « table » + cards, tri par date CROISSANTE
+                    (le prochain événement d'abord)
+        generic   → layout « table », aucun tri (l'ordre du fichier Excel)
+
+   c) TRI — applyPresetSort(rows, columns, preset)
+      Retourne une COPIE triée des lignes (jamais de mutation des données
+      d'origine). Compare intelligemment : nombres numériquement, dates
+      chronologiquement, textes alphabétiquement (localeCompare fr).
+
+2. frontend/src/lib/semantic.ts                                     [MODIFIÉ]
+   - Nouveau rôle sémantique « status » : détecté quand le nom de colonne
+     évoque un statut (statut, status, état, phase…) ET que la colonne a
+     peu de valeurs distinctes. Testé AVANT « category » car plus
+     spécifique.
+   - Nouveau layout « cards » ajouté au type LayoutKind.
+
+3. frontend/src/components/widgets/CellWidget.tsx                   [MODIFIÉ]
+   Deux nouveaux widgets (choix fait pendant le cadrage) :
+   - StatusBadge : pastille colorée SELON LE SENS de la valeur.
+       « payé », « actif », « livré »   → vert  (positif)
+       « annulé », « rupture », « refusé » → rouge (négatif)
+       tout le reste (« en attente »…)  → ambre (neutre)
+     Avec un petit point de couleur pour la lisibilité (pas que la couleur,
+     accessibilité).
+   - ProgressBar : les colonnes « percent » ne sont plus un simple texte
+     « 42 % » mais une barre de progression + le pourcentage en chiffres.
+
+4. frontend/src/components/app/CardListView.tsx                     [NOUVEAU]
+   Vue en cartes SANS image (GalleryView exige une colonne image, pas
+   cette vue). Structure d'une carte :
+   - en-tête : le titre (colonne « title ») + jusqu'à 2 badges
+     (statut / catégorie) alignés à droite ;
+   - corps : jusqu'à 5 champs « libellé → valeur », chaque valeur rendue
+     par son widget (renderCell).
+   C'est la vue par défaut des archétypes Contacts et Inventaire.
+
+5. frontend/src/components/app/GeneratedApp.tsx                     [MODIFIÉ]
+   L'orchestrateur branche tout :
+   - détecte l'archétype de la table active (mémorisé avec useMemo) ;
+   - affiche « détecté : Contacts » sous le titre quand une détection a eu
+     lieu (transparence : l'utilisateur sait ce que le système a décidé) ;
+   - SÉLECTEUR DE TEMPLATE : liste déroulante avec les 5 archétypes,
+     l'archétype suggéré est marqué « (suggéré) ». Changer de template
+     ré-applique le preset correspondant immédiatement ;
+   - les layouts proposés = ceux suggérés par le contenu (comme avant)
+     + ceux qu'apporte le template (ex : « Cartes ») — sans doublon ;
+   - le tri du preset s'applique aux lignes affichées (displayRows) ;
+   - les choix manuels (template, layout) sont mémorisés PAR TABLE
+     (Record indexé par table.id) : changer d'onglet ne perd rien ;
+   - changer de template réinitialise le choix de layout de la table
+     (le nouveau template impose son layout par défaut).
+
+
+DÉCISIONS DE CONCEPTION (le pourquoi)
+-------------------------------------
+- Presets déclaratifs plutôt que 4 vues sur mesure : moins de code, pas de
+  duplication, et les presets sont déjà des objets → un futur système de
+  personnalisation (ajouter/retirer des widgets) ou une persistance en
+  base pourra les faire évoluer sans rien jeter.
+- Seuil de détection (4) : mieux vaut rater une détection (l'utilisateur
+  choisit le template à la main) que d'en imposer une fausse.
+- Immutabilité : applyPresetSort retourne une copie ([...rows].sort),
+  les overrides utilisateurs créent de nouveaux objets ({ ...prev }).
+  Les données parsées d'origine ne sont JAMAIS modifiées.
+- Détection pure (aucun accès réseau/DOM) : archetype.ts et semantic.ts
+  sont testables unitairement avec de simples tableaux en entrée.
+
+LIMITES CONNUES / SUITE POSSIBLE
+--------------------------------
+- Les widgets « contact » (email cliquable mailto:, téléphone tel:, URL),
+  l'avatar à initiales et les dates relatives (« il y a 3 jours ») ont été
+  volontairement reportés à une itération suivante.
+- La détection se base sur les noms de colonnes français/anglais courants ;
+  d'autres langues nécessiteraient d'enrichir les regex.
+- Les choix de template/layout ne survivent pas au rechargement de la page
+  (état React uniquement). Une persistance (localStorage ou base) est une
+  évolution naturelle.
+
+COMMENT TESTER
+--------------
+1. Lancer le backend :  uvicorn api:app --reload  (dossier backend)
+2. Lancer le frontend : npm run dev               (dossier frontend)
+3. Importer un Excel avec une feuille « Clients » (nom, prénom, email,
+   téléphone) → l'app générée doit s'ouvrir en vue Cartes, triée par nom,
+   avec « détecté : Contacts ».
+4. Une feuille « Ventes » (date, montant, client) → vue Table triée par
+   date décroissante + onglet Tableau de bord.
+5. Une colonne « statut » (payé / en attente / annulé) → badges colorés.
+6. Une colonne « taux (%) » → barres de progression.
+7. Changer le template via la liste déroulante → le rendu change
+   immédiatement ; revenir sur l'onglet d'une autre table → ses choix
+   sont conservés.
+================================================================================
