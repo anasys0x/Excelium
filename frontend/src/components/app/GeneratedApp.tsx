@@ -13,6 +13,9 @@ import DetailPanel from './DetailPanel'
 import RowForm from './RowForm'
 import ImpactModal from './ImpactModal'
 import type { Reference } from './ImpactModal'
+import SchemaView from './SchemaView'
+import RowDependencyGraph from './RowDependencyGraph'
+import ConfirmModal from './ConfirmModal'
 
 const API = 'http://localhost:8000'
 
@@ -34,7 +37,7 @@ interface PendingOp {
 
 function GeneratedApp({ tables, onBack }: Props) {
   // Onglet actif : index de table, ou 'custom' pour « Ma vue »
-  const [activeTab, setActiveTab] = useState<number | 'custom'>(0)
+  const [activeTab, setActiveTab] = useState<number | 'custom' | 'schema'>(0)
   const activeIndex = typeof activeTab === 'number' ? activeTab : 0
   // Choix manuels de l'utilisateur, par table (absent = suivre la suggestion)
   const [archetypeOverrides, setArchetypeOverrides] = useState<Record<string, TableArchetype>>({})
@@ -48,6 +51,9 @@ function GeneratedApp({ tables, onBack }: Props) {
   // Impact analysis state
   const [impactRefs, setImpactRefs]   = useState<Reference[]>([])
   const [pendingOp, setPendingOp]     = useState<PendingOp | null>(null)
+  const [depRow, setDepRow]           = useState<Record<string, unknown> | null>(null)
+  const [depRowIndex, setDepRowIndex] = useState<number | null>(null)
+  const [confirmPending, setConfirmPending] = useState<(() => void) | null>(null)
 
   const active       = tables[activeIndex]
   const includedCols = active.columns.filter((c) => !c.excluded)
@@ -143,8 +149,11 @@ function GeneratedApp({ tables, onBack }: Props) {
       setImpactRefs(refs)
       setPendingOp({ type: 'delete', row })
     } else {
-      if (!window.confirm('Supprimer cette ligne ?')) return
-      await doDelete(pkValue, false)
+      setConfirmPending(() => async () => {
+        setConfirmPending(null)
+        await doDelete(pkValue, false)
+      })
+      return
     }
   }
 
@@ -265,6 +274,12 @@ function GeneratedApp({ tables, onBack }: Props) {
           >
             ✦ Ma vue
           </button>
+          <button
+            onClick={() => { setActiveTab('schema'); setSelectedRow(null); setFormMode(null) }}
+            className={`gen-tab${activeTab === 'schema' ? ' active' : ''}`}
+          >
+            Schéma
+          </button>
         </div>
         <div className="export-btns">
           <a href={`${API}/export/excel?tables=${tableParam}`} download="export.xlsx" className="export-btn export-btn-excel">↓ Excel</a>
@@ -272,12 +287,15 @@ function GeneratedApp({ tables, onBack }: Props) {
         </div>
       </div>
 
-      {/* « Ma vue » : dashboard personnalisé multi-tables */}
       {activeTab === 'custom' && (
         <CustomView tables={tables} storageKey={storageKey} />
       )}
 
-      {activeTab !== 'custom' && (
+      {activeTab === 'schema' && (
+        <SchemaView tables={tables} />
+      )}
+
+      {activeTab !== 'custom' && activeTab !== 'schema' && (
       <>
       {/* En-tête table active */}
       <div className="gen-header">
@@ -340,9 +358,33 @@ function GeneratedApp({ tables, onBack }: Props) {
 
       {!loading && !fetchError && (
         <>
-          {effectiveLayout === 'table'     && <TableView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} onEdit={(ri) => openEdit(liveRowAt(ri))} onDelete={(ri) => handleDeleteIntent(liveRowAt(ri))} />}
+          {effectiveLayout === 'table'     && <TableView
+            columns={analyzed} rows={displayRows}
+            onRowClick={setSelectedRow}
+            onEdit={(ri) => openEdit(liveRowAt(ri))}
+            onDelete={(ri) => handleDeleteIntent(liveRowAt(ri))}
+            onDependency={(ri) => {
+              if (depRowIndex === ri) { setDepRow(null); setDepRowIndex(null) }
+              else { setDepRow(liveRowAt(ri)); setDepRowIndex(ri) }
+            }}
+            expandedRowIndex={depRowIndex}
+            expandedContent={depRow
+              ? <RowDependencyGraph row={depRow} table={active} allTables={tables} onClose={() => { setDepRow(null); setDepRowIndex(null) }} />
+              : null}
+          />}
           {effectiveLayout === 'gallery'   && <GalleryView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} />}
-          {effectiveLayout === 'cards'     && <CardListView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} />}
+          {effectiveLayout === 'cards' && <CardListView
+            columns={analyzed} rows={displayRows}
+            onRowClick={setSelectedRow}
+            onDependency={(ri) => {
+              if (depRowIndex === ri) { setDepRow(null); setDepRowIndex(null) }
+              else { setDepRow(liveRowAt(ri)); setDepRowIndex(ri) }
+            }}
+            expandedRowIndex={depRowIndex}
+            expandedContent={depRow
+              ? <RowDependencyGraph row={depRow} table={active} allTables={tables} onClose={() => { setDepRow(null); setDepRowIndex(null) }} />
+              : null}
+          />}
           {effectiveLayout === 'dashboard' && <DashboardView columns={analyzed} rows={displayRows} />}
         </>
       )}
@@ -352,7 +394,7 @@ function GeneratedApp({ tables, onBack }: Props) {
       <button className="back-btn" onClick={onBack}>← Retour</button>
 
       {/* Detail panel */}
-      {activeTab !== 'custom' && selectedRow !== null && displayRows[selectedRow] && (
+      {activeTab !== 'custom' && activeTab !== 'schema' && selectedRow !== null && displayRows[selectedRow] && (
         <DetailPanel
           columns={analyzed}
           row={displayRows[selectedRow]}
@@ -370,6 +412,15 @@ function GeneratedApp({ tables, onBack }: Props) {
           mode={formMode}
           onSubmit={formMode === 'create' ? handleCreate : handleUpdate}
           onCancel={() => { setFormMode(null); setEditingRow(null) }}
+        />
+      )}
+
+      {/* Simple confirm modal (no dependencies) */}
+      {confirmPending && (
+        <ConfirmModal
+          message="Supprimer cette ligne ?"
+          onConfirm={confirmPending}
+          onCancel={() => setConfirmPending(null)}
         />
       )}
 

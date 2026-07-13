@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import type { ColumnConfig } from '../../App'
 import { typeLabel } from '../../lib/typeLabels'
 
+const ALL_TYPES = ['INT', 'FLOAT', 'STRING', 'DATE', 'BOOL', 'MIXED']
+
 const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
   INT:    { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
   FLOAT:  { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
@@ -16,11 +18,12 @@ interface Props {
   rows: unknown[][]
   focusedColumn?: string | null
   showMeta?: boolean
+  onTypeChange?: (originalName: string, newType: string) => void
 }
 
 interface HighlightRect { left: number; top: number; width: number; height: number }
 
-function TablePreview({ columns, rows, focusedColumn, showMeta = true }: Props) {
+function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeChange }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const scrollRef  = useRef<HTMLDivElement>(null)
   const tableRef   = useRef<HTMLTableElement>(null)
@@ -76,9 +79,21 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true }: Props) 
                       <div className="preview-th-inner">
                         {col.isPrimaryKey && <span className="preview-th-key" title="Identifiant unique">CLÉ</span>}
                         <span className={`preview-th-name${isFocused ? ' focused' : ''}`}>{col.name}</span>
-                        <span className="type-badge-sm" style={{ background: badge.bg, color: badge.color }}>
-                          {typeLabel(col.type)}
-                        </span>
+                        {onTypeChange ? (
+                          <select
+                            value={col.type}
+                            onChange={(e) => { e.stopPropagation(); onTypeChange(col.originalName, e.target.value) }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="type-badge-select"
+                            style={{ background: badge.bg, color: badge.color, border: `1px solid ${badge.bg}` }}
+                          >
+                            {ALL_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
+                          </select>
+                        ) : (
+                          <span className="type-badge-sm" style={{ background: badge.bg, color: badge.color }}>
+                            {typeLabel(col.type)}
+                          </span>
+                        )}
                       </div>
                     </th>
                   )
