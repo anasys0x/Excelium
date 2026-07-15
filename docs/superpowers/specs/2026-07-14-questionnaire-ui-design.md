@@ -53,7 +53,7 @@ Chaque option porte des deltas de poids sur des dimensions fixes :
 
 1. Qui va utiliser principalement cette webapp ?
    - Moi seul, pour suivre mes données — `interaction:+1`
-   - Mon équipe en interne — `interaction:+1`, `collaboration:+1`
+   - Mon équipe en interne — `interaction:+1`
    - Des clients/partenaires externes — `layout.cards:+1`, `interaction:-1`
 2. À quelle fréquence les données vont-elles changer ?
    - Rarement (référence stable) — `interaction:-2`, `layout.table:+1`
@@ -65,9 +65,10 @@ Chaque option porte des deltas de poids sur des dimensions fixes :
    - Gérer et modifier les données au quotidien — `interaction:+2`, `layout.table:+1`
    - Présenter les données de façon attractive (catalogue, portfolio) — `layout.gallery:+2`, `layout.cards:+1`
 4. Combien de personnes vont utiliser cette webapp en même temps ?
-   - Une seule personne — `collaboration:-1`
-   - Une petite équipe (2-10) — `collaboration:+1`
-   - Beaucoup d'utilisateurs — `collaboration:+2`
+   - Une seule personne — pas de poids (signal neutre, orthogonal aux 3 dimensions
+     retenues)
+   - Une petite équipe (2-10) — `interaction:+1`
+   - Beaucoup d'utilisateurs — `interaction:+1`
 
 ### 2. Visualisation & reporting
 
@@ -112,10 +113,14 @@ Chaque option porte des deltas de poids sur des dimensions fixes :
     - En permanence — `layout.table:+2`
     - Occasionnellement — `layout.table:+1`
     - Rarement — `layout.cards:+1`
-15. Une des tables est-elle clairement plus importante que les autres ?
-    - Oui, une table centrale domine — sert à choisir l'onglet par défaut
-      affiché dans `GeneratedApp` (pas de poids layout/widget)
-    - Non, elles sont d'importance équivalente — pas de poids
+15. Quelle table est la plus importante pour toi ? — **question dynamique** :
+    contrairement aux 19 autres, ses options ne sont pas fixes. Elles sont
+    générées à partir des tables réellement importées : le nom de chaque
+    table (au maximum les 3 tables ayant le plus de lignes si le classeur en
+    contient plus de 3) plus une option « Aucune en particulier ». Choisir
+    un nom de table définit `primaryTableHint` sur cette table (sert à
+    choisir l'onglet par défaut affiché dans `GeneratedApp`, pas de poids
+    layout/widget). « Aucune en particulier » ne définit pas de hint.
 
 ### 5. Style & présentation
 
@@ -133,42 +138,91 @@ Chaque option porte des deltas de poids sur des dimensions fixes :
 ### 6. Collaboration & accès
 
 19. Plusieurs personnes modifieront-elles les mêmes données en parallèle ?
-    - Oui — `collaboration:+2`, `interaction:+1`
-    - Non, un seul éditeur à la fois — `collaboration:-1`
+    - Oui — `interaction:+2`
+    - Non, un seul éditeur à la fois — `interaction:-1`
 20. As-tu besoin de partager cette webapp avec des personnes externes ?
     - Oui — `layout.cards:+1`, `interaction:-1`
     - Non, usage interne uniquement — pas de poids
 
 ## `preferenceEngine` (nouveau module frontend)
 
-Fichier `frontend/src/lib/preferenceEngine.ts`, isolé de `archetype.ts` et
-`semantic.ts` (non modifiés).
+Fichier `frontend/src/lib/preferenceEngine.ts`. Logique de pondération
+isolée de `archetype.ts`/`semantic.ts`, qui ne reçoivent qu'un ajout
+d'exports (pas de changement de comportement, voir plus bas).
 
 ```typescript
+interface PreferenceDelta {
+  archetype?: Partial<Record<TableArchetype, number>>
+  layout?: Partial<Record<LayoutKind, number>>
+  widget?: { chart?: number; stats?: number }
+  interaction?: number   // négatif = consultation, positif = édition
+  density?: number        // négatif = aéré, positif = compact
+  primaryTableName?: string
+}
+
+interface QuestionAnswer {
+  questionId: string
+  optionId: string
+  delta: PreferenceDelta
+}
+
 interface PreferenceProfile {
   archetype: Partial<Record<TableArchetype, number>>
   layout: Partial<Record<LayoutKind, number>>
   widget: { chart: number; stats: number }
-  interaction: number   // négatif = consultation, positif = édition
-  density: number        // négatif = aéré, positif = compact
+  interaction: number
+  density: number
   primaryTableHint?: string
 }
 
 function buildPreferenceProfile(answers: readonly QuestionAnswer[]): PreferenceProfile
-function mergePresets(
-  autoDetected: AutoDetectedPreset,
-  profile: PreferenceProfile
-): FinalPreset
+
+interface AutoDetectedTablePreset {
+  archetypeScores: Record<TableArchetype, number>   // computeArchetypeScores(...)
+  availableLayouts: LayoutKind[]                     // suggestLayouts(...) ∪ preset.extraLayouts
+  defaultLayout: LayoutKind                          // ARCHETYPE_PRESETS[detected].defaultLayout
+}
+
+interface FinalTablePreset {
+  archetype: TableArchetype
+  layout: LayoutKind
+}
+
+function computeTablePreset(
+  auto: AutoDetectedTablePreset,
+  profile: PreferenceProfile,
+): FinalTablePreset
+
+function shouldShowChartWidget(profile: PreferenceProfile): boolean
+function shouldShowStatsWidget(profile: PreferenceProfile): boolean
 ```
 
 - `buildPreferenceProfile` additionne les deltas des réponses données
   (pure, immutable — retourne un nouvel objet, ne mute rien).
-- `mergePresets` ajoute les scores du profil aux scores existants de
-  `detectArchetype`/`suggestLayouts` par table, puis réapplique le seuil de
-  décision déjà en place (seuil = 4, cf. `archetype.ts`). Le widget
-  `chart`/`stats` est activé sur `DashboardView` si son score cumulé
-  atteint ou dépasse 2 (première réponse « essentiel »/« oui » sur une
-  question de la catégorie visualisation suffit à l'activer).
+- Pour l'archétype : `archetype.ts` expose déjà en interne un score par
+  archétype (`scoreArchetypes`) avant application du seuil. Ce calcul est
+  exporté (renommé `computeArchetypeScores`, comportement inchangé,
+  `detectArchetype` continue de l'utiliser en interne) pour que
+  `mergePresets` puisse additionner les deltas du profil à ces scores réels,
+  puis réappliquer le même seuil de décision (`DETECTION_THRESHOLD = 4`,
+  également exporté).
+- Pour le layout : `suggestLayouts` ne renvoie pas de score, seulement la
+  liste des layouts pertinents pour le contenu (`table` toujours présent,
+  `gallery`/`dashboard` selon les colonnes). Cette liste, complétée par
+  `preset.extraLayouts` de l'archétype retenu (comme déjà fait dans
+  `GeneratedApp.tsx`), forme l'ensemble des layouts *disponibles* pour la
+  table. `mergePresets` attribue un score de base de 1 à chaque layout
+  disponible, ajoute les deltas du profil, et retient le layout au score le
+  plus haut parmi les disponibles (égalité ou profil vide → on retombe sur
+  `preset.defaultLayout`, comme aujourd'hui). Un layout absent de l'ensemble
+  disponible (ex. `gallery` sans colonne image) ne peut jamais être choisi,
+  même si le profil le favorise fortement — le questionnaire affine parmi
+  les options pertinentes, il n'invente pas une vue qui ne correspond pas
+  aux données.
+- Le widget `chart`/`stats` est activé sur `DashboardView` si son score
+  cumulé (`profile.widget.chart` ou `.stats`) atteint ou dépasse 2 (une
+  réponse « essentiel »/« oui » sur une question de la catégorie
+  visualisation suffit à l'activer).
 - Aucune réponse ne peut, à elle seule, forcer un résultat contraire au
   reste du profil : c'est toujours une somme, jamais un override brutal —
   cohérent avec « la détection automatique reste la base, le questionnaire
@@ -204,8 +258,9 @@ Nouvel endpoint FastAPI `POST /sessions` (`backend/api.py`) :
 
 ```python
 class SessionPayload(BaseModel):
-    schema: CreatePayload      # réutilise le modèle existant
-    preset: dict               # FinalPreset sérialisé (JSON)
+    dbSchema: CreatePayload    # réutilise le modèle existant ("schema" est
+                                # réservé par Pydantic, d'où le nom dbSchema)
+    preset: dict                # preset UI sérialisé (JSON)
 
 class SessionResponse(BaseModel):
     id: str                    # UUID généré côté backend
