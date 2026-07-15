@@ -1,0 +1,67 @@
+// Moteur de préférences : agrège les réponses au questionnaire en un profil
+// de pondération pur et immutable, utilisé pour affiner (jamais remplacer)
+// la détection sémantique automatique (archetype.ts, semantic.ts).
+
+import type { TableArchetype } from './archetype'
+import type { LayoutKind } from './semantic'
+
+export interface PreferenceDelta {
+  archetype?: Partial<Record<TableArchetype, number>>
+  layout?: Partial<Record<LayoutKind, number>>
+  widget?: { chart?: number; stats?: number }
+  interaction?: number
+  density?: number
+  primaryTableName?: string
+}
+
+export interface QuestionAnswer {
+  questionId: string
+  optionId: string
+  delta: PreferenceDelta
+}
+
+export interface PreferenceProfile {
+  archetype: Partial<Record<TableArchetype, number>>
+  layout: Partial<Record<LayoutKind, number>>
+  widget: { chart: number; stats: number }
+  interaction: number
+  density: number
+  primaryTableHint?: string
+}
+
+function addRecord<K extends string>(
+  base: Partial<Record<K, number>>,
+  extra: Partial<Record<K, number>> | undefined,
+): Partial<Record<K, number>> {
+  if (!extra) return base
+  const next = { ...base }
+  for (const key of Object.keys(extra) as K[]) {
+    next[key] = (next[key] ?? 0) + (extra[key] ?? 0)
+  }
+  return next
+}
+
+export function buildPreferenceProfile(answers: readonly QuestionAnswer[]): PreferenceProfile {
+  const initial: PreferenceProfile = {
+    archetype: {},
+    layout: {},
+    widget: { chart: 0, stats: 0 },
+    interaction: 0,
+    density: 0,
+  }
+
+  return answers.reduce<PreferenceProfile>((profile, answer) => {
+    const { delta } = answer
+    return {
+      archetype: addRecord(profile.archetype, delta.archetype),
+      layout: addRecord(profile.layout, delta.layout),
+      widget: {
+        chart: profile.widget.chart + (delta.widget?.chart ?? 0),
+        stats: profile.widget.stats + (delta.widget?.stats ?? 0),
+      },
+      interaction: profile.interaction + (delta.interaction ?? 0),
+      density: profile.density + (delta.density ?? 0),
+      primaryTableHint: delta.primaryTableName ?? profile.primaryTableHint,
+    }
+  }, initial)
+}
