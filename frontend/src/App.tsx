@@ -6,16 +6,19 @@ import TablePreview from './components/table/TablePreview'
 import StepKeySelector from './components/steps/StepKeySelector'
 import StepSheetSelector from './components/steps/StepSheetSelector'
 import StepTableConfirmation from './components/steps/StepTableConfirmation'
+import StepQuestionnaire from './components/steps/StepQuestionnaire'
 import StepIndicator from './components/StepIndicator'
 import GeneratedApp from './components/app/GeneratedApp'
+import { buildQuestionBank } from './lib/questions'
+import { analyzeColumns, suggestLayouts } from './lib/semantic'
+import type { LayoutKind } from './lib/semantic'
+import { ARCHETYPE_PRESETS, computeArchetypeScores, detectArchetype } from './lib/archetype'
+import type { TableArchetype } from './lib/archetype'
+import { buildPreferenceProfile, computeTablePreset, shouldShowChartWidget } from './lib/preferenceEngine'
+import type { AutoDetectedTablePreset, PreferenceProfile, QuestionAnswer } from './lib/preferenceEngine'
 
-export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'done' | 'app'
+export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'questionnaire' | 'app'
 export type Theme = 'dark' | 'light'
-
-interface CreatedTable {
-  table: string
-  rows: number
-}
 
 export interface ColumnConfig {
   originalName: string
@@ -56,6 +59,14 @@ interface ParsedTable   { name: string; columns: ParsedColumn[]; rows: unknown[]
 interface ParsedSheet   { name: string; tables: ParsedTable[] }
 interface ParseResponse { sheets: ParsedSheet[] }
 
+interface GeneratedAppSeed {
+  archetypeOverrides: Record<string, TableArchetype>
+  layoutOverrides: Record<string, LayoutKind>
+  primaryTableId: string | null
+  showChartWidget: boolean
+  sessionId: string | null
+}
+
 function App() {
   const [step, setStep]                        = useState<Step>('upload')
   const [sheets, setSheets]                    = useState<SheetData[]>([])
@@ -67,7 +78,8 @@ function App() {
   const [error, setError]                      = useState<string | null>(null)
   const [isCreating, setIsCreating]            = useState(false)
   const [createError, setCreateError]          = useState<string | null>(null)
-  const [createdTables, setCreatedTables]      = useState<CreatedTable[]>([])
+  const [answers, setAnswers]                  = useState<Record<string, QuestionAnswer>>({})
+  const [appSeed, setAppSeed]                  = useState<GeneratedAppSeed | null>(null)
   const [theme, setTheme]                      = useState<Theme>(
     () => (localStorage.getItem('excelium-theme') as Theme) ?? 'dark'
   )
@@ -162,25 +174,66 @@ function App() {
     setStep('config')
   }
 
-  const handleCreate = async () => {
+  // Colonnes/lignes réellement envoyées (colonnes exclues retirées, index alignés)
+  const getIncludedTableData = (t: TableConfig) => {
+    const includedIdx = t.columns.map((_, i) => i).filter((i) => !t.columns[i].excluded)
+    const columns = includedIdx.map((i) => t.columns[i])
+    const rows    = t.rows.map((row) => includedIdx.map((i) => row[i]))
+    return { columns, rows }
+  }
+
+  // Pour chaque table : détection auto (archétype + layouts disponibles),
+  // fusionnée avec le profil de préférences du questionnaire.
+  const buildInitialOverrides = (tablesToSeed: TableConfig[], profile: PreferenceProfile) => {
+    const archetypeOverrides: Record<string, TableArchetype> = {}
+    const layoutOverrides: Record<string, LayoutKind> = {}
+    for (const t of tablesToSeed) {
+      const { columns, rows } = getIncludedTableData(t)
+      const analyzed = analyzeColumns(columns, rows)
+      const archetypeScores = computeArchetypeScores(analyzed, t.tableName)
+      const detected = detectArchetype(analyzed, t.tableName)
+      const preset = ARCHETYPE_PRESETS[detected]
+      const suggested = suggestLayouts(analyzed)
+      const availableLayouts = [...new Set([...suggested, ...preset.extraLayouts])]
+      const auto: AutoDetectedTablePreset = { archetypeScores, availableLayouts, defaultLayout: preset.defaultLayout }
+      const final = computeTablePreset(auto, profile)
+      archetypeOverrides[t.id] = final.archetype
+      layoutOverrides[t.id] = final.layout
+    }
+    return { archetypeOverrides, layoutOverrides }
+  }
+
+  const handleAnswer = (answer: QuestionAnswer) => {
+    setAnswers((prev) => ({ ...prev, [answer.questionId]: answer }))
+  }
+
+  const handleCreateWebApp = async () => {
     setIsCreating(true)
     setCreateError(null)
+
     const payload = {
       tables: allTables.map((t) => {
-        const includedIdx = t.columns.map((_, i) => i).filter((i) => !t.columns[i].excluded)
-        const includedCols = includedIdx.map((i) => t.columns[i])
+        const { columns, rows } = getIncludedTableData(t)
         return {
           tableName: t.tableName,
-          columns: includedCols.map((c) => ({
+          columns: columns.map((c) => ({
             name: c.name,
             type: c.type,
             isPrimaryKey: c.isPrimaryKey,
             ...(c.foreignKey && c.foreignKeyConfirmed ? { foreignKey: c.foreignKey } : {}),
           })),
-          rows: t.rows.map((row) => includedIdx.map((i) => row[i])),
+          rows,
         }
       }),
     }
+
+    const profile = buildPreferenceProfile(Object.values(answers))
+    const { archetypeOverrides, layoutOverrides } = buildInitialOverrides(allTables, profile)
+    const showChartWidget = shouldShowChartWidget(profile)
+    const primaryTableId = profile.primaryTableHint
+      ? allTables.find((t) => t.tableName === profile.primaryTableHint)?.id ?? null
+      : null
+
     try {
       const response = await fetch('http://localhost:8000/create', {
         method: 'POST',
@@ -189,25 +242,32 @@ function App() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data?.detail ?? 'Erreur inconnue lors de la création.')
-      setCreatedTables(data.created ?? [])
-      setStep('done')
+
+      let newSessionId: string | null = null
+      try {
+        const sessionRes = await fetch('http://localhost:8000/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dbSchema: payload,
+            preset: { archetypeOverrides, layoutOverrides, showChartWidget, primaryTableId },
+          }),
+        })
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json()
+          newSessionId = sessionData.id ?? null
+        }
+      } catch {
+        // La sauvegarde de session est secondaire : son échec ne bloque pas l'ouverture de la webapp.
+      }
+
+      setAppSeed({ archetypeOverrides, layoutOverrides, primaryTableId, showChartWidget, sessionId: newSessionId })
+      setStep('app')
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Erreur lors de la création.')
     } finally {
       setIsCreating(false)
     }
-  }
-
-  const resetAll = () => {
-    setSheets([])
-    setSelectedNames([])
-    setActiveSheetName(null)
-    setActiveTableId(null)
-    setFocusedColumn(null)
-    setCreatedTables([])
-    setCreateError(null)
-    setError(null)
-    setStep('upload')
   }
 
   const showSelect      = sheets.length > 1
@@ -228,26 +288,19 @@ function App() {
   const canProceed = missingKeyCount === 0 && duplicateNames.length === 0
     && !emptyTableName && !emptyColName && !hasDuplicateColNames
 
-  const confirmedLinks = allTables.flatMap((t) =>
-    t.columns
-      .filter((c) => c.foreignKey && c.foreignKeyConfirmed)
-      .map((c) => ({
-        fromTable: t.tableName, fromCol: c.name,
-        toTable: c.foreignKey!.refTable, toCol: c.foreignKey!.refColumn,
-      }))
-  )
-
   const indicatorSteps = showSelect
     ? [
         { key: 'upload', label: 'Importer'   },
         { key: 'select', label: 'Feuilles'   },
         { key: 'config', label: 'Configurer' },
         { key: 'confirm', label: 'Créer'     },
+        { key: 'questionnaire', label: 'Personnaliser' },
       ]
     : [
         { key: 'upload', label: 'Importer'   },
         { key: 'config', label: 'Configurer' },
         { key: 'confirm', label: 'Créer'     },
+        { key: 'questionnaire', label: 'Personnaliser' },
       ]
 
   return (
@@ -269,7 +322,7 @@ function App() {
       <main className="app-main">
 
         {step !== 'app' && (
-          <StepIndicator steps={indicatorSteps} currentKey={step === 'done' ? 'confirm' : step} />
+          <StepIndicator steps={indicatorSteps} currentKey={step} />
         )}
 
         {/* Étape 1 : Importer */}
@@ -385,81 +438,38 @@ function App() {
           </div>
         )}
 
-        {/* Étape 4 : Créer */}
+        {/* Étape 4 : Récapitulatif */}
         {step === 'confirm' && (
           <StepTableConfirmation
             tables={allTables}
             onBack={() => setStep('config')}
-            onConfirm={handleCreate}
+            onNext={() => setStep('questionnaire')}
+          />
+        )}
+
+        {/* Étape 5 : Questionnaire de pondération */}
+        {step === 'questionnaire' && (
+          <StepQuestionnaire
+            questions={buildQuestionBank(allTables.map((t) => ({ tableName: t.tableName, rowCount: t.rows.length })))}
+            answers={answers}
+            onAnswer={handleAnswer}
+            onBack={() => setStep('confirm')}
+            onCreateWebApp={handleCreateWebApp}
             isCreating={isCreating}
             error={createError}
           />
         )}
 
-        {/* Étape 5 : Terminé */}
-        {step === 'done' && (
-          <div className="done-section">
-            <div className="done-header">
-              <div className="done-check">✓</div>
-              <h1 className="done-title">Base de données créée</h1>
-              <p className="done-subtitle">
-                {createdTables.length} table{createdTables.length > 1 ? 's' : ''} créée{createdTables.length > 1 ? 's' : ''} avec succès
-                {confirmedLinks.length > 0 && (
-                  <> · <span className="done-green">{confirmedLinks.length} lien{confirmedLinks.length > 1 ? 's' : ''} entre feuilles</span></>
-                )}
-              </p>
-            </div>
-
-            <div className="done-tables-card">
-              <div className="done-tables-head">Tables</div>
-              {createdTables.map((t) => {
-                const tableConfig = allTables.find((at) => at.tableName === t.table || at.tableName.toLowerCase().replace(/[^a-z0-9]/g, '_') === t.table)
-                const pk     = tableConfig?.columns.find((c) => c.isPrimaryKey)
-                const fkCols = tableConfig?.columns.filter((c) => c.foreignKey && c.foreignKeyConfirmed) ?? []
-                return (
-                  <div key={t.table} className="done-table-row">
-                    <div className="done-table-row-header">
-                      <span className="done-table-name">{t.table}</span>
-                      <span className="done-table-meta">{t.rows} ligne{t.rows > 1 ? 's' : ''}</span>
-                    </div>
-                    <div className="done-badges">
-                      {pk && <span className="done-badge-pk">ID: {pk.name}</span>}
-                      {fkCols.map((c) => (
-                        <span key={c.originalName} className="done-badge-fk">
-                          {c.name} → {c.foreignKey!.refTable}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {confirmedLinks.length > 0 && (
-              <div className="done-links-card">
-                <p className="done-links-title">Relations créées</p>
-                <div className="done-link-list">
-                  {confirmedLinks.map((lk, i) => (
-                    <div key={i} className="done-link-row">
-                      <span className="done-link-from">{lk.fromTable}.{lk.fromCol}</span>
-                      <span className="done-link-arrow">→</span>
-                      <span className="done-link-to">{lk.toTable}.{lk.toCol}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="done-actions">
-              <button className="btn btn-secondary" onClick={() => setStep('confirm')}>← Retour</button>
-              <button className="btn-primary" onClick={() => setStep('app')}>Ouvrir l'application générée →</button>
-              <button className="btn btn-secondary" onClick={resetAll}>Importer un autre fichier</button>
-            </div>
-          </div>
-        )}
-
-        {step === 'app' && (
-          <GeneratedApp tables={allTables} onBack={() => setStep('done')} />
+        {step === 'app' && appSeed && (
+          <GeneratedApp
+            tables={allTables}
+            onBack={() => setStep('confirm')}
+            initialArchetypeOverrides={appSeed.archetypeOverrides}
+            initialLayoutOverrides={appSeed.layoutOverrides}
+            initialActiveTableId={appSeed.primaryTableId}
+            showChartWidget={appSeed.showChartWidget}
+            sessionId={appSeed.sessionId}
+          />
         )}
 
       </main>

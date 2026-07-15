@@ -16,6 +16,7 @@ from services.pk_detector import detect_primary_keys, get_pk_candidates
 from services.fk_detector import detect_foreign_keys
 from services.database_connection import get_connection
 from services.db_creator import create_tables
+from services.session_store import save_session
 from services.db_crud import (
     get_table_schema, get_table_rows,
     insert_row, update_row, delete_row,
@@ -57,6 +58,15 @@ class CreateTable(BaseModel):
 
 class CreatePayload(BaseModel):
     tables: list[CreateTable]
+
+
+class SessionPayload(BaseModel):
+    dbSchema: CreatePayload   # "schema" est réservé par Pydantic
+    preset: dict
+
+
+class SessionResponse(BaseModel):
+    id: str
 
 @app.post("/parse")
 async def parse_excel(file: UploadFile):
@@ -165,6 +175,29 @@ def create_database(payload: CreatePayload):
         conn.close()
 
     return {"created": results}
+
+
+@app.post("/sessions", response_model=SessionResponse)
+def create_session(payload: SessionPayload):
+    try:
+        conn = get_connection()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Connexion à la base de données impossible : {exc}"
+        )
+
+    try:
+        session_id = save_session(conn, payload.dbSchema.model_dump(), payload.preset)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la sauvegarde de la session : {exc}"
+        )
+    finally:
+        conn.close()
+
+    return {"id": session_id}
 
 
 # ─── CRUD generique ───────────────────────────────────────────────────────────

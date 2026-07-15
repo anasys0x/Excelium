@@ -1,7 +1,8 @@
 import type { AnalyzedColumn } from '../../lib/semantic'
 import { isMetricRole } from '../../lib/semantic'
+import ChartWidget from './ChartWidget'
 
-interface Props { columns: AnalyzedColumn[]; rows: unknown[][] }
+interface Props { columns: AnalyzedColumn[]; rows: unknown[][]; showChart?: boolean }
 
 const nf = new Intl.NumberFormat('fr-FR')
 const cf = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
@@ -15,7 +16,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-function DashboardView({ columns, rows }: Props) {
+function DashboardView({ columns, rows, showChart = false }: Props) {
   const stats: { label: string; value: string }[] = [{ label: 'Enregistrements', value: nf.format(rows.length) }]
 
   for (const c of columns.filter((col) => isMetricRole(col.role))) {
@@ -30,8 +31,11 @@ function DashboardView({ columns, rows }: Props) {
   }
 
   return (
-    <div className="dashboard-grid">
-      {stats.map((s, i) => <Stat key={i} label={s.label} value={s.value} />)}
+    <div>
+      <div className="dashboard-grid">
+        {stats.map((s, i) => <Stat key={i} label={s.label} value={s.value} />)}
+      </div>
+      {showChart && <ChartWidget columns={columns} rows={rows} />}
     </div>
   )
 }

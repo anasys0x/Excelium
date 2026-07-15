@@ -2,6 +2,7 @@
 // de pondération pur et immutable, utilisé pour affiner (jamais remplacer)
 // la détection sémantique automatique (archetype.ts, semantic.ts).
 
+import { ARCHETYPE_ORDER, DETECTION_THRESHOLD } from './archetype'
 import type { TableArchetype } from './archetype'
 import type { LayoutKind } from './semantic'
 
@@ -64,4 +65,54 @@ export function buildPreferenceProfile(answers: readonly QuestionAnswer[]): Pref
       primaryTableHint: delta.primaryTableName ?? profile.primaryTableHint,
     }
   }, initial)
+}
+
+export interface AutoDetectedTablePreset {
+  archetypeScores: Record<TableArchetype, number>
+  availableLayouts: LayoutKind[]
+  defaultLayout: LayoutKind
+}
+
+export interface FinalTablePreset {
+  archetype: TableArchetype
+  layout: LayoutKind
+}
+
+export function computeTablePreset(
+  auto: AutoDetectedTablePreset,
+  profile: PreferenceProfile,
+): FinalTablePreset {
+  let bestArchetype: TableArchetype = 'generic'
+  let bestScore = 0
+  for (const a of ARCHETYPE_ORDER) {
+    const score = (auto.archetypeScores[a] ?? 0) + (profile.archetype[a] ?? 0)
+    if (score > bestScore) {
+      bestArchetype = a
+      bestScore = score
+    }
+  }
+  const archetype = bestScore >= DETECTION_THRESHOLD ? bestArchetype : 'generic'
+
+  let bestLayout = auto.defaultLayout
+  let bestLayoutScore = 1 + (profile.layout[auto.defaultLayout] ?? 0)
+  for (const layout of auto.availableLayouts) {
+    if (layout === auto.defaultLayout) continue
+    const score = 1 + (profile.layout[layout] ?? 0)
+    if (score > bestLayoutScore) {
+      bestLayout = layout
+      bestLayoutScore = score
+    }
+  }
+
+  return { archetype, layout: bestLayout }
+}
+
+const WIDGET_THRESHOLD = 2
+
+export function shouldShowChartWidget(profile: PreferenceProfile): boolean {
+  return profile.widget.chart >= WIDGET_THRESHOLD
+}
+
+export function shouldShowStatsWidget(profile: PreferenceProfile): boolean {
+  return profile.widget.stats >= WIDGET_THRESHOLD
 }

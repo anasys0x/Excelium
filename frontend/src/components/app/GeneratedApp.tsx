@@ -23,7 +23,15 @@ const LAYOUT_LABELS: Record<LayoutKind, string> = {
   cards:     'Cartes',
 }
 
-interface Props { tables: TableConfig[]; onBack: () => void }
+interface Props {
+  tables: TableConfig[]
+  onBack: () => void
+  initialArchetypeOverrides: Record<string, TableArchetype>
+  initialLayoutOverrides: Record<string, LayoutKind>
+  initialActiveTableId: string | null
+  showChartWidget: boolean
+  sessionId: string | null
+}
 type FormMode = 'create' | 'edit' | null
 
 interface PendingOp {
@@ -32,14 +40,22 @@ interface PendingOp {
   formData?: Record<string, unknown>
 }
 
-function GeneratedApp({ tables, onBack }: Props) {
+function GeneratedApp({
+  tables, onBack,
+  initialArchetypeOverrides, initialLayoutOverrides, initialActiveTableId,
+  showChartWidget, sessionId,
+}: Props) {
+  const initialTabIndex = initialActiveTableId
+    ? Math.max(0, tables.findIndex((t) => t.id === initialActiveTableId))
+    : 0
   // Onglet actif : index de table, ou 'custom' pour « Ma vue »
-  const [activeTab, setActiveTab] = useState<number | 'custom'>(0)
+  const [activeTab, setActiveTab] = useState<number | 'custom'>(initialTabIndex)
   const activeIndex = typeof activeTab === 'number' ? activeTab : 0
-  // Choix manuels de l'utilisateur, par table (absent = suivre la suggestion)
-  const [archetypeOverrides, setArchetypeOverrides] = useState<Record<string, TableArchetype>>({})
-  const [layoutOverrides, setLayoutOverrides] = useState<Record<string, LayoutKind>>({})
+  // Choix par table : préremplis par le questionnaire, modifiables ensuite
+  const [archetypeOverrides, setArchetypeOverrides] = useState<Record<string, TableArchetype>>(initialArchetypeOverrides)
+  const [layoutOverrides, setLayoutOverrides] = useState<Record<string, LayoutKind>>(initialLayoutOverrides)
   const [selectedRow, setSelectedRow] = useState<number | null>(null)
+  const [copied, setCopied] = useState(false)
   const [liveRows, setLiveRows]       = useState<Record<string, unknown>[]>([])
   const [loading, setLoading]         = useState(false)
   const [fetchError, setFetchError]   = useState<string | null>(null)
@@ -267,6 +283,20 @@ function GeneratedApp({ tables, onBack }: Props) {
           </button>
         </div>
         <div className="export-btns">
+          {sessionId && (
+            <button
+              type="button"
+              className="session-badge"
+              title="Copier l'identifiant de session"
+              onClick={() => {
+                navigator.clipboard.writeText(sessionId)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 1500)
+              }}
+            >
+              Session : {sessionId.slice(0, 8)}… {copied ? '✓ copié' : '⧉'}
+            </button>
+          )}
           <a href={`${API}/export/excel?tables=${tableParam}`} download="export.xlsx" className="export-btn export-btn-excel">↓ Excel</a>
           <a href={`${API}/export/sql?tables=${tableParam}`}   download="export.sql"  className="export-btn export-btn-sql">↓ SQL</a>
         </div>
@@ -343,7 +373,7 @@ function GeneratedApp({ tables, onBack }: Props) {
           {effectiveLayout === 'table'     && <TableView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} onEdit={(ri) => openEdit(liveRowAt(ri))} onDelete={(ri) => handleDeleteIntent(liveRowAt(ri))} />}
           {effectiveLayout === 'gallery'   && <GalleryView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} />}
           {effectiveLayout === 'cards'     && <CardListView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} />}
-          {effectiveLayout === 'dashboard' && <DashboardView columns={analyzed} rows={displayRows} />}
+          {effectiveLayout === 'dashboard' && <DashboardView columns={analyzed} rows={displayRows} showChart={showChartWidget} />}
         </>
       )}
       </>
