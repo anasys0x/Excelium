@@ -129,10 +129,14 @@ function scoreArchetypes(s: Signals, tableName: string): Record<TableArchetype, 
   }
 }
 
-const DETECTION_THRESHOLD = 4
+export const DETECTION_THRESHOLD = 4
+
+export function computeArchetypeScores(columns: AnalyzedColumn[], tableName = ''): Record<TableArchetype, number> {
+  return scoreArchetypes(collectSignals(columns), tableName)
+}
 
 export function detectArchetype(columns: AnalyzedColumn[], tableName = ''): TableArchetype {
-  const scores = scoreArchetypes(collectSignals(columns), tableName)
+  const scores = computeArchetypeScores(columns, tableName)
 
   let best: TableArchetype = 'generic'
   let bestScore = 0
