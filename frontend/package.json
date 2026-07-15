@@ -13,7 +13,6 @@
   "dependencies": {
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-grid-layout": "^2.2.3",
     "recharts": "^2.15.0"
   },
   "devDependencies": {

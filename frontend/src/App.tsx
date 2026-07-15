@@ -1,23 +1,33 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import DropZone from './components/DropZone'
+import SessionResume from './components/SessionResume'
 import SplitView from './components/layout/SplitView'
 import TablePreview from './components/table/TablePreview'
 import StepKeySelector from './components/steps/StepKeySelector'
 import StepSheetSelector from './components/steps/StepSheetSelector'
 import StepTableConfirmation from './components/steps/StepTableConfirmation'
 import StepQuestionnaire from './components/steps/StepQuestionnaire'
+import StepUiProposals from './components/steps/StepUiProposals'
 import StepIndicator from './components/StepIndicator'
 import GeneratedApp from './components/app/GeneratedApp'
 import { buildQuestionBank } from './lib/questions'
-import { analyzeColumns, suggestLayouts } from './lib/semantic'
+import { analyzeColumns, findChartRecommendation } from './lib/semantic'
 import type { LayoutKind } from './lib/semantic'
 import { ARCHETYPE_PRESETS, computeArchetypeScores, detectArchetype } from './lib/archetype'
 import type { TableArchetype } from './lib/archetype'
-import { buildPreferenceProfile, computeTablePreset, shouldShowChartWidget } from './lib/preferenceEngine'
-import type { AutoDetectedTablePreset, PreferenceProfile, QuestionAnswer } from './lib/preferenceEngine'
+import {
+  buildPreferenceProfile,
+  computeTablePreset,
+} from './lib/preferenceEngine'
+import type { AutoDetectedTablePreset, DisplayDensity, PreferenceProfile, QuestionAnswer } from './lib/preferenceEngine'
+import type { ExportMode, NavigationMode, SortMode } from './lib/preferenceEngine'
+import { buildUiProposals } from './lib/uiProposals'
+import type { UiProposal } from './lib/uiProposals'
+import { restoreSession } from './lib/session'
+import type { SessionApiResponse } from './lib/session'
 
-export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'questionnaire' | 'app'
+export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'questionnaire' | 'proposals' | 'app'
 export type Theme = 'dark' | 'light'
 
 export interface ColumnConfig {
@@ -59,11 +69,18 @@ interface ParsedTable   { name: string; columns: ParsedColumn[]; rows: unknown[]
 interface ParsedSheet   { name: string; tables: ParsedTable[] }
 interface ParseResponse { sheets: ParsedSheet[] }
 
-interface GeneratedAppSeed {
+export interface GeneratedAppSeed {
   archetypeOverrides: Record<string, TableArchetype>
   layoutOverrides: Record<string, LayoutKind>
   primaryTableId: string | null
   showChartWidget: boolean
+  showStatsWidget: boolean
+  canEdit: boolean
+  density: DisplayDensity
+  navigation: NavigationMode
+  searchEnabled: boolean
+  sortMode: SortMode
+  exportMode: ExportMode
   sessionId: string | null
 }
 
@@ -76,9 +93,13 @@ function App() {
   const [focusedColumn, setFocusedColumn]      = useState<string | null>(null)
   const [isLoading, setIsLoading]              = useState(false)
   const [error, setError]                      = useState<string | null>(null)
+  const [isResuming, setIsResuming]            = useState(false)
+  const [resumeError, setResumeError]          = useState<string | null>(null)
   const [isCreating, setIsCreating]            = useState(false)
   const [createError, setCreateError]          = useState<string | null>(null)
   const [answers, setAnswers]                  = useState<Record<string, QuestionAnswer>>({})
+  const [uiProposals, setUiProposals]          = useState<UiProposal[]>([])
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null)
   const [appSeed, setAppSeed]                  = useState<GeneratedAppSeed | null>(null)
   const [theme, setTheme]                      = useState<Theme>(
     () => (localStorage.getItem('excelium-theme') as Theme) ?? 'dark'
@@ -92,6 +113,7 @@ function App() {
   const handleFileSelected = async (file: File) => {
     setIsLoading(true)
     setError(null)
+    setResumeError(null)
     const formData = new FormData()
     formData.append('file', file)
     try {
@@ -138,6 +160,40 @@ function App() {
     setFocusedColumn(null)
   }
 
+  const handleResumeSession = async (sessionId: string) => {
+    setIsResuming(true)
+    setResumeError(null)
+    setError(null)
+
+    try {
+      const response = await fetch(`http://localhost:8000/sessions/${encodeURIComponent(sessionId)}`)
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(data?.detail ?? 'Impossible de charger cette session.')
+      }
+
+      const restored = restoreSession(data as SessionApiResponse)
+      const [sheet] = restored.sheets
+      setSheets(restored.sheets)
+      setSelectedNames([sheet.name])
+      enterSheet(sheet)
+      setAnswers({})
+      setUiProposals([])
+      setSelectedProposalId(null)
+      setAppSeed(restored.seed)
+      setTheme(restored.theme)
+      setStep('app')
+    } catch (resumeFailure) {
+      setResumeError(
+        resumeFailure instanceof Error
+          ? resumeFailure.message
+          : 'Impossible de charger cette session.'
+      )
+    } finally {
+      setIsResuming(false)
+    }
+  }
+
   const updateTable = (updated: TableConfig) => {
     setSheets((prev) => {
       const oldTable = prev.flatMap((s) => s.tables).find((t) => t.id === updated.id)
@@ -182,8 +238,8 @@ function App() {
     return { columns, rows }
   }
 
-  // Pour chaque table : détection auto (archétype + layouts disponibles),
-  // fusionnée avec le profil de préférences du questionnaire.
+  // La détection choisit le modèle de données. Le questionnaire choisit ensuite
+  // une vue parmi les quatre rendus que les composants savent tous afficher.
   const buildInitialOverrides = (tablesToSeed: TableConfig[], profile: PreferenceProfile) => {
     const archetypeOverrides: Record<string, TableArchetype> = {}
     const layoutOverrides: Record<string, LayoutKind> = {}
@@ -193,8 +249,7 @@ function App() {
       const archetypeScores = computeArchetypeScores(analyzed, t.tableName)
       const detected = detectArchetype(analyzed, t.tableName)
       const preset = ARCHETYPE_PRESETS[detected]
-      const suggested = suggestLayouts(analyzed)
-      const availableLayouts = [...new Set([...suggested, ...preset.extraLayouts])]
+      const availableLayouts: LayoutKind[] = ['table', 'cards', 'dashboard', 'gallery']
       const auto: AutoDetectedTablePreset = { archetypeScores, availableLayouts, defaultLayout: preset.defaultLayout }
       const final = computeTablePreset(auto, profile)
       archetypeOverrides[t.id] = final.archetype
@@ -207,7 +262,30 @@ function App() {
     setAnswers((prev) => ({ ...prev, [answer.questionId]: answer }))
   }
 
+  const getValidAnswers = (): QuestionAnswer[] => questionBank.flatMap((question) => {
+    const answer = answers[question.id]
+    return answer && question.options.some((option) => option.id === answer.optionId)
+      ? [answer]
+      : []
+  })
+
+  const handleReviewProposals = () => {
+    const profile = buildPreferenceProfile(getValidAnswers())
+    const primaryTable = questionnaireTables.find((table) => table.tableName === profile.primaryTableHint)
+      ?? questionnaireTables[0]
+    const archetype = primaryTable
+      ? detectArchetype(primaryTable.analyzed, primaryTable.tableName)
+      : 'generic'
+    setUiProposals(buildUiProposals(profile, { hasImages, hasMeaningfulChart, archetype }))
+    setSelectedProposalId(null)
+    setCreateError(null)
+    setStep('proposals')
+  }
+
   const handleCreateWebApp = async () => {
+    const selectedProposal = uiProposals.find((proposal) => proposal.id === selectedProposalId)
+    if (!selectedProposal) return
+
     setIsCreating(true)
     setCreateError(null)
 
@@ -227,9 +305,22 @@ function App() {
       }),
     }
 
-    const profile = buildPreferenceProfile(Object.values(answers))
-    const { archetypeOverrides, layoutOverrides } = buildInitialOverrides(allTables, profile)
-    const showChartWidget = shouldShowChartWidget(profile)
+    const profile = buildPreferenceProfile(getValidAnswers())
+    const { archetypeOverrides } = buildInitialOverrides(allTables, profile)
+    const layoutOverrides = Object.fromEntries(
+      allTables.map((table) => [table.id, selectedProposal.config.layout]),
+    ) as Record<string, LayoutKind>
+    const {
+      showChart: showChartWidget,
+      showStats: showStatsWidget,
+      canEdit,
+      density,
+      navigation,
+      searchEnabled,
+      sortMode,
+      exportMode,
+      theme: selectedTheme,
+    } = selectedProposal.config
     const primaryTableId = profile.primaryTableHint
       ? allTables.find((t) => t.tableName === profile.primaryTableHint)?.id ?? null
       : null
@@ -250,7 +341,20 @@ function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             dbSchema: payload,
-            preset: { archetypeOverrides, layoutOverrides, showChartWidget, primaryTableId },
+            preset: {
+              archetypeOverrides,
+              layoutOverrides,
+              showChartWidget,
+              showStatsWidget,
+              canEdit,
+              density,
+              navigation,
+              searchEnabled,
+              sortMode,
+              exportMode,
+              theme: selectedTheme,
+              primaryTableId,
+            },
           }),
         })
         if (sessionRes.ok) {
@@ -261,7 +365,21 @@ function App() {
         // La sauvegarde de session est secondaire : son échec ne bloque pas l'ouverture de la webapp.
       }
 
-      setAppSeed({ archetypeOverrides, layoutOverrides, primaryTableId, showChartWidget, sessionId: newSessionId })
+      setAppSeed({
+        archetypeOverrides,
+        layoutOverrides,
+        primaryTableId,
+        showChartWidget,
+        showStatsWidget,
+        canEdit,
+        density,
+        navigation,
+        searchEnabled,
+        sortMode,
+        exportMode,
+        sessionId: newSessionId,
+      })
+      setTheme(selectedTheme)
       setStep('app')
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Erreur lors de la création.')
@@ -276,6 +394,29 @@ function App() {
   const activeSheet     = selectedSheets.find((s) => s.name === activeSheetName) ?? selectedSheets[0] ?? null
   const activeTable     = activeSheet?.tables.find((t) => t.id === activeTableId) ?? activeSheet?.tables[0] ?? null
   const missingKeyCount = allTables.filter((t) => !t.columns.some((c) => c.isPrimaryKey && !c.excluded)).length
+
+  const questionnaireTables = allTables.map((table) => {
+    const { columns, rows } = getIncludedTableData(table)
+    return {
+      tableName: table.tableName,
+      rowCount: rows.length,
+      analyzed: analyzeColumns(columns, rows),
+    }
+  })
+  const hasImages = questionnaireTables.some((table) =>
+    table.analyzed.some((column) => column.role === 'image')
+  )
+  const hasMeaningfulChart = questionnaireTables.some((table) =>
+    findChartRecommendation(table.analyzed) !== null
+  )
+  const questionBank = buildQuestionBank({
+    tables: questionnaireTables,
+    hasImages,
+    hasMeaningfulChart,
+  })
+  const proposalPreviewTable = allTables.find(
+    (table) => table.tableName === answers['primary-table']?.delta.primaryTableName
+  ) ?? allTables[0]
 
   const tableNames         = allTables.map((t) => t.tableName)
   const duplicateNames     = tableNames.filter((name, idx) => tableNames.indexOf(name) !== idx)
@@ -295,12 +436,14 @@ function App() {
         { key: 'config', label: 'Configurer' },
         { key: 'confirm', label: 'Créer'     },
         { key: 'questionnaire', label: 'Personnaliser' },
+        { key: 'proposals', label: 'Choisir' },
       ]
     : [
         { key: 'upload', label: 'Importer'   },
         { key: 'config', label: 'Configurer' },
         { key: 'confirm', label: 'Créer'     },
         { key: 'questionnaire', label: 'Personnaliser' },
+        { key: 'proposals', label: 'Choisir' },
       ]
 
   return (
@@ -337,6 +480,11 @@ function App() {
             <DropZone onFileSelected={handleFileSelected} />
             {isLoading && <p className="upload-loading">Analyse du fichier en cours…</p>}
             {error    && <p className="upload-error">{error}</p>}
+            <SessionResume
+              onResume={handleResumeSession}
+              isLoading={isResuming}
+              error={resumeError}
+            />
           </div>
         )}
 
@@ -447,14 +595,27 @@ function App() {
           />
         )}
 
-        {/* Étape 5 : Questionnaire de pondération */}
+        {/* Étape 5 : Questionnaire de personnalisation */}
         {step === 'questionnaire' && (
           <StepQuestionnaire
-            questions={buildQuestionBank(allTables.map((t) => ({ tableName: t.tableName, rowCount: t.rows.length })))}
+            questions={questionBank}
             answers={answers}
             onAnswer={handleAnswer}
             onBack={() => setStep('confirm')}
-            onCreateWebApp={handleCreateWebApp}
+            onCreateWebApp={handleReviewProposals}
+            isCreating={isCreating}
+            error={createError}
+          />
+        )}
+
+        {step === 'proposals' && uiProposals.length === 3 && proposalPreviewTable && (
+          <StepUiProposals
+            proposals={uiProposals}
+            table={proposalPreviewTable}
+            selectedId={selectedProposalId}
+            onSelect={setSelectedProposalId}
+            onBack={() => setStep('questionnaire')}
+            onConfirm={handleCreateWebApp}
             isCreating={isCreating}
             error={createError}
           />
@@ -463,11 +624,18 @@ function App() {
         {step === 'app' && appSeed && (
           <GeneratedApp
             tables={allTables}
-            onBack={() => setStep('confirm')}
+            onBack={() => setStep('questionnaire')}
             initialArchetypeOverrides={appSeed.archetypeOverrides}
             initialLayoutOverrides={appSeed.layoutOverrides}
             initialActiveTableId={appSeed.primaryTableId}
             showChartWidget={appSeed.showChartWidget}
+            showStatsWidget={appSeed.showStatsWidget}
+            canEdit={appSeed.canEdit}
+            density={appSeed.density}
+            navigation={appSeed.navigation}
+            searchEnabled={appSeed.searchEnabled}
+            sortMode={appSeed.sortMode}
+            exportMode={appSeed.exportMode}
             sessionId={appSeed.sessionId}
           />
         )}

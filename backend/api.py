@@ -1,5 +1,6 @@
 import tempfile
 import os
+import uuid
 from io import BytesIO
 from typing import Any, Optional
 
@@ -16,7 +17,7 @@ from services.pk_detector import detect_primary_keys, get_pk_candidates
 from services.fk_detector import detect_foreign_keys
 from services.database_connection import get_connection
 from services.db_creator import create_tables
-from services.session_store import save_session
+from services.session_store import load_session, save_session
 from services.db_crud import (
     get_table_schema, get_table_rows,
     insert_row, update_row, delete_row,
@@ -67,6 +68,13 @@ class SessionPayload(BaseModel):
 
 class SessionResponse(BaseModel):
     id: str
+
+
+class SessionDetailResponse(BaseModel):
+    id: str
+    createdAt: str
+    dbSchema: CreatePayload
+    preset: dict
 
 @app.post("/parse")
 async def parse_excel(file: UploadFile):
@@ -198,6 +206,36 @@ def create_session(payload: SessionPayload):
         conn.close()
 
     return {"id": session_id}
+
+
+@app.get("/sessions/{session_id}", response_model=SessionDetailResponse)
+def read_session(session_id: str):
+    try:
+        normalized_id = str(uuid.UUID(session_id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Identifiant de session invalide.")
+
+    try:
+        conn = get_connection()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Connexion à la base de données impossible : {exc}"
+        )
+
+    try:
+        session = load_session(conn, normalized_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du chargement de la session : {exc}"
+        )
+    finally:
+        conn.close()
+
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session introuvable.")
+    return session
 
 
 # ─── CRUD generique ───────────────────────────────────────────────────────────

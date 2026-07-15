@@ -1,240 +1,288 @@
-// Banque des 20 questions du questionnaire de pondération. 19 questions
-// statiques + 1 question dynamique (q15, générée à partir des tables
-// réellement importées). Module pur, sans dépendance à React.
-
 import type { PreferenceDelta } from './preferenceEngine'
 
-export type QuestionCategory = 'usage' | 'visualisation' | 'edition' | 'volume' | 'style' | 'collaboration'
+export type QuestionCategory = 'presentation' | 'usage' | 'contenu' | 'confort'
 
 export interface QuestionOption {
   id: string
   label: string
+  impact: string
   delta: PreferenceDelta
 }
 
 export interface Question {
   id: string
   category: QuestionCategory
+  summaryLabel: string
   text: string
   options: QuestionOption[]
 }
 
-export const CATEGORY_LABELS: Record<QuestionCategory, string> = {
-  usage: 'Usage & intention',
-  visualisation: 'Visualisation & reporting',
-  edition: 'Édition & workflow',
-  volume: 'Volume & organisation',
-  style: 'Style & présentation',
-  collaboration: 'Collaboration & accès',
+export interface QuestionBankContext {
+  tables: readonly { tableName: string; rowCount: number }[]
+  hasImages: boolean
+  hasMeaningfulChart: boolean
 }
 
-const STATIC_QUESTIONS: Question[] = [
-  {
-    id: 'q1',
-    category: 'usage',
-    text: 'Qui va utiliser principalement cette webapp ?',
-    options: [
-      { id: 'solo', label: 'Moi seul, pour suivre mes données', delta: { interaction: 1 } },
-      { id: 'team', label: 'Mon équipe en interne', delta: { interaction: 1 } },
-      { id: 'external', label: 'Des clients/partenaires externes', delta: { layout: { cards: 1 }, interaction: -1 } },
-    ],
-  },
-  {
-    id: 'q2',
-    category: 'usage',
-    text: 'À quelle fréquence les données vont-elles changer ?',
-    options: [
-      { id: 'rare', label: 'Rarement (référence stable)', delta: { interaction: -2, layout: { table: 1 } } },
-      { id: 'regular', label: 'Régulièrement', delta: { interaction: 2 } },
-      { id: 'daily', label: 'Plusieurs fois par jour', delta: { interaction: 2, widget: { stats: 1 } } },
-    ],
-  },
-  {
-    id: 'q3',
-    category: 'usage',
-    text: 'Le but principal de cette webapp est de...',
-    options: [
-      { id: 'consult', label: 'Consulter et rechercher rapidement l\'information', delta: { layout: { table: 2 }, interaction: -1 } },
-      { id: 'follow', label: 'Suivre l\'évolution d\'indicateurs', delta: { layout: { dashboard: 2 }, widget: { stats: 2 } } },
-      { id: 'manage', label: 'Gérer et modifier les données au quotidien', delta: { interaction: 2, layout: { table: 1 } } },
-      { id: 'showcase', label: 'Présenter les données de façon attractive (catalogue, portfolio)', delta: { layout: { gallery: 2, cards: 1 } } },
-    ],
-  },
-  {
-    id: 'q4',
-    category: 'usage',
-    text: 'Combien de personnes vont utiliser cette webapp en même temps ?',
-    options: [
-      { id: 'one', label: 'Une seule personne', delta: {} },
-      { id: 'small-team', label: 'Une petite équipe (2-10)', delta: { interaction: 1 } },
-      { id: 'many', label: 'Beaucoup d\'utilisateurs', delta: { interaction: 1 } },
-    ],
-  },
-  {
-    id: 'q5',
-    category: 'visualisation',
-    text: 'As-tu besoin de graphiques (courbes, barres) pour visualiser les données ?',
-    options: [
-      { id: 'essential', label: 'Oui, essentiel', delta: { widget: { chart: 3 }, layout: { dashboard: 2 } } },
-      { id: 'nice', label: 'Ce serait un plus', delta: { widget: { chart: 1 } } },
-      { id: 'no', label: 'Non, pas nécessaire', delta: { widget: { chart: -1 } } },
-    ],
-  },
-  {
-    id: 'q6',
-    category: 'visualisation',
-    text: 'Veux-tu voir des indicateurs clés en un coup d\'œil (totaux, moyennes) ?',
-    options: [
-      { id: 'yes', label: 'Oui', delta: { widget: { stats: 2 }, layout: { dashboard: 1 } } },
-      { id: 'no', label: 'Non, je préfère voir les données brutes', delta: { layout: { table: 1 } } },
-    ],
-  },
-  {
-    id: 'q7',
-    category: 'visualisation',
-    text: 'Le suivi de tendances dans le temps est important ?',
-    options: [
-      { id: 'yes', label: 'Très important', delta: { widget: { chart: 2 }, archetype: { sales: 1 } } },
-      { id: 'no', label: 'Peu important', delta: { widget: { chart: -1 } } },
-    ],
-  },
-  {
-    id: 'q8',
-    category: 'visualisation',
-    text: 'Compares-tu souvent des catégories entre elles (ex : ventes par région) ?',
-    options: [
-      { id: 'yes', label: 'Oui, souvent', delta: { widget: { chart: 2 }, layout: { dashboard: 1 } } },
-      { id: 'no', label: 'Rarement', delta: { widget: { chart: -1 } } },
-    ],
-  },
-  {
-    id: 'q9',
-    category: 'edition',
-    text: 'À quelle fréquence ajoutes-tu de nouvelles lignes ?',
-    options: [
-      { id: 'often', label: 'Très souvent', delta: { interaction: 2 } },
-      { id: 'sometimes', label: 'De temps en temps', delta: { interaction: 1 } },
-      { id: 'rare', label: 'Presque jamais', delta: { interaction: -2 } },
-    ],
-  },
-  {
-    id: 'q10',
-    category: 'edition',
-    text: 'As-tu besoin de formulaires détaillés pour chaque entrée ?',
-    options: [
-      { id: 'detailed', label: 'Oui, beaucoup de champs', delta: { layout: { table: 1 }, interaction: 1 } },
-      { id: 'quick', label: 'Non, l\'édition rapide en ligne suffit', delta: { interaction: 2, layout: { table: 2 } } },
-    ],
-  },
-  {
-    id: 'q11',
-    category: 'edition',
-    text: 'Les données doivent-elles être validées avant enregistrement (champs obligatoires, formats) ?',
-    options: [
-      { id: 'strict', label: 'Oui, strictement', delta: { interaction: 1 } },
-      { id: 'flexible', label: 'Non, flexibilité suffisante', delta: {} },
-    ],
-  },
-  {
-    id: 'q12',
-    category: 'edition',
-    text: 'Prévois-tu de supprimer souvent des lignes ?',
-    options: [
-      { id: 'often', label: 'Oui, régulièrement', delta: { interaction: 1 } },
-      { id: 'rare', label: 'Rarement', delta: { interaction: -1 } },
-    ],
-  },
-  {
-    id: 'q13',
-    category: 'volume',
-    text: 'Combien de lignes environ contient ta table principale ?',
-    options: [
-      { id: 'small', label: 'Moins de 50', delta: { layout: { cards: 1, gallery: 1 } } },
-      { id: 'medium', label: 'Entre 50 et 500', delta: { layout: { table: 1 } } },
-      { id: 'large', label: 'Plus de 500', delta: { layout: { table: 2 }, widget: { stats: 1 } } },
-    ],
-  },
-  {
-    id: 'q14',
-    category: 'volume',
-    text: 'As-tu besoin de rechercher/filtrer souvent dans les données ?',
-    options: [
-      { id: 'always', label: 'En permanence', delta: { layout: { table: 2 } } },
-      { id: 'sometimes', label: 'Occasionnellement', delta: { layout: { table: 1 } } },
-      { id: 'rare', label: 'Rarement', delta: { layout: { cards: 1 } } },
-    ],
-  },
-  {
-    id: 'q16',
-    category: 'style',
-    text: 'Quelle densité d\'affichage préfères-tu ?',
-    options: [
-      { id: 'compact', label: 'Compacte, voir un maximum d\'information', delta: { density: 2 } },
-      { id: 'spacious', label: 'Aérée, plus lisible', delta: { density: -2 } },
-    ],
-  },
-  {
-    id: 'q17',
-    category: 'style',
-    text: 'Les images sont-elles importantes dans tes données (produits, profils…) ?',
-    options: [
-      { id: 'yes', label: 'Oui, très importantes', delta: { layout: { gallery: 2 } } },
-      { id: 'no', label: 'Non, peu ou pas d\'images', delta: { layout: { gallery: -1 } } },
-    ],
-  },
-  {
-    id: 'q18',
-    category: 'style',
-    text: 'Préfères-tu une présentation en tableau classique ou en cartes visuelles ?',
-    options: [
-      { id: 'table', label: 'Tableau classique', delta: { layout: { table: 2 } } },
-      { id: 'cards', label: 'Cartes visuelles', delta: { layout: { cards: 2 } } },
-      { id: 'mixed', label: 'Mélange selon la table', delta: {} },
-    ],
-  },
-  {
-    id: 'q19',
-    category: 'collaboration',
-    text: 'Plusieurs personnes modifieront-elles les mêmes données en parallèle ?',
-    options: [
-      { id: 'yes', label: 'Oui', delta: { interaction: 2 } },
-      { id: 'no', label: 'Non, un seul éditeur à la fois', delta: { interaction: -1 } },
-    ],
-  },
-  {
-    id: 'q20',
-    category: 'collaboration',
-    text: 'As-tu besoin de partager cette webapp avec des personnes externes ?',
-    options: [
-      { id: 'yes', label: 'Oui', delta: { layout: { cards: 1 }, interaction: -1 } },
-      { id: 'no', label: 'Non, usage interne uniquement', delta: {} },
-    ],
-  },
-]
+export const CATEGORY_LABELS: Record<QuestionCategory, string> = {
+  presentation: 'Présentation',
+  usage: 'Utilisation',
+  contenu: 'Contenu',
+  confort: 'Confort de lecture',
+}
 
-function buildPrimaryTableQuestion(
-  tables: readonly { tableName: string; rowCount: number }[],
-): Question {
-  const top = [...tables].sort((a, b) => b.rowCount - a.rowCount).slice(0, 3)
+function buildLayoutQuestion(hasImages: boolean, hasMeaningfulChart: boolean): Question {
   const options: QuestionOption[] = [
-    ...top.map((t) => ({
-      id: `primary-${t.tableName}`,
-      label: t.tableName,
-      delta: { primaryTableName: t.tableName },
-    })),
-    { id: 'primary-none', label: 'Aucune en particulier', delta: {} },
+    {
+      id: 'table',
+      label: 'Un tableau clair et structuré',
+      impact: 'Vue en tableau',
+      delta: { layout: { table: 4 } },
+    },
+    {
+      id: 'cards',
+      label: 'Des cartes faciles à parcourir',
+      impact: 'Vue en cartes',
+      delta: { layout: { cards: 4 } },
+    },
   ]
+
+  if (hasMeaningfulChart) {
+    options.push({
+      id: 'dashboard',
+      label: 'Un tableau de bord de synthèse',
+      impact: 'Tableau de bord',
+      delta: { layout: { dashboard: 4 } },
+    })
+  }
+
+  if (hasImages) {
+    options.push({
+      id: 'gallery',
+      label: 'Une galerie qui met les images en avant',
+      impact: 'Vue en galerie',
+      delta: { layout: { gallery: 4 } },
+    })
+  }
+
   return {
-    id: 'q15',
-    category: 'volume',
-    text: 'Quelle table est la plus importante pour toi ?',
+    id: 'layout',
+    category: 'presentation',
+    summaryLabel: 'Vue principale',
+    text: 'Comment veux-tu parcourir tes données ?',
     options,
   }
 }
 
-export function buildQuestionBank(
+function buildInsightsQuestion(hasMeaningfulChart: boolean): Question {
+  const options: QuestionOption[] = [
+    {
+      id: 'raw',
+      label: 'Afficher surtout les données',
+      impact: 'Données essentielles',
+      delta: { widget: { chart: -3, stats: -3 } },
+    },
+    {
+      id: 'stats',
+      label: 'Ajouter les indicateurs clés',
+      impact: 'Indicateurs clés',
+      delta: { widget: { chart: -3, stats: 3 } },
+    },
+  ]
+
+  if (hasMeaningfulChart) {
+    options.push({
+      id: 'charts',
+      label: 'Ajouter les indicateurs et des graphiques',
+      impact: 'Indicateurs + graphiques',
+      delta: { widget: { chart: 3, stats: 3 } },
+    })
+  }
+
+  return {
+    id: 'insights',
+    category: 'contenu',
+    summaryLabel: 'Synthèse',
+    text: 'Quel niveau de synthèse souhaites-tu ?',
+    options,
+  }
+}
+
+function buildPrimaryTableQuestion(
   tables: readonly { tableName: string; rowCount: number }[],
-): Question[] {
-  const q15 = buildPrimaryTableQuestion(tables)
-  return [...STATIC_QUESTIONS.slice(0, 14), q15, ...STATIC_QUESTIONS.slice(14)]
+): Question | null {
+  if (tables.length < 2) return null
+
+  const options = [...tables]
+    .sort((a, b) => b.rowCount - a.rowCount)
+    .slice(0, 4)
+    .map((table) => ({
+      id: `primary-${table.tableName}`,
+      label: table.tableName,
+      impact: table.tableName,
+      delta: { primaryTableName: table.tableName },
+    }))
+
+  return {
+    id: 'primary-table',
+    category: 'contenu',
+    summaryLabel: 'Écran d’accueil',
+    text: 'Quelle table doit s’ouvrir en premier ?',
+    options,
+  }
+}
+
+export function buildQuestionBank(context: QuestionBankContext): Question[] {
+  const primaryTableQuestion = buildPrimaryTableQuestion(context.tables)
+
+  return [
+    buildLayoutQuestion(context.hasImages, context.hasMeaningfulChart),
+    {
+      id: 'access',
+      category: 'usage',
+      summaryLabel: 'Actions',
+      text: 'Les utilisateurs doivent-ils modifier les données ?',
+      options: [
+        {
+          id: 'edit',
+          label: 'Oui, ajouter, modifier et supprimer',
+          impact: 'Modification autorisée',
+          delta: { interaction: 2 },
+        },
+        {
+          id: 'read',
+          label: 'Non, consultation uniquement',
+          impact: 'Lecture seule',
+          delta: { interaction: -2 },
+        },
+      ],
+    },
+    buildInsightsQuestion(context.hasMeaningfulChart),
+    {
+      id: 'density',
+      category: 'confort',
+      summaryLabel: 'Densité',
+      text: 'Quelle densité d’affichage préfères-tu ?',
+      options: [
+        {
+          id: 'compact',
+          label: 'Compacte, pour voir plus de données',
+          impact: 'Affichage compact',
+          delta: { density: 2 },
+        },
+        {
+          id: 'comfortable',
+          label: 'Aérée, pour faciliter la lecture',
+          impact: 'Affichage aéré',
+          delta: { density: -2 },
+        },
+      ],
+    },
+    {
+      id: 'navigation',
+      category: 'presentation',
+      summaryLabel: 'Navigation',
+      text: 'Comment veux-tu naviguer entre les tables ?',
+      options: [
+        {
+          id: 'tabs',
+          label: 'Avec des onglets en haut',
+          impact: 'Navigation par onglets',
+          delta: { navigation: 'tabs' },
+        },
+        {
+          id: 'sidebar',
+          label: 'Avec un menu latéral',
+          impact: 'Menu latéral',
+          delta: { navigation: 'sidebar' },
+        },
+      ],
+    },
+    {
+      id: 'search',
+      category: 'usage',
+      summaryLabel: 'Recherche',
+      text: 'Faut-il une recherche rapide dans les données ?',
+      options: [
+        {
+          id: 'visible',
+          label: 'Oui, toujours visible',
+          impact: 'Recherche visible',
+          delta: { searchEnabled: true },
+        },
+        {
+          id: 'hidden',
+          label: 'Non, garder l’interface minimale',
+          impact: 'Sans barre de recherche',
+          delta: { searchEnabled: false },
+        },
+      ],
+    },
+    {
+      id: 'sort',
+      category: 'contenu',
+      summaryLabel: 'Tri initial',
+      text: 'Dans quel ordre afficher les données au départ ?',
+      options: [
+        {
+          id: 'source',
+          label: 'Conserver l’ordre du fichier Excel',
+          impact: 'Ordre du fichier',
+          delta: { sortMode: 'source' },
+        },
+        {
+          id: 'alphabetical',
+          label: 'Trier automatiquement de A à Z',
+          impact: 'Tri alphabétique',
+          delta: { sortMode: 'alphabetical' },
+        },
+      ],
+    },
+    {
+      id: 'exports',
+      category: 'usage',
+      summaryLabel: 'Exports',
+      text: 'Quels exports doivent être proposés ?',
+      options: [
+        {
+          id: 'all',
+          label: 'Excel et SQL',
+          impact: 'Exports Excel + SQL',
+          delta: { exportMode: 'all' },
+        },
+        {
+          id: 'excel',
+          label: 'Excel uniquement',
+          impact: 'Export Excel',
+          delta: { exportMode: 'excel' },
+        },
+        {
+          id: 'none',
+          label: 'Aucun export',
+          impact: 'Exports masqués',
+          delta: { exportMode: 'none' },
+        },
+      ],
+    },
+    {
+      id: 'theme',
+      category: 'confort',
+      summaryLabel: 'Thème',
+      text: 'Quel thème utiliser pour la webapp ?',
+      options: [
+        {
+          id: 'dark',
+          label: 'Sombre, pour réduire la luminosité',
+          impact: 'Thème sombre',
+          delta: { theme: 'dark' },
+        },
+        {
+          id: 'light',
+          label: 'Clair, pour une lecture lumineuse',
+          impact: 'Thème clair',
+          delta: { theme: 'light' },
+        },
+      ],
+    },
+    ...(primaryTableQuestion ? [primaryTableQuestion] : []),
+  ]
 }

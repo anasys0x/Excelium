@@ -42,3 +42,29 @@ def save_session(conn, schema: dict, preset: dict) -> str:
     finally:
         cursor.close()
     return session_id
+
+
+def load_session(conn, session_id: str) -> dict | None:
+    """Retourne le schéma et le preset d'une session, ou None si elle n'existe pas."""
+    ensure_sessions_table(conn)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT id, created_at, schema_json, preset_json
+            FROM webapp_sessions
+            WHERE id = %s;
+            """,
+            (session_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return {
+            "id": str(row[0]),
+            "createdAt": row[1].isoformat(),
+            "dbSchema": row[2],
+            "preset": row[3],
+        }
+    finally:
+        cursor.close()

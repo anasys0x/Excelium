@@ -6,6 +6,12 @@ import { ARCHETYPE_ORDER, DETECTION_THRESHOLD } from './archetype'
 import type { TableArchetype } from './archetype'
 import type { LayoutKind } from './semantic'
 
+export type DisplayDensity = 'compact' | 'comfortable'
+export type NavigationMode = 'tabs' | 'sidebar'
+export type SortMode = 'source' | 'alphabetical'
+export type ExportMode = 'all' | 'excel' | 'none'
+export type AppTheme = 'dark' | 'light'
+
 export interface PreferenceDelta {
   archetype?: Partial<Record<TableArchetype, number>>
   layout?: Partial<Record<LayoutKind, number>>
@@ -13,6 +19,11 @@ export interface PreferenceDelta {
   interaction?: number
   density?: number
   primaryTableName?: string
+  navigation?: NavigationMode
+  searchEnabled?: boolean
+  sortMode?: SortMode
+  exportMode?: ExportMode
+  theme?: AppTheme
 }
 
 export interface QuestionAnswer {
@@ -28,6 +39,11 @@ export interface PreferenceProfile {
   interaction: number
   density: number
   primaryTableHint?: string
+  navigation: NavigationMode
+  searchEnabled: boolean
+  sortMode: SortMode
+  exportMode: ExportMode
+  theme: AppTheme
 }
 
 function addRecord<K extends string>(
@@ -49,6 +65,11 @@ export function buildPreferenceProfile(answers: readonly QuestionAnswer[]): Pref
     widget: { chart: 0, stats: 0 },
     interaction: 0,
     density: 0,
+    navigation: 'tabs',
+    searchEnabled: true,
+    sortMode: 'source',
+    exportMode: 'all',
+    theme: 'dark',
   }
 
   return answers.reduce<PreferenceProfile>((profile, answer) => {
@@ -63,6 +84,11 @@ export function buildPreferenceProfile(answers: readonly QuestionAnswer[]): Pref
       interaction: profile.interaction + (delta.interaction ?? 0),
       density: profile.density + (delta.density ?? 0),
       primaryTableHint: delta.primaryTableName ?? profile.primaryTableHint,
+      navigation: delta.navigation ?? profile.navigation,
+      searchEnabled: delta.searchEnabled ?? profile.searchEnabled,
+      sortMode: delta.sortMode ?? profile.sortMode,
+      exportMode: delta.exportMode ?? profile.exportMode,
+      theme: delta.theme ?? profile.theme,
     }
   }, initial)
 }
@@ -115,4 +141,12 @@ export function shouldShowChartWidget(profile: PreferenceProfile): boolean {
 
 export function shouldShowStatsWidget(profile: PreferenceProfile): boolean {
   return profile.widget.stats >= WIDGET_THRESHOLD
+}
+
+export function shouldAllowEditing(profile: PreferenceProfile): boolean {
+  return profile.interaction > 0
+}
+
+export function getDisplayDensity(profile: PreferenceProfile): DisplayDensity {
+  return profile.density > 0 ? 'compact' : 'comfortable'
 }

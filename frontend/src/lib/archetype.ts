@@ -19,7 +19,7 @@ export interface ArchetypePreset {
 
 export const ARCHETYPE_PRESETS: Record<TableArchetype, ArchetypePreset> = {
   contacts: {
-    label: 'Contacts',
+    label: 'Annuaire de personnes',
     description: 'Annuaire de personnes',
     defaultLayout: 'cards',
     extraLayouts: ['cards'],
@@ -59,7 +59,8 @@ export const ARCHETYPE_ORDER: TableArchetype[] = ['contacts', 'sales', 'inventor
 // --- Signaux de détection (noms de colonnes) ---
 const EMAIL_RE   = /(mail|courriel)/i
 const PHONE_RE   = /(t[ée]l[ée]?p?h?|phone|portable|mobile|gsm|fax)/i
-const PERSON_RE  = /(^nom|pr[ée]nom|first.?name|last.?name|contact|employ[ée]|personne|utilisateur|user)/i
+const PERSON_RE  = /(^nom|pr[ée]nom|first.?name|last.?name|contact|employ[ée]|personne|utilisateur|user|[ée]l[èe]ve|[ée]tudiant|student|pupil|learner)/i
+const PERSONAL_DETAIL_RE = /(age|âge|naissance|birth|birthday|date.?of.?birth|dob)/i
 const PLACE_RE   = /(lieu|ville|adresse|city|location|salle|pays|address)/i
 const QTY_RE     = /(stock|quantit|qty|quantity|inventaire|unit[ée]s?$)/i
 const PRODUCT_RE = /(produit|article|item|product)/i
@@ -68,7 +69,7 @@ const EVENT_RE   = /([ée]v[ée]nement|event|r[ée]union|meeting|rendez|rdv|s[é
 
 // Signaux sur le nom de la table (indice fort)
 const TABLE_NAME_RE: Partial<Record<TableArchetype, RegExp>> = {
-  contacts:  /(contact|client|personne|employ|membre|user|utilisateur|annuaire|[ée]l[èe]ve|[ée]tudiant)/i,
+  contacts:  /(contact|client|personne|employ|membre|user|utilisateur|annuaire|[ée]l[èe]ve|[ée]tudiant|student|pupil|learner)/i,
   sales:     /(vente|sale|commande|order|transaction|facture|achat)/i,
   inventory: /(produit|product|inventaire|stock|catalogue|article)/i,
   events:    /([ée]v[ée]nement|event|planning|agenda|r[ée]union|calendrier)/i,
@@ -78,6 +79,7 @@ interface Signals {
   hasEmail: boolean
   hasPhone: boolean
   hasPerson: boolean
+  hasPersonalDetails: boolean
   hasPlace: boolean
   hasQty: boolean
   hasProduct: boolean
@@ -97,6 +99,7 @@ function collectSignals(columns: AnalyzedColumn[]): Signals {
     hasEmail: anyName(EMAIL_RE),
     hasPhone: anyName(PHONE_RE),
     hasPerson: anyName(PERSON_RE),
+    hasPersonalDetails: anyName(PERSONAL_DETAIL_RE),
     hasPlace: anyName(PLACE_RE),
     hasQty: anyName(QTY_RE),
     hasProduct: anyName(PRODUCT_RE),
@@ -115,6 +118,7 @@ function scoreArchetypes(s: Signals, tableName: string): Record<TableArchetype, 
   return {
     contacts:
       (s.hasEmail ? 3 : 0) + (s.hasPhone ? 2 : 0) + (s.hasPerson ? 2 : 0) +
+      (s.hasPerson && s.hasPersonalDetails ? 2 : 0) +
       (s.hasCurrency ? -2 : 0) + nameBonus('contacts'),
     sales:
       (s.hasDate && s.hasCurrency ? 3 : 0) + (s.hasClient ? 2 : 0) +

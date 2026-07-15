@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TableConfig } from '../../App'
 import { analyzeColumns, suggestLayouts } from '../../lib/semantic'
 import type { LayoutKind } from '../../lib/semantic'
-import { ARCHETYPE_ORDER, ARCHETYPE_PRESETS, detectArchetype, presetSortOrder } from '../../lib/archetype'
+import { ARCHETYPE_PRESETS, detectArchetype } from '../../lib/archetype'
 import type { TableArchetype } from '../../lib/archetype'
+import type { DisplayDensity, ExportMode, NavigationMode, SortMode } from '../../lib/preferenceEngine'
 import TableView from './TableView'
 import GalleryView from './GalleryView'
 import DashboardView from './DashboardView'
 import CardListView from './CardListView'
-import CustomView from './CustomView'
 import DetailPanel from './DetailPanel'
 import RowForm from './RowForm'
 import ImpactModal from './ImpactModal'
@@ -30,6 +30,13 @@ interface Props {
   initialLayoutOverrides: Record<string, LayoutKind>
   initialActiveTableId: string | null
   showChartWidget: boolean
+  showStatsWidget: boolean
+  canEdit: boolean
+  density: DisplayDensity
+  navigation: NavigationMode
+  searchEnabled: boolean
+  sortMode: SortMode
+  exportMode: ExportMode
   sessionId: string | null
 }
 type FormMode = 'create' | 'edit' | null
@@ -43,22 +50,19 @@ interface PendingOp {
 function GeneratedApp({
   tables, onBack,
   initialArchetypeOverrides, initialLayoutOverrides, initialActiveTableId,
-  showChartWidget, sessionId,
+  showChartWidget, showStatsWidget, canEdit, density,
+  navigation, searchEnabled, sortMode, exportMode, sessionId,
 }: Props) {
   const initialTabIndex = initialActiveTableId
     ? Math.max(0, tables.findIndex((t) => t.id === initialActiveTableId))
     : 0
-  // Onglet actif : index de table, ou 'custom' pour « Ma vue »
-  const [activeTab, setActiveTab] = useState<number | 'custom'>(initialTabIndex)
-  const activeIndex = typeof activeTab === 'number' ? activeTab : 0
-  // Choix par table : préremplis par le questionnaire, modifiables ensuite
-  const [archetypeOverrides, setArchetypeOverrides] = useState<Record<string, TableArchetype>>(initialArchetypeOverrides)
-  const [layoutOverrides, setLayoutOverrides] = useState<Record<string, LayoutKind>>(initialLayoutOverrides)
+  const [activeIndex, setActiveIndex] = useState(initialTabIndex)
   const [selectedRow, setSelectedRow] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
   const [liveRows, setLiveRows]       = useState<Record<string, unknown>[]>([])
-  const [loading, setLoading]         = useState(false)
+  const [loading, setLoading]         = useState(true)
   const [fetchError, setFetchError]   = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [formMode, setFormMode]       = useState<FormMode>(null)
   const [editingRow, setEditingRow]   = useState<Record<string, unknown> | null>(null)
   // Impact analysis state
@@ -66,11 +70,11 @@ function GeneratedApp({
   const [pendingOp, setPendingOp]     = useState<PendingOp | null>(null)
 
   const active       = tables[activeIndex]
-  const includedCols = active.columns.filter((c) => !c.excluded)
+  const includedCols = useMemo(() => active.columns.filter((c) => !c.excluded), [active.columns])
   const pkCol        = includedCols.find((c) => c.isPrimaryKey)
   const tableParam   = tables.map((t) => t.tableName).join(',')
 
-  const fetchRows = async () => {
+  const fetchRows = useCallback(async () => {
     setLoading(true)
     setFetchError(null)
     try {
@@ -83,12 +87,27 @@ function GeneratedApp({
     } finally {
       setLoading(false)
     }
-  }
+  }, [active.tableName])
 
   useEffect(() => {
-    setSelectedRow(null)
-    setFormMode(null)
-    fetchRows()
+    let cancelled = false
+
+    fetch(`${API}/tables/${active.tableName}/rows`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return response.json()
+      })
+      .then((data) => {
+        if (!cancelled) setLiveRows(data.rows ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setFetchError('Impossible de charger les données. Vérifiez que le backend est lancé.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => { cancelled = true }
   }, [active.tableName])
 
   // ── Impact check ─────────────────────────────────────────────────────────────
@@ -204,90 +223,113 @@ function GeneratedApp({
   }
 
   // ── Derived display data ──────────────────────────────────────────────────────
+  const sourceRows = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase('fr')
+    if (!searchEnabled || !normalizedQuery) return liveRows
+    return liveRows.filter((row) =>
+      includedCols.some((column) =>
+        String(row[column.name] ?? '').toLocaleLowerCase('fr').includes(normalizedQuery)
+      )
+    )
+  }, [includedCols, liveRows, searchEnabled, searchQuery])
   const rowArrays = useMemo(
-    () => liveRows.map((row) => includedCols.map((c) => row[c.name])),
-    [liveRows, active.tableName],
+    () => sourceRows.map((row) => includedCols.map((c) => row[c.name])),
+    [sourceRows, includedCols],
   )
-  const analyzed = useMemo(() => analyzeColumns(includedCols, rowArrays), [active.tableName, liveRows])
+  const analyzed = useMemo(() => analyzeColumns(includedCols, rowArrays), [includedCols, rowArrays])
 
-  // Archétype : détecté, sauf si l'utilisateur a choisi manuellement
+  // Archétype : détection automatique affinée par les réponses du questionnaire.
   const detected  = useMemo(() => detectArchetype(analyzed, active.tableName), [analyzed, active.tableName])
-  const archetype = archetypeOverrides[active.id] ?? detected
+  const archetype = initialArchetypeOverrides[active.id] ?? detected
   const preset    = ARCHETYPE_PRESETS[archetype]
 
   // Layouts : suggérés par le contenu + apportés par le template (sans doublon)
   const layouts = useMemo(() => {
     const suggested = suggestLayouts(analyzed)
-    return [...new Set([...suggested, ...preset.extraLayouts])]
-  }, [analyzed, preset])
+    const preferred = initialLayoutOverrides[active.id]
+    return [...new Set([...suggested, ...preset.extraLayouts, ...(preferred ? [preferred] : [])])]
+  }, [active.id, analyzed, initialLayoutOverrides, preset])
 
-  const chosenLayout = layoutOverrides[active.id]
+  const chosenLayout = initialLayoutOverrides[active.id]
   const effectiveLayout = chosenLayout && layouts.includes(chosenLayout)
     ? chosenLayout
     : layouts.includes(preset.defaultLayout) ? preset.defaultLayout : layouts[0]
 
-  // Tri du preset : ordre d'indices, pour garder la correspondance avec liveRows (CRUD)
+  // Le tri choisi reste un ordre d'indices afin de conserver la correspondance CRUD.
   const displayOrder = useMemo(
-    () => presetSortOrder(rowArrays, analyzed, preset),
-    [rowArrays, analyzed, preset],
+    () => {
+      const indices = rowArrays.map((_, index) => index)
+      if (sortMode === 'source') return indices
+      const sortColumn = analyzed.find((column) => column.role === 'title')
+        ?? analyzed.find((column) => column.role === 'text' || column.role === 'category')
+        ?? analyzed[0]
+      if (!sortColumn) return indices
+      return indices.sort((left, right) =>
+        String(rowArrays[left][sortColumn.index] ?? '').localeCompare(
+          String(rowArrays[right][sortColumn.index] ?? ''),
+          'fr',
+          { sensitivity: 'base' },
+        )
+      )
+    },
+    [rowArrays, analyzed, sortMode],
   )
   const displayRows = useMemo(
     () => displayOrder.map((i) => rowArrays[i]),
     [displayOrder, rowArrays],
   )
   // Ligne d'origine (objet API) correspondant à une position affichée
-  const liveRowAt = (ri: number) => liveRows[displayOrder[ri]]
-
-  // Clé de persistance de « Ma vue », propre au fichier importé
-  const storageKey = useMemo(
-    () => `tablr:ma-vue:${tables.map((t) => t.tableName).join(',')}`,
-    [tables],
-  )
+  const liveRowAt = (ri: number) => sourceRows[displayOrder[ri]]
 
   const selectTable = (i: number) => {
-    setActiveTab(i)
-    setSelectedRow(null)
-  }
-
-  const selectArchetype = (a: TableArchetype) => {
-    setArchetypeOverrides((prev) => ({ ...prev, [active.id]: a }))
-    // Changer de template réinitialise le choix de layout pour cette table
-    setLayoutOverrides((prev) => {
-      const next = { ...prev }
-      delete next[active.id]
-      return next
-    })
+    if (activeIndex === i) return
+    setLoading(true)
+    setFetchError(null)
+    setSearchQuery('')
+    setActiveIndex(i)
     setSelectedRow(null)
     setFormMode(null)
   }
 
   return (
-    <div>
-      {/* Toolbar : onglets (tables + Ma vue) + exports */}
-      <div className="gen-toolbar">
-        <div className="gen-tabs">
-          {tables.map((t, i) => (
+    <div className={`generated-app density-${density} navigation-${navigation}`}>
+      {navigation === 'sidebar' && (
+        <nav className="gen-side-nav" aria-label="Tables">
+          <span className="gen-side-title">Tables</span>
+          {tables.map((table, index) => (
             <button
-              key={t.id}
-              onClick={() => selectTable(i)}
-              className={`gen-tab${activeTab === i ? ' active' : ''}`}
+              key={table.id}
+              onClick={() => selectTable(index)}
+              className={`gen-side-link${activeIndex === index ? ' active' : ''}`}
             >
-              {t.tableName}
+              {table.tableName}
             </button>
           ))}
-          <button
-            onClick={() => { setActiveTab('custom'); setSelectedRow(null); setFormMode(null) }}
-            className={`gen-tab${activeTab === 'custom' ? ' active' : ''}`}
-          >
-            ✦ Ma vue
-          </button>
-        </div>
+        </nav>
+      )}
+
+      {/* Toolbar : tables + exports */}
+      <div className={`gen-toolbar${navigation === 'sidebar' ? ' without-tabs' : ''}`}>
+        {navigation === 'tabs' && (
+          <div className="gen-tabs">
+            {tables.map((t, i) => (
+              <button
+                key={t.id}
+                onClick={() => selectTable(i)}
+                className={`gen-tab${activeIndex === i ? ' active' : ''}`}
+              >
+                {t.tableName}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="export-btns">
           {sessionId && (
             <button
               type="button"
               className="session-badge"
-              title="Copier l'identifiant de session"
+              title={`Copier l'identifiant de session : ${sessionId}`}
+              aria-label={`Copier l'identifiant de session ${sessionId}`}
               onClick={() => {
                 navigator.clipboard.writeText(sessionId)
                 setCopied(true)
@@ -297,24 +339,25 @@ function GeneratedApp({
               Session : {sessionId.slice(0, 8)}… {copied ? '✓ copié' : '⧉'}
             </button>
           )}
-          <a href={`${API}/export/excel?tables=${tableParam}`} download="export.xlsx" className="export-btn export-btn-excel">↓ Excel</a>
-          <a href={`${API}/export/sql?tables=${tableParam}`}   download="export.sql"  className="export-btn export-btn-sql">↓ SQL</a>
+          {exportMode !== 'none' && (
+            <a href={`${API}/export/excel?tables=${tableParam}`} download="export.xlsx" className="export-btn export-btn-excel">↓ Excel</a>
+          )}
+          {exportMode === 'all' && (
+            <a href={`${API}/export/sql?tables=${tableParam}`} download="export.sql" className="export-btn export-btn-sql">↓ SQL</a>
+          )}
         </div>
       </div>
 
-      {/* « Ma vue » : dashboard personnalisé multi-tables */}
-      {activeTab === 'custom' && (
-        <CustomView tables={tables} storageKey={storageKey} />
-      )}
-
-      {activeTab !== 'custom' && (
-      <>
       {/* En-tête table active */}
       <div className="gen-header">
         <div>
           <h1 className="gen-title">{active.tableName}</h1>
           <p className="gen-count">
-            {loading ? 'Chargement…' : `${liveRows.length} enregistrement${liveRows.length !== 1 ? 's' : ''}`}
+            {loading
+              ? 'Chargement…'
+              : searchQuery.trim()
+                ? `${sourceRows.length} résultat${sourceRows.length !== 1 ? 's' : ''} sur ${liveRows.length}`
+                : `${liveRows.length} enregistrement${liveRows.length !== 1 ? 's' : ''}`}
             {!loading && detected !== 'generic' && (
               <span style={{ color: 'var(--text-muted)' }}>
                 {' '}· détecté : {ARCHETYPE_PRESETS[detected].label}
@@ -323,46 +366,26 @@ function GeneratedApp({
           </p>
         </div>
         <div className="gen-controls">
-          {/* Sélecteur de template (suggestion appliquée, choix toujours libre) */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
-            Template
-            <select
-              value={archetype}
-              onChange={(e) => selectArchetype(e.target.value as TableArchetype)}
-              style={{
-                padding: '6px 10px',
-                borderRadius: '6px',
-                border: '1px solid var(--border-strong)',
-                background: 'var(--surface)',
-                color: 'var(--text)',
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              {ARCHETYPE_ORDER.map((a) => (
-                <option key={a} value={a}>
-                  {ARCHETYPE_PRESETS[a].label}{a === detected ? ' (suggéré)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {layouts.length > 1 && (
-            <div className="layout-toggle">
-              {layouts.map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLayoutOverrides((prev) => ({ ...prev, [active.id]: l }))}
-                  className={`layout-btn${effectiveLayout === l ? ' active' : ''}`}
-                >
-                  {LAYOUT_LABELS[l]}
-                </button>
-              ))}
-            </div>
+          {searchEnabled && (
+            <label className="gen-search">
+              <span aria-hidden="true">⌕</span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Rechercher…"
+                aria-label={`Rechercher dans ${active.tableName}`}
+              />
+            </label>
           )}
-          <button className="add-btn" onClick={() => { setFormMode('create'); setEditingRow(null) }}>
-            + Ajouter
-          </button>
+          <span className="gen-mode-badge">
+            {LAYOUT_LABELS[effectiveLayout]} · {canEdit ? 'Modification' : 'Lecture seule'}
+          </span>
+          {canEdit && (
+            <button className="add-btn" onClick={() => { setFormMode('create'); setEditingRow(null) }}>
+              + Ajouter
+            </button>
+          )}
         </div>
       </div>
 
@@ -370,25 +393,32 @@ function GeneratedApp({
 
       {!loading && !fetchError && (
         <>
-          {effectiveLayout === 'table'     && <TableView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} onEdit={(ri) => openEdit(liveRowAt(ri))} onDelete={(ri) => handleDeleteIntent(liveRowAt(ri))} />}
+          {effectiveLayout !== 'dashboard' && (showStatsWidget || showChartWidget) && (
+            <div className="gen-insights">
+              <DashboardView
+                columns={analyzed}
+                rows={displayRows}
+                showChart={showChartWidget}
+                showStats={showStatsWidget}
+              />
+            </div>
+          )}
+          {effectiveLayout === 'table'     && <TableView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} onEdit={canEdit ? (ri) => openEdit(liveRowAt(ri)) : undefined} onDelete={canEdit ? (ri) => handleDeleteIntent(liveRowAt(ri)) : undefined} />}
           {effectiveLayout === 'gallery'   && <GalleryView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} />}
           {effectiveLayout === 'cards'     && <CardListView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} />}
-          {effectiveLayout === 'dashboard' && <DashboardView columns={analyzed} rows={displayRows} showChart={showChartWidget} />}
+          {effectiveLayout === 'dashboard' && <DashboardView columns={analyzed} rows={displayRows} showChart={showChartWidget} showStats={showStatsWidget} />}
         </>
       )}
-      </>
-      )}
-
-      <button className="back-btn" onClick={onBack}>← Retour</button>
+      <button className="back-btn" onClick={onBack}>← Modifier mes réponses</button>
 
       {/* Detail panel */}
-      {activeTab !== 'custom' && selectedRow !== null && displayRows[selectedRow] && (
+      {selectedRow !== null && displayRows[selectedRow] && (
         <DetailPanel
           columns={analyzed}
           row={displayRows[selectedRow]}
           onClose={() => setSelectedRow(null)}
-          onEdit={() => openEdit(liveRowAt(selectedRow!))}
-          onDelete={() => handleDeleteIntent(liveRowAt(selectedRow!))}
+          onEdit={canEdit ? () => openEdit(liveRowAt(selectedRow!)) : undefined}
+          onDelete={canEdit ? () => handleDeleteIntent(liveRowAt(selectedRow!)) : undefined}
         />
       )}
 

@@ -17,52 +17,117 @@ function StepQuestionnaire({ questions, answers, onAnswer, onBack, onCreateWebAp
   const [index, setIndex] = useState(0)
   const question = questions[index]
   const total = questions.length
-  const selected = answers[question.id]
+  const validAnswer = (item: Question): QuestionAnswer | undefined => {
+    const answer = answers[item.id]
+    return item.options.some((option) => option.id === answer?.optionId) ? answer : undefined
+  }
+  const selected = validAnswer(question)
+  const answeredCount = questions.filter((item) => validAnswer(item)).length
+  const isLastQuestion = index === total - 1
+  const isComplete = answeredCount === total
 
   const selectOption = (option: QuestionOption) => {
     onAnswer({ questionId: question.id, optionId: option.id, delta: option.delta })
   }
 
+  const answerImpact = (item: Question): string => {
+    const answer = validAnswer(item)
+    if (!answer) return 'À définir'
+    return item.options.find((option) => option.id === answer.optionId)?.impact ?? 'À définir'
+  }
+
   return (
     <div className="questionnaire-section">
-      <div className="questionnaire-progress">
-        <div className="questionnaire-progress-bar">
-          <div
-            className="questionnaire-progress-fill"
-            style={{ width: `${((index + 1) / total) * 100}%` }}
-          />
+      <div className="questionnaire-heading">
+        <div>
+          <p className="questionnaire-kicker">Personnalisation</p>
+          <h1 className="questionnaire-title">Construisons ta webapp</h1>
+          <p className="questionnaire-intro">
+            Chaque réponse configure directement le rendu généré.
+          </p>
         </div>
-        <span className="questionnaire-progress-label">Question {index + 1}/{total}</span>
+        <span className="questionnaire-count">{answeredCount}/{total} réponses</span>
       </div>
 
-      <QuestionCard
-        question={question}
-        selectedOptionId={selected?.optionId ?? null}
-        onSelect={selectOption}
-      />
+      <div className="questionnaire-layout">
+        <div className="questionnaire-main">
+          <div className="questionnaire-progress">
+            <div className="questionnaire-progress-copy">
+              <span>Question {index + 1} sur {total}</span>
+              <span>{Math.round(((index + 1) / total) * 100)} %</span>
+            </div>
+            <div className="questionnaire-progress-bar">
+              <div
+                className="questionnaire-progress-fill"
+                style={{ width: `${((index + 1) / total) * 100}%` }}
+              />
+            </div>
+          </div>
 
-      {error && <div className="confirm-error">{error}</div>}
+          <QuestionCard
+            question={question}
+            selectedOptionId={selected?.optionId ?? null}
+            onSelect={selectOption}
+          />
 
-      <div className="questionnaire-actions">
-        <button
-          className="btn btn-secondary"
-          onClick={index === 0 ? onBack : () => setIndex((i) => i - 1)}
-          disabled={isCreating}
-        >
-          ← {index === 0 ? 'Retour' : 'Précédent'}
-        </button>
-        {index < total - 1 && (
-          <button
-            className="btn btn-secondary"
-            onClick={() => setIndex((i) => Math.min(i + 1, total - 1))}
-            disabled={isCreating}
-          >
-            Suivant →
-          </button>
-        )}
-        <button className="btn-primary btn-ml-auto" onClick={onCreateWebApp} disabled={isCreating}>
-          {isCreating ? 'Création en cours…' : 'Créer WebApp'}
-        </button>
+          {error && <div className="confirm-error">{error}</div>}
+
+          <div className="questionnaire-actions">
+            <button
+              className="btn btn-secondary"
+              onClick={index === 0 ? onBack : () => setIndex((current) => current - 1)}
+              disabled={isCreating}
+            >
+              ← {index === 0 ? 'Retour' : 'Précédent'}
+            </button>
+
+            {!isLastQuestion && (
+              <button
+                className="btn-primary btn-ml-auto"
+                onClick={() => setIndex((current) => Math.min(current + 1, total - 1))}
+                disabled={!selected || isCreating}
+              >
+                Suivant →
+              </button>
+            )}
+
+            {isLastQuestion && (
+              <button
+                className="btn-primary btn-ml-auto"
+                onClick={onCreateWebApp}
+                disabled={!isComplete || isCreating}
+              >
+                Voir les 3 propositions →
+              </button>
+            )}
+          </div>
+
+          {!selected && (
+            <p className="questionnaire-help">Choisis une réponse pour continuer.</p>
+          )}
+        </div>
+
+        <aside className="questionnaire-summary" aria-label="Résumé de la webapp">
+          <p className="questionnaire-summary-eyebrow">Aperçu de la configuration</p>
+          <h2>Ta webapp</h2>
+          <div className="questionnaire-summary-list">
+            {questions.map((item, itemIndex) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`questionnaire-summary-item${itemIndex === index ? ' active' : ''}`}
+                onClick={() => setIndex(itemIndex)}
+                disabled={isCreating}
+              >
+                <span>{item.summaryLabel}</span>
+                <strong className={validAnswer(item) ? '' : 'pending'}>{answerImpact(item)}</strong>
+              </button>
+            ))}
+          </div>
+          <p className="questionnaire-summary-note">
+            Tu pourras revenir modifier ces choix après la génération.
+          </p>
+        </aside>
       </div>
     </div>
   )
