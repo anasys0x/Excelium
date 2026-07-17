@@ -1,5 +1,6 @@
 import tempfile
 import os
+import uuid
 from io import BytesIO
 from typing import Any, Optional
 
@@ -16,12 +17,12 @@ from services.pk_detector import detect_primary_keys, get_pk_candidates
 from services.fk_detector import detect_foreign_keys
 from services.database_connection import get_connection
 from services.db_creator import create_tables
+from services.session_store import load_session, save_session
 from services.db_crud import (
     get_table_schema, get_table_rows,
     insert_row, update_row, delete_row,
     get_row_references, delete_row_cascade,
 )
-from services.sessions import save_session, load_session
 from models.relational.relational_db import RelationalDB
 from models.relational.table import Table as RelTable
 from models.relational.table_column import TableColumn
@@ -58,6 +59,22 @@ class CreateTable(BaseModel):
 
 class CreatePayload(BaseModel):
     tables: list[CreateTable]
+
+
+class SessionPayload(BaseModel):
+    dbSchema: CreatePayload   # "schema" est réservé par Pydantic
+    preset: dict
+
+
+class SessionResponse(BaseModel):
+    id: str
+
+
+class SessionDetailResponse(BaseModel):
+    id: str
+    createdAt: str
+    dbSchema: CreatePayload
+    preset: dict
 
 @app.post("/parse")
 async def parse_excel(file: UploadFile):
@@ -166,6 +183,59 @@ def create_database(payload: CreatePayload):
         conn.close()
 
     return {"created": results}
+
+
+@app.post("/sessions", response_model=SessionResponse)
+def create_session(payload: SessionPayload):
+    try:
+        conn = get_connection()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Connexion à la base de données impossible : {exc}"
+        )
+
+    try:
+        session_id = save_session(conn, payload.dbSchema.model_dump(), payload.preset)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la sauvegarde de la session : {exc}"
+        )
+    finally:
+        conn.close()
+
+    return {"id": session_id}
+
+
+@app.get("/sessions/{session_id}", response_model=SessionDetailResponse)
+def read_session(session_id: str):
+    try:
+        normalized_id = str(uuid.UUID(session_id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Identifiant de session invalide.")
+
+    try:
+        conn = get_connection()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Connexion à la base de données impossible : {exc}"
+        )
+
+    try:
+        session = load_session(conn, normalized_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du chargement de la session : {exc}"
+        )
+    finally:
+        conn.close()
+
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session introuvable.")
+    return session
 
 
 # ─── CRUD generique ───────────────────────────────────────────────────────────
@@ -298,42 +368,6 @@ def delete_row_endpoint(name: str, pk_value: str, cascade: bool = False):
         if not deleted:
             raise HTTPException(status_code=404, detail="Ligne introuvable.")
         return {"deleted": True}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-    finally:
-        conn.close()
-
-
-
-# ─── Sessions ─────────────────────────────────────────────────────────────────
-
-class SessionPayload(BaseModel):
-    tables: list[str]
-    config: dict = {}
-
-@app.post("/sessions")
-def create_session(payload: SessionPayload):
-    """Sauvegarde une session et retourne un code court (EXC-XXXX)."""
-    conn = _get_conn()
-    try:
-        code = save_session(conn, payload.tables, payload.config)
-        return {"code": code}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-    finally:
-        conn.close()
-
-@app.get("/sessions/{code}")
-def get_session(code: str):
-    """Charge une session par son code."""
-    conn = _get_conn()
-    try:
-        session = load_session(conn, code)
-        if session is None:
-            raise HTTPException(status_code=404, detail="Session introuvable. Vérifiez le code.")
-        return session
     except HTTPException:
         raise
     except Exception as exc:

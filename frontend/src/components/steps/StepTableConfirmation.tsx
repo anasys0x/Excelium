@@ -13,12 +13,10 @@ const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
 interface Props {
   tables: TableConfig[]
   onBack: () => void
-  onConfirm: () => void
-  isCreating?: boolean
-  error?: string | null
+  onNext: () => void
 }
 
-function StepTableConfirmation({ tables, onBack, onConfirm, isCreating = false, error = null }: Props) {
+function StepTableConfirmation({ tables, onBack, onNext }: Props) {
   const totalRows = tables.reduce((sum, t) => sum + t.rows.length, 0)
 
   const allLinks = tables.flatMap((t) =>
@@ -113,13 +111,9 @@ function StepTableConfirmation({ tables, onBack, onConfirm, isCreating = false, 
         </div>
       )}
 
-      {error && <div className="confirm-error">{error}</div>}
-
       <div className="confirm-actions">
-        <button className="btn btn-secondary" onClick={onBack} disabled={isCreating}>← Retour</button>
-        <button className="btn-primary" onClick={onConfirm} disabled={isCreating}>
-          {isCreating ? 'Création en cours…' : 'Créer la base de données'}
-        </button>
+        <button className="btn btn-secondary" onClick={onBack}>← Retour</button>
+        <button className="btn-primary" onClick={onNext}>Continuer →</button>
       </div>
     </div>
   )

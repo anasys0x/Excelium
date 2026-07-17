@@ -1,3 +1,9 @@
+# Git worktrees (scratch, per-session isolated workspaces)
+.worktrees/
+
+# Notes de tâches locales
+.taches/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
