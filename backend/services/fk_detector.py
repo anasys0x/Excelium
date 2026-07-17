@@ -8,14 +8,22 @@ from services.type_detector import get_column_values
 
 _FK_COMPATIBLE_TYPES = {Type.INT, Type.STRING}
 
-# 95% des valeurs non-nulles doivent exister dans la PK cible
+# Seuil de validation par les données : au moins 95% des valeurs non-nulles
+# de la colonne candidate doivent exister dans la PK cible pour créer la FK.
+# On tolère 5% de lignes orphelines (données réelles souvent imparfaites).
 FK_SUBSET_THRESHOLD = 0.95
 
-# Fonctions Excel qui encodent une relation de lookup vers une autre feuille
+# Fonctions Excel qui encodent une relation de lookup vers une autre feuille.
+# Chaque fonction est cherchée sous son nom anglais ET français, car les deux
+# peuvent apparaître selon l'origine du fichier :
+#   VLOOKUP / RECHERCHEV, XLOOKUP / RECHERCHEX, MATCH / EQUIV
+# Les 3 groupes capturés : (1) lettre de la colonne source,
+# (2) nom de la feuille cible, (3) lettre de la première colonne du range cible.
 _LOOKUP_PATTERNS = [
     re.compile(r'VLOOKUP\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)',    re.IGNORECASE),
     re.compile(r'RECHERCHEV\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)', re.IGNORECASE),
     re.compile(r'XLOOKUP\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)',    re.IGNORECASE),
+    re.compile(r'RECHERCHEX\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)', re.IGNORECASE),
     re.compile(r'MATCH\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)',      re.IGNORECASE),
     re.compile(r'EQUIV\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)',      re.IGNORECASE),
 ]
@@ -24,6 +32,8 @@ _LOOKUP_PATTERNS = [
 # ─── Utilitaires ──────────────────────────────────────────────────────────────
 
 def get_pk_column(table):
+    """Retourne la PK "métier" de la table (on ignore les PK SERIAL auto-générées,
+    car une colonne Excel ne peut pas référencer une valeur qui n'existait pas)."""
     for col in table.get_columns():
         if col.is_primary_key and not col.is_serial:
             return col
@@ -132,28 +142,36 @@ def _extract_lookup_hints(excel_workbook):
 
 
 def _apply_lookup_fks(excel_workbook, rel_tables, excel_tables):
+    """Transforme chaque indice de lookup en vraie FK, après vérifications."""
     hints = _extract_lookup_hints(excel_workbook)
     if not hints:
         return
 
     for src_excel_table, src_letter, tgt_sheet_name, tgt_letter in hints:
 
+        # La colonne source doit exister, ne pas être elle-même une PK,
+        # et avoir un type compatible avec une FK (entier ou texte)
         src_excel_col = _find_col_by_letter(src_excel_table, src_letter)
         if src_excel_col is None or src_excel_col.is_primary_key:
             continue
         if src_excel_col.detected_type not in _FK_COMPATIBLE_TYPES:
             continue
 
+        # La feuille visée par la formule doit exister dans le classeur
         tgt_worksheet = _find_worksheet_by_name(excel_workbook, tgt_sheet_name)
         if tgt_worksheet is None:
             continue
 
         for tgt_excel_table in tgt_worksheet.get_tables():
+            # La colonne cible du lookup doit être la clé primaire de sa table :
+            # c'est ce qui garantit que la relation est bien une FK -> PK
             tgt_excel_col = _find_col_by_letter(tgt_excel_table, tgt_letter)
             if tgt_excel_col is None or not tgt_excel_col.is_primary_key:
                 continue
 
-            # Retrouver les rel_tables correspondantes
+            # Retrouver les tables relationnelles correspondant aux tables Excel
+            # (les deux listes sont alignées index par index).
+            # On refuse aussi l'auto-référence (une table qui pointe vers elle-même).
             src_rt = next((rt for rt, et in zip(rel_tables, excel_tables) if et is src_excel_table), None)
             tgt_rt = next((rt for rt, et in zip(rel_tables, excel_tables) if et is tgt_excel_table), None)
             if src_rt is None or tgt_rt is None or src_rt.name == tgt_rt.name:
@@ -170,6 +188,16 @@ def _apply_lookup_fks(excel_workbook, rel_tables, excel_tables):
 # ─── Détection principale ─────────────────────────────────────────────────────
 
 def detect_foreign_keys(excel_workbook, relational_db):
+    """
+    Point d'entrée de la détection des clés étrangères.
+
+    Trois stratégies, de la plus fiable à la moins fiable :
+      0. Formules de lookup (VLOOKUP/RECHERCHEV...) : la relation est explicite.
+      1. Nom de colonne identique à la PK d'une autre table (ex : id_client).
+      2. Nom dérivé de la convention <table_singulier>_<pk> (ex : client_id).
+    Les stratégies 1 et 2 ne sont validées que si >= 95% des valeurs de la
+    colonne candidate existent réellement dans la PK cible (subset check).
+    """
     excel_tables = excel_workbook.get_all_tables()
     rel_tables   = relational_db.get_tables()
 
@@ -177,8 +205,12 @@ def detect_foreign_keys(excel_workbook, relational_db):
     _apply_lookup_fks(excel_workbook, rel_tables, excel_tables)
 
     # ── Construire l'index des PK ─────────────────────────────────────────────
-    pk_by_col_name = {}   # nom exact de la PK → entry
-    pk_by_fk_name  = {}   # nom dérivé (client_id, clients_id...) → entry
+    # Pour chaque table qui a une PK, on enregistre :
+    #   - son nom exact (stratégie 1)
+    #   - ses noms dérivés plausibles comme client_id (stratégie 2)
+    # ainsi que la liste de ses valeurs, pour le subset check plus bas.
+    pk_by_col_name = {}   # nom exact de la PK → (table, pk_col, valeurs)
+    pk_by_fk_name  = {}   # nom dérivé (client_id, clients_id...) → idem
 
     for rel_table, excel_table in zip(rel_tables, excel_tables):
         pk_col = get_pk_column(rel_table)
@@ -199,6 +231,8 @@ def detect_foreign_keys(excel_workbook, relational_db):
     for rel_table, excel_table in zip(rel_tables, excel_tables):
         for excel_col in excel_table.get_columns():
 
+            # Une PK ne peut pas être aussi une FK ici, et seuls les types
+            # entier/texte peuvent raisonnablement référencer une PK
             if excel_col.is_primary_key:
                 continue
             if excel_col.detected_type not in _FK_COMPATIBLE_TYPES:
@@ -215,9 +249,12 @@ def detect_foreign_keys(excel_workbook, relational_db):
                 continue
 
             ref_rel_table, ref_pk_col, pk_values = entry
+            # Pas d'auto-référence : une table ne pointe pas vers elle-même
             if ref_rel_table.name == rel_table.name:
                 continue
 
+            # Validation par les données : le nom propose, les valeurs confirment.
+            # Si moins de 95% des valeurs existent dans la PK cible → fausse alerte.
             col_values = get_column_values(excel_table, excel_col)
             ratio = _subset_ratio(col_values, pk_values)
             if ratio < FK_SUBSET_THRESHOLD:
