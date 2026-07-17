@@ -1,9 +1,10 @@
 name: CI
 
-# Se déclenche à chaque push et à chaque pull request
+# Se déclenche à chaque push, chaque pull request, et manuellement depuis l'onglet Actions
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   frontend:
