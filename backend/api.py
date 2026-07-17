@@ -21,6 +21,7 @@ from services.db_crud import (
     insert_row, update_row, delete_row,
     get_row_references, delete_row_cascade,
 )
+from services.sessions import save_session, load_session
 from models.relational.relational_db import RelationalDB
 from models.relational.table import Table as RelTable
 from models.relational.table_column import TableColumn
@@ -231,6 +232,38 @@ def update_row_endpoint(name: str, pk_value: str, data: dict[str, Any]):
         conn.close()
 
 
+@app.get("/tables/{name}/rows/{pk_value}")
+def read_single_row(name: str, pk_value: str):
+    """Retourne une seule ligne par sa valeur de PK."""
+    conn = _get_conn()
+    try:
+        schema = get_table_schema(conn, name)
+        pk_col = next((c["name"] for c in schema if c["isPrimaryKey"]), None)
+        if not pk_col:
+            raise HTTPException(status_code=400, detail="Aucune clé primaire trouvée.")
+        coerced = _coerce_pk(pk_value, schema)
+        from services.db_crud import _ident, _serialize_dict
+        from utils import slugify
+        cursor = conn.cursor()
+        cursor.execute(
+            f'SELECT * FROM {_ident(name)} WHERE {_ident(pk_col)} = %s LIMIT 1',
+            (coerced,)
+        )
+        row_data = cursor.fetchone()
+        cursor.close()
+        if row_data is None:
+            raise HTTPException(status_code=404, detail="Ligne introuvable.")
+        col_names = [c["name"] for c in schema]
+        row = _serialize_dict(dict(zip(col_names, row_data)))
+        return {"row": row, "columns": schema}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        conn.close()
+
+
 @app.get("/tables/{name}/rows/{pk_value}/references")
 def get_references(name: str, pk_value: str):
     """Retourne les lignes dépendantes de cette valeur de PK dans les tables FK."""
@@ -265,6 +298,42 @@ def delete_row_endpoint(name: str, pk_value: str, cascade: bool = False):
         if not deleted:
             raise HTTPException(status_code=404, detail="Ligne introuvable.")
         return {"deleted": True}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        conn.close()
+
+
+
+# ─── Sessions ─────────────────────────────────────────────────────────────────
+
+class SessionPayload(BaseModel):
+    tables: list[str]
+    config: dict = {}
+
+@app.post("/sessions")
+def create_session(payload: SessionPayload):
+    """Sauvegarde une session et retourne un code court (EXC-XXXX)."""
+    conn = _get_conn()
+    try:
+        code = save_session(conn, payload.tables, payload.config)
+        return {"code": code}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        conn.close()
+
+@app.get("/sessions/{code}")
+def get_session(code: str):
+    """Charge une session par son code."""
+    conn = _get_conn()
+    try:
+        session = load_session(conn, code)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Session introuvable. Vérifiez le code.")
+        return session
     except HTTPException:
         raise
     except Exception as exc:

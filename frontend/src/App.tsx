@@ -68,6 +68,10 @@ function App() {
   const [isCreating, setIsCreating]            = useState(false)
   const [createError, setCreateError]          = useState<string | null>(null)
   const [createdTables, setCreatedTables]      = useState<CreatedTable[]>([])
+  const [sessionCode, setSessionCode]          = useState<string | null>(null)
+  const [sessionInput, setSessionInput]        = useState('')
+  const [sessionError, setSessionError]        = useState<string | null>(null)
+  const [sessionLoading, setSessionLoading]    = useState(false)
   const [theme, setTheme]                      = useState<Theme>(
     () => (localStorage.getItem('excelium-theme') as Theme) ?? 'dark'
   )
@@ -207,7 +211,68 @@ function App() {
     setCreatedTables([])
     setCreateError(null)
     setError(null)
+    setSessionCode(null)
+    setSessionInput('')
+    setSessionError(null)
     setStep('upload')
+  }
+
+  const saveSession = async () => {
+    const tableNames = allTables.map((t) => t.tableName)
+    const res = await fetch('http://localhost:8000/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tables: tableNames, config: {} }),
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    setSessionCode(data.code)
+  }
+
+  const resumeSession = async () => {
+    const code = sessionInput.trim().toUpperCase()
+    if (!code) return
+    setSessionLoading(true)
+    setSessionError(null)
+    try {
+      const res = await fetch(`http://localhost:8000/sessions/${code}`)
+      if (!res.ok) { setSessionError('Code introuvable. Vérifiez et réessayez.'); return }
+      const data = await res.json()
+      const tableNames: string[] = data.tables
+      const fetchedTables = await Promise.all(
+        tableNames.map(async (name) => {
+          const r = await fetch(`http://localhost:8000/tables/${name}/rows`)
+          if (!r.ok) throw new Error(`Table "${name}" introuvable.`)
+          const d = await r.json()
+          return { name, columns: d.columns, rows: d.rows }
+        })
+      )
+      const rebuilt: SheetData[] = [{
+        name: 'Session',
+        tables: fetchedTables.map((t, i) => ({
+          id: `resume-${i}`,
+          sheetName: 'Session',
+          tableName: t.name,
+          columns: t.columns.map((c: { name: string; type: string; isPrimaryKey: boolean }) => ({
+            originalName: c.name, name: c.name, type: c.type,
+            isPrimaryKey: c.isPrimaryKey, isPkCandidate: false, pkScore: 0,
+            foreignKey: null, foreignKeyConfirmed: false,
+          })),
+          rows: t.rows.map((row: Record<string, unknown>) =>
+            t.columns.map((c: { name: string }) => row[c.name])
+          ),
+        })),
+      }]
+      setSheets(rebuilt)
+      setSelectedNames(['Session'])
+      setCreatedTables(fetchedTables.map((t) => ({ table: t.name, rows: t.rows.length })))
+      enterSheet(rebuilt[0])
+      setStep('app')
+    } catch (e) {
+      setSessionError(e instanceof Error ? e.message : 'Erreur lors du chargement.')
+    } finally {
+      setSessionLoading(false)
+    }
   }
 
   const showSelect      = sheets.length > 1
@@ -284,6 +349,27 @@ function App() {
             <DropZone onFileSelected={handleFileSelected} />
             {isLoading && <p className="upload-loading">Analyse du fichier en cours…</p>}
             {error    && <p className="upload-error">{error}</p>}
+
+            <div className="session-resume-box">
+              <p className="session-resume-label">Reprendre une session</p>
+              <div className="session-resume-row">
+                <input
+                  className="session-resume-input"
+                  placeholder="EXC-1234"
+                  value={sessionInput}
+                  onChange={(e) => { setSessionInput(e.target.value.toUpperCase()); setSessionError(null) }}
+                  onKeyDown={(e) => e.key === 'Enter' && resumeSession()}
+                />
+                <button
+                  className="btn-primary"
+                  onClick={resumeSession}
+                  disabled={sessionLoading || !sessionInput.trim()}
+                >
+                  {sessionLoading ? 'Chargement…' : 'Reprendre →'}
+                </button>
+              </div>
+              {sessionError && <p className="upload-error">{sessionError}</p>}
+            </div>
           </div>
         )}
 
@@ -343,6 +429,14 @@ function App() {
                   columns={activeTable.columns}
                   rows={activeTable.rows}
                   focusedColumn={focusedColumn}
+                  onTypeChange={(originalName, newType) => {
+                    updateTable({
+                      ...activeTable,
+                      columns: activeTable.columns.map((c) =>
+                        c.originalName === originalName ? { ...c, type: newType } : c
+                      ),
+                    })
+                  }}
                 />
               }
               right={
@@ -449,6 +543,21 @@ function App() {
                 </div>
               </div>
             )}
+
+            {/* Sauvegarde session */}
+            <div className="session-save-box">
+              {!sessionCode ? (
+                <button className="session-save-btn" onClick={saveSession}>
+                  Sauvegarder ma session
+                </button>
+              ) : (
+                <div className="session-code-display">
+                  <span className="session-code-label">Votre code de session :</span>
+                  <span className="session-code">{sessionCode}</span>
+                  <span className="session-code-hint">Notez ce code pour reprendre plus tard</span>
+                </div>
+              )}
+            </div>
 
             <div className="done-actions">
               <button className="btn btn-secondary" onClick={() => setStep('confirm')}>← Retour</button>

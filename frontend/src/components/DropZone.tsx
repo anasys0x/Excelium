@@ -32,7 +32,7 @@ function DropZone({ onFileSelected }: Props) {
     >
       <input ref={inputRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={(e: ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
       {fileName
-        ? <p className="dropzone-filename">✅ {fileName}</p>
+        ? <p className="dropzone-filename">{fileName}</p>
         : <p className="dropzone-hint">Glissez un fichier <strong>.xlsx</strong> ici, ou cliquez pour en choisir un</p>
       }
       {error && <p className="dropzone-error">{error}</p>}

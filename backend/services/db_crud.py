@@ -173,7 +173,7 @@ def get_row_references(conn, table_name: str, pk_col: str, pk_value) -> list[dic
             count = cursor.fetchone()[0]
             if count > 0:
                 cursor.execute(
-                    f'SELECT * FROM {_ident(fk_table)} WHERE {_ident(fk_col)} = %s LIMIT 3',
+                    f'SELECT * FROM {_ident(fk_table)} WHERE {_ident(fk_col)} = %s LIMIT 50',
                     (pk_value,)
                 )
                 cols    = [d[0] for d in cursor.description]

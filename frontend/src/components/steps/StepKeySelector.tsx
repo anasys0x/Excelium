@@ -259,15 +259,18 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
                 <input
                   type="text"
                   value={col.name}
-                  onChange={(e) => updateColumnName(col.originalName, e.target.value)}
-                  onFocus={() => onFocusColumn(col.originalName)}
+                  readOnly={isGrayed}
+                  onChange={(e) => !isGrayed && updateColumnName(col.originalName, e.target.value)}
+                  onFocus={() => !isGrayed && onFocusColumn(col.originalName)}
                   onBlur={() => onFocusColumn(null)}
                   className={`col-name-input${isGrayed ? ' grayed' : ''}`}
+                  style={{ pointerEvents: isGrayed ? 'none' : undefined }}
                 />
 
                 <select
                   value={col.type}
                   onChange={(e) => updateColumnType(col.originalName, e.target.value)}
+                  disabled={isGrayed}
                   className="app-select"
                   style={{
                     padding: '3px 6px', fontSize: '11px',
@@ -282,7 +285,7 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
                 <button
                   className="col-exclude-btn"
                   onClick={() => excludeColumn(col.originalName)}
-                  disabled={col.isPrimaryKey || col.isAuto}
+                  disabled={col.isPrimaryKey || col.isAuto || isGrayed}
                   title={col.isPrimaryKey ? "L'identifiant ne peut pas être exclu" : 'Exclure cette colonne'}
                 >
                   ✕
