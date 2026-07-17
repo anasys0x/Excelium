@@ -13,11 +13,11 @@ function formatDate(value: unknown): string {
   return s
 }
 
-function Empty() {
+function renderEmpty() {
   return <span style={{ color: 'var(--text-faint)', fontStyle: 'italic' }}>—</span>
 }
 
-function Badge({ children }: { children: ReactNode }) {
+function renderBadge(children: ReactNode) {
   return (
     <span style={{
       display: 'inline-block',
@@ -37,7 +37,7 @@ function Badge({ children }: { children: ReactNode }) {
 const STATUS_POSITIVE_RE = /(actif|active|pay[ée]|valid|ok|termin|livr[ée]|confirm|dispo|en stock|approuv|accept|r[ée]ussi|complet|ouvert|oui|done|success)/i
 const STATUS_NEGATIVE_RE = /(inactif|annul|refus|rupture|bloqu|erreur|rejet|expir[ée]|[ée]chou|ferm[ée]|suspend|non|failed|cancel)/i
 
-function StatusBadge({ value }: { value: string }) {
+function renderStatusBadge(value: string) {
   const positive = STATUS_POSITIVE_RE.test(value)
   const negative = !positive && STATUS_NEGATIVE_RE.test(value)
 
@@ -66,7 +66,7 @@ function StatusBadge({ value }: { value: string }) {
 }
 
 // Barre de progression pour les pourcentages (0–100)
-function ProgressBar({ value }: { value: number }) {
+function renderProgressBar(value: number) {
   const pct = Math.max(0, Math.min(100, value))
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minWidth: '110px' }}>
@@ -94,7 +94,7 @@ function ProgressBar({ value }: { value: number }) {
   )
 }
 
-function Stars({ value }: { value: number }) {
+function renderStars(value: number) {
   const n = Math.max(0, Math.min(5, Math.round(value)))
   return (
     <span style={{ letterSpacing: '1px', color: '#f5b301' }}>
@@ -106,7 +106,7 @@ function Stars({ value }: { value: number }) {
 
 // Rend la valeur d'une cellule selon son rôle sémantique
 export function renderCell(role: SemanticRole, value: unknown): ReactNode {
-  if (isEmpty(value) && role !== 'boolean') return <Empty />
+  if (isEmpty(value) && role !== 'boolean') return renderEmpty()
 
   switch (role) {
     case 'id':
@@ -122,7 +122,7 @@ export function renderCell(role: SemanticRole, value: unknown): ReactNode {
       return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{cf.format(Number(value))}</span>
 
     case 'percent':
-      return <ProgressBar value={Number(value)} />
+      return renderProgressBar(Number(value))
 
     case 'date':
       return <span>{formatDate(value)}</span>
@@ -135,13 +135,13 @@ export function renderCell(role: SemanticRole, value: unknown): ReactNode {
     }
 
     case 'category':
-      return <Badge>{String(value)}</Badge>
+      return renderBadge(String(value))
 
     case 'status':
-      return <StatusBadge value={String(value)} />
+      return renderStatusBadge(String(value))
 
     case 'rating':
-      return <Stars value={Number(value)} />
+      return renderStars(Number(value))
 
     case 'image':
       return (

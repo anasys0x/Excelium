@@ -7,12 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-grid-layout": "^2.2.3"
+    "recharts": "^2.15.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -26,6 +27,7 @@
     "globals": "^17.6.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.61.0",
-    "vite": "^8.1.0"
+    "vite": "^8.1.0",
+    "vitest": "^3.2.4"
   }
 }
