@@ -1,15 +1,33 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import DropZone from './components/DropZone'
+import SessionResume from './components/SessionResume'
 import SplitView from './components/layout/SplitView'
 import TablePreview from './components/table/TablePreview'
 import StepKeySelector from './components/steps/StepKeySelector'
 import StepSheetSelector from './components/steps/StepSheetSelector'
 import StepTableConfirmation from './components/steps/StepTableConfirmation'
+import StepQuestionnaire from './components/steps/StepQuestionnaire'
+import StepUiProposals from './components/steps/StepUiProposals'
 import StepIndicator from './components/StepIndicator'
 import GeneratedApp from './components/app/GeneratedApp'
+import { buildQuestionBank } from './lib/questions'
+import { analyzeColumns, findChartRecommendation } from './lib/semantic'
+import type { LayoutKind } from './lib/semantic'
+import { ARCHETYPE_PRESETS, computeArchetypeScores, detectArchetype } from './lib/archetype'
+import type { TableArchetype } from './lib/archetype'
+import {
+  buildPreferenceProfile,
+  computeTablePreset,
+} from './lib/preferenceEngine'
+import type { AutoDetectedTablePreset, DisplayDensity, PreferenceProfile, QuestionAnswer } from './lib/preferenceEngine'
+import type { ExportMode, NavigationMode, SortMode } from './lib/preferenceEngine'
+import { buildUiProposals } from './lib/uiProposals'
+import type { UiProposal } from './lib/uiProposals'
+import { restoreSession } from './lib/session'
+import type { SessionApiResponse } from './lib/session'
 
-export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'done' | 'app'
+export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'questionnaire' | 'proposals' | 'done' | 'app'
 export type Theme = 'dark' | 'light'
 
 interface CreatedTable {
@@ -56,6 +74,21 @@ interface ParsedTable   { name: string; columns: ParsedColumn[]; rows: unknown[]
 interface ParsedSheet   { name: string; tables: ParsedTable[] }
 interface ParseResponse { sheets: ParsedSheet[] }
 
+export interface GeneratedAppSeed {
+  archetypeOverrides: Record<string, TableArchetype>
+  layoutOverrides: Record<string, LayoutKind>
+  primaryTableId: string | null
+  showChartWidget: boolean
+  showStatsWidget: boolean
+  canEdit: boolean
+  density: DisplayDensity
+  navigation: NavigationMode
+  searchEnabled: boolean
+  sortMode: SortMode
+  exportMode: ExportMode
+  sessionId: string | null
+}
+
 function App() {
   const [step, setStep]                        = useState<Step>('upload')
   const [sheets, setSheets]                    = useState<SheetData[]>([])
@@ -65,13 +98,15 @@ function App() {
   const [focusedColumn, setFocusedColumn]      = useState<string | null>(null)
   const [isLoading, setIsLoading]              = useState(false)
   const [error, setError]                      = useState<string | null>(null)
+  const [isResuming, setIsResuming]            = useState(false)
+  const [resumeError, setResumeError]          = useState<string | null>(null)
   const [isCreating, setIsCreating]            = useState(false)
   const [createError, setCreateError]          = useState<string | null>(null)
   const [createdTables, setCreatedTables]      = useState<CreatedTable[]>([])
-  const [sessionCode, setSessionCode]          = useState<string | null>(null)
-  const [sessionInput, setSessionInput]        = useState('')
-  const [sessionError, setSessionError]        = useState<string | null>(null)
-  const [sessionLoading, setSessionLoading]    = useState(false)
+  const [answers, setAnswers]                  = useState<Record<string, QuestionAnswer>>({})
+  const [uiProposals, setUiProposals]          = useState<UiProposal[]>([])
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null)
+  const [appSeed, setAppSeed]                  = useState<GeneratedAppSeed | null>(null)
   const [theme, setTheme]                      = useState<Theme>(
     () => (localStorage.getItem('excelium-theme') as Theme) ?? 'dark'
   )
@@ -84,6 +119,7 @@ function App() {
   const handleFileSelected = async (file: File) => {
     setIsLoading(true)
     setError(null)
+    setResumeError(null)
     const formData = new FormData()
     formData.append('file', file)
     try {
@@ -130,6 +166,40 @@ function App() {
     setFocusedColumn(null)
   }
 
+  const handleResumeSession = async (sessionId: string) => {
+    setIsResuming(true)
+    setResumeError(null)
+    setError(null)
+
+    try {
+      const response = await fetch(`http://localhost:8000/sessions/${encodeURIComponent(sessionId)}`)
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(data?.detail ?? 'Impossible de charger cette session.')
+      }
+
+      const restored = restoreSession(data as SessionApiResponse)
+      const [sheet] = restored.sheets
+      setSheets(restored.sheets)
+      setSelectedNames([sheet.name])
+      enterSheet(sheet)
+      setAnswers({})
+      setUiProposals([])
+      setSelectedProposalId(null)
+      setAppSeed(restored.seed)
+      setTheme(restored.theme)
+      setStep('app')
+    } catch (resumeFailure) {
+      setResumeError(
+        resumeFailure instanceof Error
+          ? resumeFailure.message
+          : 'Impossible de charger cette session.'
+      )
+    } finally {
+      setIsResuming(false)
+    }
+  }
+
   const updateTable = (updated: TableConfig) => {
     setSheets((prev) => {
       const oldTable = prev.flatMap((s) => s.tables).find((t) => t.id === updated.id)
@@ -166,25 +236,101 @@ function App() {
     setStep('config')
   }
 
-  const handleCreate = async () => {
+  // Colonnes/lignes réellement envoyées (colonnes exclues retirées, index alignés)
+  const getIncludedTableData = (t: TableConfig) => {
+    const includedIdx = t.columns.map((_, i) => i).filter((i) => !t.columns[i].excluded)
+    const columns = includedIdx.map((i) => t.columns[i])
+    const rows    = t.rows.map((row) => includedIdx.map((i) => row[i]))
+    return { columns, rows }
+  }
+
+  // La détection choisit le modèle de données. Le questionnaire choisit ensuite
+  // une vue parmi les quatre rendus que les composants savent tous afficher.
+  const buildInitialOverrides = (tablesToSeed: TableConfig[], profile: PreferenceProfile) => {
+    const archetypeOverrides: Record<string, TableArchetype> = {}
+    const layoutOverrides: Record<string, LayoutKind> = {}
+    for (const t of tablesToSeed) {
+      const { columns, rows } = getIncludedTableData(t)
+      const analyzed = analyzeColumns(columns, rows)
+      const archetypeScores = computeArchetypeScores(analyzed, t.tableName)
+      const detected = detectArchetype(analyzed, t.tableName)
+      const preset = ARCHETYPE_PRESETS[detected]
+      const availableLayouts: LayoutKind[] = ['table', 'cards', 'dashboard', 'gallery']
+      const auto: AutoDetectedTablePreset = { archetypeScores, availableLayouts, defaultLayout: preset.defaultLayout }
+      const final = computeTablePreset(auto, profile)
+      archetypeOverrides[t.id] = final.archetype
+      layoutOverrides[t.id] = final.layout
+    }
+    return { archetypeOverrides, layoutOverrides }
+  }
+
+  const handleAnswer = (answer: QuestionAnswer) => {
+    setAnswers((prev) => ({ ...prev, [answer.questionId]: answer }))
+  }
+
+  const getValidAnswers = (): QuestionAnswer[] => questionBank.flatMap((question) => {
+    const answer = answers[question.id]
+    return answer && question.options.some((option) => option.id === answer.optionId)
+      ? [answer]
+      : []
+  })
+
+  const handleReviewProposals = () => {
+    const profile = buildPreferenceProfile(getValidAnswers())
+    const primaryTable = questionnaireTables.find((table) => table.tableName === profile.primaryTableHint)
+      ?? questionnaireTables[0]
+    const archetype = primaryTable
+      ? detectArchetype(primaryTable.analyzed, primaryTable.tableName)
+      : 'generic'
+    setUiProposals(buildUiProposals(profile, { hasImages, hasMeaningfulChart, archetype }))
+    setSelectedProposalId(null)
+    setCreateError(null)
+    setStep('proposals')
+  }
+
+  const handleCreateWebApp = async () => {
+    const selectedProposal = uiProposals.find((proposal) => proposal.id === selectedProposalId)
+    if (!selectedProposal) return
+
     setIsCreating(true)
     setCreateError(null)
+
     const payload = {
       tables: allTables.map((t) => {
-        const includedIdx = t.columns.map((_, i) => i).filter((i) => !t.columns[i].excluded)
-        const includedCols = includedIdx.map((i) => t.columns[i])
+        const { columns, rows } = getIncludedTableData(t)
         return {
           tableName: t.tableName,
-          columns: includedCols.map((c) => ({
+          columns: columns.map((c) => ({
             name: c.name,
             type: c.type,
             isPrimaryKey: c.isPrimaryKey,
             ...(c.foreignKey && c.foreignKeyConfirmed ? { foreignKey: c.foreignKey } : {}),
           })),
-          rows: t.rows.map((row) => includedIdx.map((i) => row[i])),
+          rows,
         }
       }),
     }
+
+    const profile = buildPreferenceProfile(getValidAnswers())
+    const { archetypeOverrides } = buildInitialOverrides(allTables, profile)
+    const layoutOverrides = Object.fromEntries(
+      allTables.map((table) => [table.id, selectedProposal.config.layout]),
+    ) as Record<string, LayoutKind>
+    const {
+      showChart: showChartWidget,
+      showStats: showStatsWidget,
+      canEdit,
+      density,
+      navigation,
+      searchEnabled,
+      sortMode,
+      exportMode,
+      theme: selectedTheme,
+    } = selectedProposal.config
+    const primaryTableId = profile.primaryTableHint
+      ? allTables.find((t) => t.tableName === profile.primaryTableHint)?.id ?? null
+      : null
+
     try {
       const response = await fetch('http://localhost:8000/create', {
         method: 'POST',
@@ -194,6 +340,53 @@ function App() {
       const data = await response.json()
       if (!response.ok) throw new Error(data?.detail ?? 'Erreur inconnue lors de la création.')
       setCreatedTables(data.created ?? [])
+
+      let newSessionId: string | null = null
+      try {
+        const sessionRes = await fetch('http://localhost:8000/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dbSchema: payload,
+            preset: {
+              archetypeOverrides,
+              layoutOverrides,
+              showChartWidget,
+              showStatsWidget,
+              canEdit,
+              density,
+              navigation,
+              searchEnabled,
+              sortMode,
+              exportMode,
+              theme: selectedTheme,
+              primaryTableId,
+            },
+          }),
+        })
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json()
+          newSessionId = sessionData.id ?? null
+        }
+      } catch {
+        // La sauvegarde de session est secondaire : son échec ne bloque pas l'ouverture de la webapp.
+      }
+
+      setAppSeed({
+        archetypeOverrides,
+        layoutOverrides,
+        primaryTableId,
+        showChartWidget,
+        showStatsWidget,
+        canEdit,
+        density,
+        navigation,
+        searchEnabled,
+        sortMode,
+        exportMode,
+        sessionId: newSessionId,
+      })
+      setTheme(selectedTheme)
       setStep('done')
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Erreur lors de la création.')
@@ -211,68 +404,12 @@ function App() {
     setCreatedTables([])
     setCreateError(null)
     setError(null)
-    setSessionCode(null)
-    setSessionInput('')
-    setSessionError(null)
+    setResumeError(null)
+    setAnswers({})
+    setUiProposals([])
+    setSelectedProposalId(null)
+    setAppSeed(null)
     setStep('upload')
-  }
-
-  const saveSession = async () => {
-    const tableNames = allTables.map((t) => t.tableName)
-    const res = await fetch('http://localhost:8000/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tables: tableNames, config: {} }),
-    })
-    if (!res.ok) return
-    const data = await res.json()
-    setSessionCode(data.code)
-  }
-
-  const resumeSession = async () => {
-    const code = sessionInput.trim().toUpperCase()
-    if (!code) return
-    setSessionLoading(true)
-    setSessionError(null)
-    try {
-      const res = await fetch(`http://localhost:8000/sessions/${code}`)
-      if (!res.ok) { setSessionError('Code introuvable. Vérifiez et réessayez.'); return }
-      const data = await res.json()
-      const tableNames: string[] = data.tables
-      const fetchedTables = await Promise.all(
-        tableNames.map(async (name) => {
-          const r = await fetch(`http://localhost:8000/tables/${name}/rows`)
-          if (!r.ok) throw new Error(`Table "${name}" introuvable.`)
-          const d = await r.json()
-          return { name, columns: d.columns, rows: d.rows }
-        })
-      )
-      const rebuilt: SheetData[] = [{
-        name: 'Session',
-        tables: fetchedTables.map((t, i) => ({
-          id: `resume-${i}`,
-          sheetName: 'Session',
-          tableName: t.name,
-          columns: t.columns.map((c: { name: string; type: string; isPrimaryKey: boolean }) => ({
-            originalName: c.name, name: c.name, type: c.type,
-            isPrimaryKey: c.isPrimaryKey, isPkCandidate: false, pkScore: 0,
-            foreignKey: null, foreignKeyConfirmed: false,
-          })),
-          rows: t.rows.map((row: Record<string, unknown>) =>
-            t.columns.map((c: { name: string }) => row[c.name])
-          ),
-        })),
-      }]
-      setSheets(rebuilt)
-      setSelectedNames(['Session'])
-      setCreatedTables(fetchedTables.map((t) => ({ table: t.name, rows: t.rows.length })))
-      enterSheet(rebuilt[0])
-      setStep('app')
-    } catch (e) {
-      setSessionError(e instanceof Error ? e.message : 'Erreur lors du chargement.')
-    } finally {
-      setSessionLoading(false)
-    }
   }
 
   const showSelect      = sheets.length > 1
@@ -281,6 +418,38 @@ function App() {
   const activeSheet     = selectedSheets.find((s) => s.name === activeSheetName) ?? selectedSheets[0] ?? null
   const activeTable     = activeSheet?.tables.find((t) => t.id === activeTableId) ?? activeSheet?.tables[0] ?? null
   const missingKeyCount = allTables.filter((t) => !t.columns.some((c) => c.isPrimaryKey && !c.excluded)).length
+
+  const confirmedLinks = allTables.flatMap((t) =>
+    t.columns
+      .filter((c) => c.foreignKey && c.foreignKeyConfirmed)
+      .map((c) => ({
+        fromTable: t.tableName, fromCol: c.name,
+        toTable: c.foreignKey!.refTable, toCol: c.foreignKey!.refColumn,
+      }))
+  )
+
+  const questionnaireTables = allTables.map((table) => {
+    const { columns, rows } = getIncludedTableData(table)
+    return {
+      tableName: table.tableName,
+      rowCount: rows.length,
+      analyzed: analyzeColumns(columns, rows),
+    }
+  })
+  const hasImages = questionnaireTables.some((table) =>
+    table.analyzed.some((column) => column.role === 'image')
+  )
+  const hasMeaningfulChart = questionnaireTables.some((table) =>
+    findChartRecommendation(table.analyzed) !== null
+  )
+  const questionBank = buildQuestionBank({
+    tables: questionnaireTables,
+    hasImages,
+    hasMeaningfulChart,
+  })
+  const proposalPreviewTable = allTables.find(
+    (table) => table.tableName === answers['primary-table']?.delta.primaryTableName
+  ) ?? allTables[0]
 
   const tableNames         = allTables.map((t) => t.tableName)
   const duplicateNames     = tableNames.filter((name, idx) => tableNames.indexOf(name) !== idx)
@@ -293,26 +462,21 @@ function App() {
   const canProceed = missingKeyCount === 0 && duplicateNames.length === 0
     && !emptyTableName && !emptyColName && !hasDuplicateColNames
 
-  const confirmedLinks = allTables.flatMap((t) =>
-    t.columns
-      .filter((c) => c.foreignKey && c.foreignKeyConfirmed)
-      .map((c) => ({
-        fromTable: t.tableName, fromCol: c.name,
-        toTable: c.foreignKey!.refTable, toCol: c.foreignKey!.refColumn,
-      }))
-  )
-
   const indicatorSteps = showSelect
     ? [
         { key: 'upload', label: 'Importer'   },
         { key: 'select', label: 'Feuilles'   },
         { key: 'config', label: 'Configurer' },
         { key: 'confirm', label: 'Créer'     },
+        { key: 'questionnaire', label: 'Personnaliser' },
+        { key: 'proposals', label: 'Choisir' },
       ]
     : [
         { key: 'upload', label: 'Importer'   },
         { key: 'config', label: 'Configurer' },
         { key: 'confirm', label: 'Créer'     },
+        { key: 'questionnaire', label: 'Personnaliser' },
+        { key: 'proposals', label: 'Choisir' },
       ]
 
   return (
@@ -334,7 +498,7 @@ function App() {
       <main className="app-main">
 
         {step !== 'app' && (
-          <StepIndicator steps={indicatorSteps} currentKey={step === 'done' ? 'confirm' : step} />
+          <StepIndicator steps={indicatorSteps} currentKey={step === 'done' ? 'proposals' : step} />
         )}
 
         {/* Étape 1 : Importer */}
@@ -349,27 +513,11 @@ function App() {
             <DropZone onFileSelected={handleFileSelected} />
             {isLoading && <p className="upload-loading">Analyse du fichier en cours…</p>}
             {error    && <p className="upload-error">{error}</p>}
-
-            <div className="session-resume-box">
-              <p className="session-resume-label">Reprendre une session</p>
-              <div className="session-resume-row">
-                <input
-                  className="session-resume-input"
-                  placeholder="EXC-1234"
-                  value={sessionInput}
-                  onChange={(e) => { setSessionInput(e.target.value.toUpperCase()); setSessionError(null) }}
-                  onKeyDown={(e) => e.key === 'Enter' && resumeSession()}
-                />
-                <button
-                  className="btn-primary"
-                  onClick={resumeSession}
-                  disabled={sessionLoading || !sessionInput.trim()}
-                >
-                  {sessionLoading ? 'Chargement…' : 'Reprendre →'}
-                </button>
-              </div>
-              {sessionError && <p className="upload-error">{sessionError}</p>}
-            </div>
+            <SessionResume
+              onResume={handleResumeSession}
+              isLoading={isResuming}
+              error={resumeError}
+            />
           </div>
         )}
 
@@ -479,18 +627,43 @@ function App() {
           </div>
         )}
 
-        {/* Étape 4 : Créer */}
+        {/* Étape 4 : Récapitulatif */}
         {step === 'confirm' && (
           <StepTableConfirmation
             tables={allTables}
             onBack={() => setStep('config')}
-            onConfirm={handleCreate}
+            onNext={() => setStep('questionnaire')}
+          />
+        )}
+
+        {/* Étape 5 : Questionnaire de personnalisation */}
+        {step === 'questionnaire' && (
+          <StepQuestionnaire
+            questions={questionBank}
+            answers={answers}
+            onAnswer={handleAnswer}
+            onBack={() => setStep('confirm')}
+            onCreateWebApp={handleReviewProposals}
             isCreating={isCreating}
             error={createError}
           />
         )}
 
-        {/* Étape 5 : Terminé */}
+        {/* Étape 6 : Choix de la proposition */}
+        {step === 'proposals' && uiProposals.length === 3 && proposalPreviewTable && (
+          <StepUiProposals
+            proposals={uiProposals}
+            table={proposalPreviewTable}
+            selectedId={selectedProposalId}
+            onSelect={setSelectedProposalId}
+            onBack={() => setStep('questionnaire')}
+            onConfirm={handleCreateWebApp}
+            isCreating={isCreating}
+            error={createError}
+          />
+        )}
+
+        {/* Étape 7 : Terminé */}
         {step === 'done' && (
           <div className="done-section">
             <div className="done-header">
@@ -544,31 +717,42 @@ function App() {
               </div>
             )}
 
-            {/* Sauvegarde session */}
-            <div className="session-save-box">
-              {!sessionCode ? (
-                <button className="session-save-btn" onClick={saveSession}>
-                  Sauvegarder ma session
-                </button>
-              ) : (
+            {/* Code de session pour reprendre plus tard */}
+            {appSeed?.sessionId && (
+              <div className="session-save-box">
                 <div className="session-code-display">
                   <span className="session-code-label">Votre code de session :</span>
-                  <span className="session-code">{sessionCode}</span>
+                  <span className="session-code">{appSeed.sessionId}</span>
                   <span className="session-code-hint">Notez ce code pour reprendre plus tard</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="done-actions">
-              <button className="btn btn-secondary" onClick={() => setStep('confirm')}>← Retour</button>
+              <button className="btn btn-secondary" onClick={() => setStep('proposals')}>← Retour</button>
               <button className="btn-primary" onClick={() => setStep('app')}>Ouvrir l'application générée →</button>
               <button className="btn btn-secondary" onClick={resetAll}>Importer un autre fichier</button>
             </div>
           </div>
         )}
 
-        {step === 'app' && (
-          <GeneratedApp tables={allTables} onBack={() => setStep('done')} />
+        {step === 'app' && appSeed && (
+          <GeneratedApp
+            tables={allTables}
+            onBack={() => setStep('done')}
+            initialArchetypeOverrides={appSeed.archetypeOverrides}
+            initialLayoutOverrides={appSeed.layoutOverrides}
+            initialActiveTableId={appSeed.primaryTableId}
+            showChartWidget={appSeed.showChartWidget}
+            showStatsWidget={appSeed.showStatsWidget}
+            canEdit={appSeed.canEdit}
+            density={appSeed.density}
+            navigation={appSeed.navigation}
+            searchEnabled={appSeed.searchEnabled}
+            sortMode={appSeed.sortMode}
+            exportMode={appSeed.exportMode}
+            sessionId={appSeed.sessionId}
+          />
         )}
 
       </main>
