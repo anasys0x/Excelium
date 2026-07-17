@@ -1,5 +1,12 @@
+# API
+fastapi
+uvicorn
+python-multipart
+psycopg2-binary
+openpyxl
+
+# Documentation
 mkdocs
 mkdocs-material
 mkdocs-material-extensions
 pymdown-extensions
-openpyxl
