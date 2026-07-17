@@ -6,6 +6,9 @@ psycopg2-binary
 python-dotenv
 openpyxl
 
+# Tests (TestClient FastAPI)
+httpx
+
 # Documentation
 mkdocs
 mkdocs-material
