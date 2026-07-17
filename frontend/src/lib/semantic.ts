@@ -29,6 +29,12 @@ export interface AnalyzedColumn {
   index: number
 }
 
+export interface ChartRecommendation {
+  kind: 'category' | 'time'
+  dimension: AnalyzedColumn
+  metric: AnalyzedColumn
+}
+
 const ID_RE       = /(^id$|_id$|^id_|^code$|_code$|^ref$|_ref$|uuid|matricule|^num[eé]ro?$)/i
 const CURRENCY_RE = /(prix|price|montant|cost|cout|co[uû]t|total|salaire|amount|revenu|chiffre|€|\$)/i
 const PERCENT_RE  = /(taux|percent|pourcent|%|\brate\b|ratio)/i
@@ -37,6 +43,8 @@ const IMAGE_RE    = /(image|photo|avatar|logo|picture|thumbnail|cover|img)/i
 const STATUS_RE   = /(statut|status|[ée]tat$|^[ée]tat|\bstate\b|phase|stage|situation)/i
 const TITLE_RE    = /(^nom$|name|^titre$|title|libell|label|intitul|d[ée]signation)/i
 const IMAGE_URL_RE = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i
+const DESCRIPTIVE_NUMBER_RE = /(^|[\s_-])(age|âge|anciennet[ée]|ann[ée]e|year|rang|rank|taille|height|poids|weight|code postal|postal|zip)([\s_-]|$)/i
+const PERSONAL_DATE_RE = /(naissance|birth|birthday|date.?of.?birth|dob)/i
 
 function sampleValues(rows: unknown[][], colIndex: number, limit = 60): unknown[] {
   const out: unknown[] = []
@@ -95,6 +103,26 @@ const METRIC_ROLES: SemanticRole[] = ['number', 'currency', 'percent', 'rating']
 
 export function isMetricRole(role: SemanticRole): boolean {
   return METRIC_ROLES.includes(role)
+}
+
+function isMeaningfulMetric(column: AnalyzedColumn): boolean {
+  return isMetricRole(column.role) && !DESCRIPTIVE_NUMBER_RE.test(column.name)
+}
+
+// Un graphique n'est proposé que si les colonnes expriment une vraie relation
+// analytique. Les attributs descriptifs d'une personne (âge, naissance, etc.)
+// ne sont jamais transformés automatiquement en graphique.
+export function findChartRecommendation(columns: AnalyzedColumn[]): ChartRecommendation | null {
+  const metric = columns.find(isMeaningfulMetric)
+  if (!metric) return null
+
+  const category = columns.find((column) => column.role === 'category' || column.role === 'status')
+  if (category) return { kind: 'category', dimension: category, metric }
+
+  const date = columns.find((column) => column.role === 'date' && !PERSONAL_DATE_RE.test(column.name))
+  if (date) return { kind: 'time', dimension: date, metric }
+
+  return null
 }
 
 // Layouts pertinents selon le contenu de la table
