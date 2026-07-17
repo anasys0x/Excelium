@@ -5,4 +5,4 @@ from models.relational.relational_type import RelationalType
 class FloatTransform(TypeTransform):
 
     def transform(self):
-        return RelationalType.DOUBLE_PRECISION
+        return RelationalType.FLOAT

@@ -5,4 +5,4 @@ from models.relational.relational_type import RelationalType
 class StringTransform(TypeTransform):
 
     def transform(self):
-        return RelationalType.VARCHAR
+        return RelationalType.TEXT
