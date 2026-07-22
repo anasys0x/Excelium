@@ -3,24 +3,63 @@ import { buildPreferenceProfile } from './preferenceEngine'
 import { buildUiProposals } from './uiProposals'
 
 describe('buildUiProposals', () => {
-  it('produit exactement trois propositions distinctes', () => {
+  it('classe les layouts disponibles par score et marque le premier comme recommandé', () => {
     const profile = buildPreferenceProfile([
-      { questionId: 'layout', optionId: 'cards', delta: { layout: { cards: 4 } } },
-      { questionId: 'density', optionId: 'comfortable', delta: { density: -2 } },
-      { questionId: 'navigation', optionId: 'tabs', delta: { navigation: 'tabs' } },
+      { questionId: 'row-focus', optionId: 'visual', delta: { layout: { gallery: 2 } } },
+      { questionId: 'row-focus-2', optionId: 'compare', delta: { widget: { stats: 2 }, layout: { dashboard: 1 } } },
     ])
 
     const proposals = buildUiProposals(profile, {
-      hasImages: false,
-      hasMeaningfulChart: false,
-      archetype: 'contacts',
+      hasImages: true,
+      hasMeaningfulChart: true,
+      archetype: 'generic',
     })
-    const signatures = proposals.map(({ config }) => `${config.layout}:${config.density}:${config.navigation}`)
 
     expect(proposals).toHaveLength(3)
-    expect(new Set(signatures)).toHaveLength(3)
-    expect(proposals[0].id).toBe('recommended')
-    expect(proposals[0].config.layout).toBe('cards')
-    expect(proposals.some((proposal) => proposal.id === 'analytical')).toBe(false)
+    expect(proposals[0].config.layout).toBe('gallery')
+    expect(proposals[0].recommended).toBe(true)
+    expect(proposals[1].recommended).toBe(false)
+    expect(proposals[2].recommended).toBe(false)
+    expect(new Set(proposals.map((p) => p.config.layout)).size).toBe(3)
+  })
+
+  it("n'inclut pas gallery/dashboard quand ils ne sont pas pertinents pour les données", () => {
+    const profile = buildPreferenceProfile([])
+    const proposals = buildUiProposals(profile, {
+      hasImages: false,
+      hasMeaningfulChart: false,
+      archetype: 'generic',
+    })
+
+    expect(proposals.map((p) => p.config.layout)).toEqual(['table', 'cards'])
+  })
+
+  it('toutes les propositions partagent le même thème/densité/navigation (issus du profil)', () => {
+    const profile = buildPreferenceProfile([
+      { questionId: 'theme', optionId: 'light', delta: { theme: 'light' } },
+    ])
+    const proposals = buildUiProposals(profile, {
+      hasImages: true,
+      hasMeaningfulChart: true,
+      archetype: 'generic',
+    })
+
+    for (const proposal of proposals) {
+      expect(proposal.config.theme).toBe('light')
+    }
+  })
+
+  it('un changement de réponse qui modifie le score de layout change le classement', () => {
+    const withTableFocus = buildUiProposals(
+      buildPreferenceProfile([{ questionId: 'row-focus', optionId: 'identifier', delta: { layout: { table: 2 } } }]),
+      { hasImages: true, hasMeaningfulChart: true, archetype: 'generic' },
+    )
+    const withGalleryFocus = buildUiProposals(
+      buildPreferenceProfile([{ questionId: 'row-focus', optionId: 'visual', delta: { layout: { gallery: 2 } } }]),
+      { hasImages: true, hasMeaningfulChart: true, archetype: 'generic' },
+    )
+
+    expect(withTableFocus[0].config.layout).toBe('table')
+    expect(withGalleryFocus[0].config.layout).toBe('gallery')
   })
 })

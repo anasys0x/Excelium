@@ -1404,7 +1404,7 @@
 }
 .questionnaire-live-proposals {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 24px;
 }
@@ -1566,7 +1566,7 @@
 .proposals-heading { max-width: 640px; margin-bottom: 24px; }
 .proposals-heading h1 { font-size: 24px; }
 .proposals-heading > p:last-child { margin-top: 6px; color: var(--text-2); font-size: 14px; }
-.proposal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.proposal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 16px; }
 .proposal-card {
   display: block;
   overflow: hidden;

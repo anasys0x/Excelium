@@ -42,10 +42,10 @@ const IDENTITY_QUESTION: Question = {
   summaryLabel: 'Cette table',
   text: 'Cette table représente surtout...',
   options: [
-    { id: 'contacts', label: 'Des personnes/contacts', delta: { archetype: { contacts: 5 } } },
-    { id: 'sales', label: 'Des ventes/transactions', delta: { archetype: { sales: 5 } } },
-    { id: 'inventory', label: 'Un catalogue de produits', delta: { archetype: { inventory: 5 } } },
-    { id: 'events', label: 'Des événements', delta: { archetype: { events: 5 } } },
+    { id: 'contacts', label: 'Des personnes/contacts', delta: { archetype: { contacts: 5 }, layout: { cards: 1 } } },
+    { id: 'sales', label: 'Des ventes/transactions', delta: { archetype: { sales: 5 }, layout: { table: 1 } } },
+    { id: 'inventory', label: 'Un catalogue de produits', delta: { archetype: { inventory: 5 }, layout: { cards: 1 } } },
+    { id: 'events', label: 'Des événements', delta: { archetype: { events: 5 }, layout: { table: 1 } } },
   ],
 }
 
@@ -56,7 +56,7 @@ const ROW_FOCUS_QUESTION: Question = {
   text: 'En regardant une ligne, tu cherches surtout...',
   options: [
     { id: 'compare', label: 'Comparer des valeurs', delta: { widget: { stats: 2 }, layout: { dashboard: 1 } } },
-    { id: 'status', label: 'Voir un statut', delta: { interaction: 0 } },
+    { id: 'status', label: 'Voir un statut', delta: { layout: { table: 1 } } },
     { id: 'visual', label: 'Repérer visuellement', delta: { layout: { gallery: 2 } } },
     { id: 'identifier', label: "L'identifiant/le nom", delta: { layout: { table: 2 } } },
   ],
@@ -68,9 +68,8 @@ const EDIT_QUESTION: Question = {
   summaryLabel: 'Modifications',
   text: 'Tu vas modifier ces données ?',
   options: [
-    { id: 'often', label: 'Souvent', delta: { interaction: 2 } },
-    { id: 'reference', label: "Rarement, c'est une référence", delta: { interaction: -1, layout: { table: 1 } } },
-    { id: 'never', label: "Jamais après l'import", delta: { interaction: -2 } },
+    { id: 'yes', label: 'Oui', delta: { interaction: 2 } },
+    { id: 'no', label: "Non, c'est une référence", delta: { interaction: -2, layout: { table: 1 } } },
   ],
 }
 
@@ -105,9 +104,8 @@ const VOLUME_QUESTION: Question = {
   summaryLabel: 'Volume',
   text: 'Combien de lignes environ ?',
   options: [
-    { id: 'few', label: 'Peu (moins de 50)', delta: { density: -1 } },
-    { id: 'many', label: 'Beaucoup (plus de 500)', delta: { density: 2, widget: { stats: 1 } } },
-    { id: 'medium', label: 'Entre les deux', delta: {} },
+    { id: 'few', label: 'Peu (moins de 100)', delta: { density: -2 } },
+    { id: 'many', label: 'Beaucoup (plus de 100)', delta: { density: 2, widget: { stats: 1 } } },
   ],
 }
 
@@ -119,7 +117,6 @@ const THEME_QUESTION: Question = {
   options: [
     { id: 'dark', label: 'Sombre', delta: { theme: 'dark' } },
     { id: 'light', label: 'Clair', delta: { theme: 'light' } },
-    { id: 'neutral', label: 'Peu importe', delta: { theme: 'dark' } },
   ],
 }
 

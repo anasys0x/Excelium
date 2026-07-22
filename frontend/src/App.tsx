@@ -690,7 +690,7 @@ function App() {
         )}
 
         {/* Étape 6 : Choix de la proposition */}
-        {step === 'proposals' && uiProposals.length === 3 && proposalPreviewTable && (
+        {step === 'proposals' && uiProposals.length > 0 && proposalPreviewTable && (
           <StepUiProposals
             proposals={uiProposals}
             table={proposalPreviewTable}

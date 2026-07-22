@@ -48,7 +48,7 @@ function StepUiProposals({
               <span className="proposal-card-copy">
                 <span>
                   <strong>{proposal.title}</strong>
-                  {proposal.id === 'recommended' && <small>Recommandée</small>}
+                  {proposal.recommended && <small>Recommandée</small>}
                 </span>
                 <span>{proposal.description}</span>
               </span>

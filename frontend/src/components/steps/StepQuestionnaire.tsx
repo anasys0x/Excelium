@@ -68,7 +68,7 @@ function StepQuestionnaire({
               <ProposalPreview proposal={proposal} table={previewTable} />
               <span className="questionnaire-live-proposal-title">
                 {proposal.title}
-                {proposal.id === 'recommended' && <small>Recommandée</small>}
+                {proposal.recommended && <small>Recommandée</small>}
               </span>
             </div>
           ))}

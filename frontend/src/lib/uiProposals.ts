@@ -34,6 +34,7 @@ export interface UiProposal {
   id: string
   title: string
   description: string
+  recommended: boolean
   config: UiConfiguration
 }
 
@@ -45,77 +46,55 @@ export interface UiProposalContext {
 
 const LAYOUTS: LayoutKind[] = ['table', 'cards', 'dashboard', 'gallery']
 
-function preferredLayout(profile: PreferenceProfile): LayoutKind {
-  return LAYOUTS.reduce((best, layout) =>
-    (profile.layout[layout] ?? 0) > (profile.layout[best] ?? 0) ? layout : best
-  , 'table')
+const LAYOUT_TITLES: Record<LayoutKind, string> = {
+  table: 'Tableau',
+  cards: 'Cartes',
+  dashboard: 'Tableau de bord',
+  gallery: 'Galerie',
 }
 
-function signature(config: UiConfiguration): string {
-  return `${config.layout}:${config.density}:${config.navigation}`
+const LAYOUT_DESCRIPTIONS: Record<LayoutKind, string> = {
+  table: 'Vue compacte, efficace pour parcourir et rechercher beaucoup de lignes.',
+  cards: 'Une fiche par élément, facile à parcourir visuellement.',
+  dashboard: 'Indicateurs et graphiques mis en avant, pour suivre des chiffres.',
+  gallery: 'Les images en avant, pour repérer visuellement chaque élément.',
 }
 
+// Les 3 propositions sont les 3 layouts les mieux notés selon les réponses
+// au questionnaire — jamais des gabarits fixes. N'importe quelle réponse qui
+// pèse sur `profile.layout` (ou sur le thème/densité/etc. partagés) change
+// donc visiblement les 3 aperçus, pas seulement le premier.
 export function buildUiProposals(profile: PreferenceProfile, context: UiProposalContext): UiProposal[] {
   const shared = {
     searchEnabled: profile.searchEnabled,
     sortMode: profile.sortMode,
     exportMode: profile.exportMode,
     theme: profile.theme,
+    density: getDisplayDensity(profile),
+    navigation: profile.navigation,
     canEdit: shouldAllowEditing(profile),
     showStats: shouldShowStatsWidget(profile),
     showChart: shouldShowChartWidget(profile),
     chartPreference: profile.chartPreference,
   }
-  const exact: UiProposal = {
-    id: 'recommended',
-    title: 'Selon tes réponses',
-    description: context.archetype === 'contacts'
-      ? 'Tes choix appliqués à un annuaire de personnes, sans analyse inventée.'
-      : 'La proposition la plus fidèle à tes choix et au sens des données.',
-    config: {
-      ...shared,
-      layout: preferredLayout(profile),
-      density: getDisplayDensity(profile),
-      navigation: profile.navigation,
-    },
-  }
 
-  const candidates: UiProposal[] = [
-    {
-      id: 'structured',
-      title: 'Structurée',
-      description: 'Une vue compacte, efficace pour gérer beaucoup de données.',
-      config: { ...shared, layout: 'table', density: 'compact', navigation: 'sidebar' },
-    },
-    {
-      id: 'visual',
-      title: context.archetype === 'contacts' ? 'Fiches individuelles' : 'Visuelle',
-      description: context.archetype === 'contacts'
-        ? 'Des fiches lisibles pour consulter chaque personne et ses informations.'
-        : 'Une présentation aérée qui facilite le parcours des éléments.',
-      config: { ...shared, layout: context.hasImages ? 'gallery' : 'cards', density: 'comfortable', navigation: 'tabs' },
-    },
-    {
-      id: 'minimal',
-      title: context.archetype === 'contacts' ? 'Annuaire simple' : 'Essentielle',
-      description: 'Une interface aérée qui conserve uniquement les informations utiles.',
-      config: { ...shared, layout: 'table', density: 'comfortable', navigation: 'tabs' },
-    },
-    ...(context.hasMeaningfulChart ? [{
-      id: 'analytical',
-      title: 'Analytique',
-      description: 'Une synthèse basée uniquement sur les mesures réellement comparables.',
-      config: { ...shared, layout: 'dashboard' as const, density: 'compact' as const, navigation: 'tabs' as const },
-    }] : []),
-  ]
-
-  const seen = new Set([signature(exact.config)])
-  const alternatives = candidates.filter((candidate) => {
-    const key = signature(candidate.config)
-    if (seen.has(key)) return false
-    seen.add(key)
+  const availableLayouts = LAYOUTS.filter((layout) => {
+    if (layout === 'gallery') return context.hasImages
+    if (layout === 'dashboard') return context.hasMeaningfulChart || shared.showStats
     return true
   })
 
-  return [exact, ...alternatives.slice(0, 2)]
+  const ranked = [...availableLayouts].sort(
+    (a, b) => (profile.layout[b] ?? 0) - (profile.layout[a] ?? 0)
+  )
+
+  return ranked.slice(0, 3).map((layout, index) => ({
+    id: layout,
+    title: LAYOUT_TITLES[layout],
+    recommended: index === 0,
+    description: context.archetype === 'contacts' && layout === 'cards'
+      ? 'Des fiches lisibles pour consulter chaque personne et ses informations.'
+      : LAYOUT_DESCRIPTIONS[layout],
+    config: { ...shared, layout },
+  }))
 }
