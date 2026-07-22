@@ -23,7 +23,7 @@ describe('buildUiProposals', () => {
     expect(new Set(proposals.map((p) => p.config.layout)).size).toBe(3)
   })
 
-  it("n'inclut pas gallery/dashboard quand ils ne sont pas pertinents pour les données", () => {
+  it('reste toujours à 3 propositions même sans image ni graphique pertinent (déprioritise, ne retire pas)', () => {
     const profile = buildPreferenceProfile([])
     const proposals = buildUiProposals(profile, {
       hasImages: false,
@@ -31,7 +31,8 @@ describe('buildUiProposals', () => {
       archetype: 'generic',
     })
 
-    expect(proposals.map((p) => p.config.layout)).toEqual(['table', 'cards'])
+    expect(proposals).toHaveLength(3)
+    expect(proposals.map((p) => p.config.layout)).toEqual(['table', 'cards', 'dashboard'])
   })
 
   it('toutes les propositions partagent le même thème/densité/navigation (issus du profil)', () => {

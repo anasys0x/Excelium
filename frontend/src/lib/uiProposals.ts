@@ -78,14 +78,19 @@ export function buildUiProposals(profile: PreferenceProfile, context: UiProposal
     chartPreference: profile.chartPreference,
   }
 
-  const availableLayouts = LAYOUTS.filter((layout) => {
-    if (layout === 'gallery') return context.hasImages
-    if (layout === 'dashboard') return context.hasMeaningfulChart || shared.showStats
-    return true
-  })
+  // Toujours 3 propositions : les layouts sans données pertinentes (galerie
+  // sans image, tableau de bord sans métrique) sont dépriorisés plutôt
+  // qu'exclus, pour ne jamais tomber à 2 propositions.
+  const relevancePenalty = (layout: LayoutKind): number => {
+    if (layout === 'gallery' && !context.hasImages) return -100
+    if (layout === 'dashboard' && !context.hasMeaningfulChart && !shared.showStats) return -100
+    return 0
+  }
 
-  const ranked = [...availableLayouts].sort(
-    (a, b) => (profile.layout[b] ?? 0) - (profile.layout[a] ?? 0)
+  const ranked = [...LAYOUTS].sort(
+    (a, b) =>
+      ((profile.layout[b] ?? 0) + relevancePenalty(b)) -
+      ((profile.layout[a] ?? 0) + relevancePenalty(a))
   )
 
   return ranked.slice(0, 3).map((layout, index) => ({
