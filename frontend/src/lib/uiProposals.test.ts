@@ -50,6 +50,14 @@ describe('buildUiProposals', () => {
     }
   })
 
+  it('un choix explicite de galerie/dashboard l\'emporte même sans image/métrique idéale', () => {
+    const proposals = buildUiProposals(
+      buildPreferenceProfile([{ questionId: 'row-focus', optionId: 'visual', delta: { layout: { gallery: 2 } } }]),
+      { hasImages: false, hasMeaningfulChart: false, archetype: 'generic' },
+    )
+    expect(proposals[0].config.layout).toBe('gallery')
+  })
+
   it('un changement de réponse qui modifie le score de layout change le classement', () => {
     const withTableFocus = buildUiProposals(
       buildPreferenceProfile([{ questionId: 'row-focus', optionId: 'identifier', delta: { layout: { table: 2 } } }]),

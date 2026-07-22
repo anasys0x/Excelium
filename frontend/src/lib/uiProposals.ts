@@ -79,11 +79,14 @@ export function buildUiProposals(profile: PreferenceProfile, context: UiProposal
   }
 
   // Toujours 3 propositions : les layouts sans données pertinentes (galerie
-  // sans image, tableau de bord sans métrique) sont dépriorisés plutôt
-  // qu'exclus, pour ne jamais tomber à 2 propositions.
+  // sans image, tableau de bord sans métrique) sont légèrement dépriorisés,
+  // jamais exclus. La pénalité ne sert qu'à départager les égalités (profil
+  // vide ou neutre) — elle reste toujours plus petite que le plus petit
+  // delta réel d'une réponse (1), pour qu'un choix explicite de
+  // l'utilisateur l'emporte toujours, même sans données idéales.
   const relevancePenalty = (layout: LayoutKind): number => {
-    if (layout === 'gallery' && !context.hasImages) return -100
-    if (layout === 'dashboard' && !context.hasMeaningfulChart && !shared.showStats) return -100
+    if (layout === 'gallery' && !context.hasImages) return -0.5
+    if (layout === 'dashboard' && !context.hasMeaningfulChart && !shared.showStats) return -0.5
     return 0
   }
 
