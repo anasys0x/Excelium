@@ -451,6 +451,18 @@ function App() {
     (table) => table.tableName === answers['primary-table']?.delta.primaryTableName
   ) ?? allTables[0]
 
+  // Aperçu en direct des 3 propositions, recalculé à chaque réponse (pas besoin
+  // d'atteindre la fin du questionnaire pour les voir).
+  const liveProfile = buildPreferenceProfile(getValidAnswers())
+  const livePrimaryTable = questionnaireTables.find((table) => table.tableName === liveProfile.primaryTableHint)
+    ?? questionnaireTables[0]
+  const liveArchetype = livePrimaryTable
+    ? detectArchetype(livePrimaryTable.analyzed, livePrimaryTable.tableName)
+    : 'generic'
+  const liveProposals = proposalPreviewTable
+    ? buildUiProposals(liveProfile, { hasImages, hasMeaningfulChart, archetype: liveArchetype })
+    : []
+
   const tableNames         = allTables.map((t) => t.tableName)
   const duplicateNames     = tableNames.filter((name, idx) => tableNames.indexOf(name) !== idx)
   const emptyTableName     = allTables.some((t) => !t.tableName.trim())
@@ -646,6 +658,8 @@ function App() {
             onCreateWebApp={handleReviewProposals}
             isCreating={isCreating}
             error={createError}
+            liveProposals={liveProposals}
+            previewTable={proposalPreviewTable ?? null}
           />
         )}
 

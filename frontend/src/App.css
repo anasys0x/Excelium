@@ -1402,6 +1402,38 @@
   color: var(--text-muted);
   font-size: 12px;
 }
+.questionnaire-live-proposals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.questionnaire-live-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.questionnaire-live-proposal .proposal-preview {
+  height: 140px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.questionnaire-live-proposal-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.questionnaire-live-proposal-title small {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 9px;
+  font-weight: 600;
+}
 .questionnaire-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;

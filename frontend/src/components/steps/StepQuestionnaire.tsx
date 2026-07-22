@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import type { TableConfig } from '../../App'
 import type { Question, QuestionOption } from '../../lib/questions'
 import type { QuestionAnswer } from '../../lib/preferenceEngine'
+import type { UiProposal } from '../../lib/uiProposals'
 import QuestionCard from './QuestionCard'
+import ProposalPreview from './ProposalPreview'
 
 interface Props {
   questions: Question[]
@@ -11,9 +14,14 @@ interface Props {
   onCreateWebApp: () => void
   isCreating: boolean
   error: string | null
+  liveProposals: UiProposal[]
+  previewTable: TableConfig | null
 }
 
-function StepQuestionnaire({ questions, answers, onAnswer, onBack, onCreateWebApp, isCreating, error }: Props) {
+function StepQuestionnaire({
+  questions, answers, onAnswer, onBack, onCreateWebApp, isCreating, error,
+  liveProposals, previewTable,
+}: Props) {
   const [index, setIndex] = useState(0)
   const question = questions[index]
   const total = questions.length
@@ -48,6 +56,20 @@ function StepQuestionnaire({ questions, answers, onAnswer, onBack, onCreateWebAp
         </div>
         <span className="questionnaire-count">{answeredCount}/{total} réponses</span>
       </div>
+
+      {previewTable && liveProposals.length > 0 && (
+        <div className="questionnaire-live-proposals" aria-label="Les 3 propositions, mises à jour en direct">
+          {liveProposals.map((proposal) => (
+            <div key={proposal.id} className="questionnaire-live-proposal">
+              <ProposalPreview proposal={proposal} table={previewTable} />
+              <span className="questionnaire-live-proposal-title">
+                {proposal.title}
+                {proposal.id === 'recommended' && <small>Recommandée</small>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="questionnaire-layout">
         <div className="questionnaire-main">
@@ -97,7 +119,7 @@ function StepQuestionnaire({ questions, answers, onAnswer, onBack, onCreateWebAp
               disabled={isCreating}
               title={isComplete ? undefined : 'Les questions sans réponse gardent la détection automatique'}
             >
-              Voir les 3 propositions →
+              Choisir une proposition →
             </button>
           </div>
 
