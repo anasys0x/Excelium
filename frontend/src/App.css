@@ -15,7 +15,13 @@
   font-weight: 500;
   font-size: 15px;
   color: var(--accent-text);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity .15s ease;
 }
+.app-header-logo:hover { opacity: .8; }
 .app-header-sep { color: var(--border-strong); }
 .app-header-tagline { font-size: 13px; color: var(--text-muted); }
 .app-theme-btn {

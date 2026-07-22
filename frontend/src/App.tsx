@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import Landing from './components/landing/Landing'
 import DropZone from './components/DropZone'
 import SessionResume from './components/SessionResume'
 import SplitView from './components/layout/SplitView'
@@ -27,7 +28,7 @@ import type { UiProposal } from './lib/uiProposals'
 import { restoreSession } from './lib/session'
 import type { SessionApiResponse } from './lib/session'
 
-export type Step = 'upload' | 'select' | 'config' | 'confirm' | 'questionnaire' | 'proposals' | 'done' | 'app'
+export type Step = 'landing' | 'upload' | 'select' | 'config' | 'confirm' | 'questionnaire' | 'proposals' | 'done' | 'app'
 export type Theme = 'dark' | 'light'
 
 interface CreatedTable {
@@ -91,7 +92,7 @@ export interface GeneratedAppSeed {
 }
 
 function App() {
-  const [step, setStep]                        = useState<Step>('upload')
+  const [step, setStep]                        = useState<Step>('landing')
   const [sheets, setSheets]                    = useState<SheetData[]>([])
   const [selectedSheetNames, setSelectedNames] = useState<string[]>([])
   const [activeSheetName, setActiveSheetName]  = useState<string | null>(null)
@@ -515,11 +516,21 @@ function App() {
         { key: 'proposals', label: 'Choisir' },
       ]
 
+  if (step === 'landing') {
+    return (
+      <Landing
+        onStart={() => setStep('upload')}
+        theme={theme}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      />
+    )
+  }
+
   return (
     <div className="app-shell">
 
       <header className="app-header">
-        <span className="app-header-logo">Excelium</span>
+        <button className="app-header-logo" onClick={() => setStep('landing')}>Excelium</button>
         <span className="app-header-sep">|</span>
         <span className="app-header-tagline">Excel → Base de données</span>
         <button
