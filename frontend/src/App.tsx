@@ -13,7 +13,7 @@ import StepIndicator from './components/StepIndicator'
 import GeneratedApp from './components/app/GeneratedApp'
 import { buildQuestionBank } from './lib/questions'
 import { analyzeColumns, findChartRecommendation } from './lib/semantic'
-import type { LayoutKind } from './lib/semantic'
+import type { AnalyzedColumn, LayoutKind } from './lib/semantic'
 import { ARCHETYPE_PRESETS, computeArchetypeScores, detectArchetype } from './lib/archetype'
 import type { TableArchetype } from './lib/archetype'
 import {
@@ -248,6 +248,21 @@ function App() {
 
   // La détection choisit le modèle de données. Le questionnaire choisit ensuite
   // une vue parmi les quatre rendus que les composants savent tous afficher.
+  // Archétype final d'une table : détection auto affinée par le profil de
+  // préférences (question "identity"), jamais la détection auto seule.
+  const computeFinalArchetype = (
+    analyzed: AnalyzedColumn[],
+    tableName: string,
+    profile: PreferenceProfile,
+  ): TableArchetype => {
+    const archetypeScores = computeArchetypeScores(analyzed, tableName)
+    const detected = detectArchetype(analyzed, tableName)
+    const preset = ARCHETYPE_PRESETS[detected]
+    const availableLayouts: LayoutKind[] = ['table', 'cards', 'dashboard', 'gallery']
+    const auto: AutoDetectedTablePreset = { archetypeScores, availableLayouts, defaultLayout: preset.defaultLayout }
+    return computeTablePreset(auto, profile).archetype
+  }
+
   const buildInitialOverrides = (tablesToSeed: TableConfig[], profile: PreferenceProfile) => {
     const archetypeOverrides: Record<string, TableArchetype> = {}
     const layoutOverrides: Record<string, LayoutKind> = {}
@@ -282,7 +297,7 @@ function App() {
     const primaryTable = questionnaireTables.find((table) => table.tableName === profile.primaryTableHint)
       ?? questionnaireTables[0]
     const archetype = primaryTable
-      ? detectArchetype(primaryTable.analyzed, primaryTable.tableName)
+      ? computeFinalArchetype(primaryTable.analyzed, primaryTable.tableName, profile)
       : 'generic'
     setUiProposals(buildUiProposals(profile, { hasImages, hasMeaningfulChart, archetype }))
     setSelectedProposalId(null)
@@ -466,7 +481,7 @@ function App() {
   const livePrimaryTable = questionnaireTables.find((table) => table.tableName === liveProfile.primaryTableHint)
     ?? questionnaireTables[0]
   const liveArchetype = livePrimaryTable
-    ? detectArchetype(livePrimaryTable.analyzed, livePrimaryTable.tableName)
+    ? computeFinalArchetype(livePrimaryTable.analyzed, livePrimaryTable.tableName, liveProfile)
     : 'generic'
   const liveProposals = proposalPreviewTable
     ? buildUiProposals(liveProfile, { hasImages, hasMeaningfulChart, archetype: liveArchetype })
