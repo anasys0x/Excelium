@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { TableConfig } from '../../App'
 import type { Question, QuestionOption } from '../../lib/questions'
 import type { QuestionAnswer } from '../../lib/preferenceEngine'
@@ -16,15 +15,20 @@ interface Props {
   error: string | null
   liveProposals: UiProposal[]
   previewTable: TableConfig | null
+  index: number
+  onIndexChange: (index: number) => void
 }
 
 function StepQuestionnaire({
   questions, answers, onAnswer, onBack, onCreateWebApp, isCreating, error,
-  liveProposals, previewTable,
+  liveProposals, previewTable, index: rawIndex, onIndexChange,
 }: Props) {
-  const [index, setIndex] = useState(0)
-  const question = questions[index]
   const total = questions.length
+  const index = Math.min(rawIndex, total - 1)
+  const setIndex = (updater: number | ((current: number) => number)) => {
+    onIndexChange(typeof updater === 'function' ? updater(index) : updater)
+  }
+  const question = questions[index]
   const validAnswer = (item: Question): QuestionAnswer | undefined => {
     const answer = answers[item.id]
     return item.options.some((option) => option.id === answer?.optionId) ? answer : undefined

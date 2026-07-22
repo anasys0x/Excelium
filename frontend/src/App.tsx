@@ -104,6 +104,7 @@ function App() {
   const [createError, setCreateError]          = useState<string | null>(null)
   const [createdTables, setCreatedTables]      = useState<CreatedTable[]>([])
   const [answers, setAnswers]                  = useState<Record<string, QuestionAnswer>>({})
+  const [questionnaireIndex, setQuestionnaireIndex] = useState(0)
   const [uiProposals, setUiProposals]          = useState<UiProposal[]>([])
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null)
   const [appSeed, setAppSeed]                  = useState<GeneratedAppSeed | null>(null)
@@ -406,6 +407,7 @@ function App() {
     setError(null)
     setResumeError(null)
     setAnswers({})
+    setQuestionnaireIndex(0)
     setUiProposals([])
     setSelectedProposalId(null)
     setAppSeed(null)
@@ -660,6 +662,8 @@ function App() {
             error={createError}
             liveProposals={liveProposals}
             previewTable={proposalPreviewTable ?? null}
+            index={questionnaireIndex}
+            onIndexChange={setQuestionnaireIndex}
           />
         )}
 
