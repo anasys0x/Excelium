@@ -13,6 +13,7 @@ describe('buildQuestionBank', () => {
     expect(questions.find((question) => question.id === 'layout')?.options.some((option) => option.id === 'dashboard')).toBe(false)
     expect(questions.find((question) => question.id === 'insights')?.options.some((option) => option.id === 'charts')).toBe(false)
     for (const question of questions) {
+      expect(question.options.length).toBe(3)
       for (const option of question.options) {
         expect(Object.keys(option.delta).length).toBeGreaterThan(0)
         expect(option.impact.length).toBeGreaterThan(0)
@@ -31,10 +32,16 @@ describe('buildQuestionBank', () => {
     })
 
     expect(questions).toHaveLength(10)
-    expect(questions.find((question) => question.id === 'layout')?.options.some((option) => option.id === 'gallery')).toBe(true)
-    expect(questions.find((question) => question.id === 'insights')?.options.some((option) => option.id === 'charts')).toBe(true)
+    // Le dashboard est prioritaire sur la galerie quand les deux sont pertinents,
+    // pour garder exactement 3 options par question.
     expect(questions.find((question) => question.id === 'layout')?.options.some((option) => option.id === 'dashboard')).toBe(true)
+    expect(questions.find((question) => question.id === 'layout')?.options.some((option) => option.id === 'gallery')).toBe(false)
+    expect(questions.find((question) => question.id === 'insights')?.options.some((option) => option.id === 'charts')).toBe(true)
     expect(questions.find((question) => question.id === 'primary-table')?.options).toHaveLength(2)
+    for (const question of questions) {
+      expect(question.options.length).toBeLessThanOrEqual(3)
+      expect(question.options.length).toBeGreaterThanOrEqual(2)
+    }
   })
 
   it('contient les cinq préférences supplémentaires demandées', () => {

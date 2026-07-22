@@ -53,14 +53,19 @@ function buildLayoutQuestion(hasImages: boolean, hasMeaningfulChart: boolean): Q
       impact: 'Tableau de bord',
       delta: { layout: { dashboard: 4 } },
     })
-  }
-
-  if (hasImages) {
+  } else if (hasImages) {
     options.push({
       id: 'gallery',
       label: 'Une galerie qui met les images en avant',
       impact: 'Vue en galerie',
       delta: { layout: { gallery: 4 } },
+    })
+  } else {
+    options.push({
+      id: 'mixed',
+      label: 'Peu importe, laisse le choix automatique',
+      impact: 'Vue mixte',
+      delta: { layout: { table: 1, cards: 1 } },
     })
   }
 
@@ -96,6 +101,13 @@ function buildInsightsQuestion(hasMeaningfulChart: boolean): Question {
       impact: 'Indicateurs + graphiques',
       delta: { widget: { chart: 3, stats: 3 } },
     })
+  } else {
+    options.push({
+      id: 'mixed',
+      label: 'Un peu des deux, selon ce qui est pertinent',
+      impact: 'Synthèse légère',
+      delta: { widget: { stats: 1 } },
+    })
   }
 
   return {
@@ -114,7 +126,7 @@ function buildPrimaryTableQuestion(
 
   const options = [...tables]
     .sort((a, b) => b.rowCount - a.rowCount)
-    .slice(0, 4)
+    .slice(0, 3)
     .map((table) => ({
       id: `primary-${table.tableName}`,
       label: table.tableName,
@@ -154,6 +166,12 @@ export function buildQuestionBank(context: QuestionBankContext): Question[] {
           impact: 'Lecture seule',
           delta: { interaction: -2 },
         },
+        {
+          id: 'mixed',
+          label: 'Un peu des deux (consultation surtout, modification occasionnelle)',
+          impact: 'Usage mixte',
+          delta: { interaction: 0 },
+        },
       ],
     },
     buildInsightsQuestion(context.hasMeaningfulChart),
@@ -175,6 +193,12 @@ export function buildQuestionBank(context: QuestionBankContext): Question[] {
           impact: 'Affichage aéré',
           delta: { density: -2 },
         },
+        {
+          id: 'neutral',
+          label: 'Peu importe',
+          impact: 'Densité par défaut',
+          delta: { density: 0 },
+        },
       ],
     },
     {
@@ -194,6 +218,12 @@ export function buildQuestionBank(context: QuestionBankContext): Question[] {
           label: 'Avec un menu latéral',
           impact: 'Menu latéral',
           delta: { navigation: 'sidebar' },
+        },
+        {
+          id: 'neutral',
+          label: 'Peu importe',
+          impact: 'Navigation par défaut',
+          delta: { navigation: 'tabs' },
         },
       ],
     },
@@ -215,6 +245,12 @@ export function buildQuestionBank(context: QuestionBankContext): Question[] {
           impact: 'Sans barre de recherche',
           delta: { searchEnabled: false },
         },
+        {
+          id: 'neutral',
+          label: 'Peu importe',
+          impact: 'Recherche par défaut',
+          delta: { searchEnabled: true },
+        },
       ],
     },
     {
@@ -234,6 +270,12 @@ export function buildQuestionBank(context: QuestionBankContext): Question[] {
           label: 'Trier automatiquement de A à Z',
           impact: 'Tri alphabétique',
           delta: { sortMode: 'alphabetical' },
+        },
+        {
+          id: 'neutral',
+          label: 'Peu importe',
+          impact: 'Tri par défaut',
+          delta: { sortMode: 'source' },
         },
       ],
     },
@@ -280,6 +322,12 @@ export function buildQuestionBank(context: QuestionBankContext): Question[] {
           label: 'Clair, pour une lecture lumineuse',
           impact: 'Thème clair',
           delta: { theme: 'light' },
+        },
+        {
+          id: 'neutral',
+          label: 'Peu importe, garder le thème actuel de l’outil',
+          impact: 'Thème par défaut',
+          delta: { theme: 'dark' },
         },
       ],
     },
