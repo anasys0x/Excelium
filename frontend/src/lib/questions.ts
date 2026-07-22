@@ -1,11 +1,17 @@
-import type { PreferenceDelta } from './preferenceEngine'
+// Banque de questions du questionnaire de pondération. Centrée sur le sens
+// des données (quel type de table, ce qui compte dans une ligne, l'usage
+// des chiffres) plutôt que sur des réglages d'application génériques.
+// 3 questions déclenchent une sous-question dynamique une fois répondues
+// (voir buildBranchQuestion) ; le reste est une liste statique.
 
-export type QuestionCategory = 'presentation' | 'usage' | 'contenu' | 'confort'
+import type { PreferenceDelta } from './preferenceEngine'
+import type { QuestionAnswer } from './preferenceEngine'
+
+export type QuestionCategory = 'donnees' | 'usage' | 'confort'
 
 export interface QuestionOption {
   id: string
   label: string
-  impact: string
   delta: PreferenceDelta
 }
 
@@ -21,102 +27,100 @@ export interface QuestionBankContext {
   tables: readonly { tableName: string; rowCount: number }[]
   hasImages: boolean
   hasMeaningfulChart: boolean
+  answers: Record<string, QuestionAnswer>
 }
 
 export const CATEGORY_LABELS: Record<QuestionCategory, string> = {
-  presentation: 'Présentation',
+  donnees: 'Tes données',
   usage: 'Utilisation',
-  contenu: 'Contenu',
-  confort: 'Confort de lecture',
+  confort: 'Confort',
 }
 
-function buildLayoutQuestion(hasImages: boolean, hasMeaningfulChart: boolean): Question {
-  const options: QuestionOption[] = [
-    {
-      id: 'table',
-      label: 'Un tableau clair et structuré',
-      impact: 'Vue en tableau',
-      delta: { layout: { table: 4 } },
-    },
-    {
-      id: 'cards',
-      label: 'Des cartes faciles à parcourir',
-      impact: 'Vue en cartes',
-      delta: { layout: { cards: 4 } },
-    },
-  ]
+const IDENTITY_QUESTION: Question = {
+  id: 'identity',
+  category: 'donnees',
+  summaryLabel: 'Cette table',
+  text: 'Cette table représente surtout...',
+  options: [
+    { id: 'contacts', label: 'Des personnes/contacts', delta: { archetype: { contacts: 5 } } },
+    { id: 'sales', label: 'Des ventes/transactions', delta: { archetype: { sales: 5 } } },
+    { id: 'inventory', label: 'Un catalogue de produits', delta: { archetype: { inventory: 5 } } },
+    { id: 'events', label: 'Des événements', delta: { archetype: { events: 5 } } },
+  ],
+}
 
-  if (hasMeaningfulChart) {
-    options.push({
-      id: 'dashboard',
-      label: 'Un tableau de bord de synthèse',
-      impact: 'Tableau de bord',
-      delta: { layout: { dashboard: 4 } },
-    })
-  } else if (hasImages) {
-    options.push({
-      id: 'gallery',
-      label: 'Une galerie qui met les images en avant',
-      impact: 'Vue en galerie',
-      delta: { layout: { gallery: 4 } },
-    })
-  } else {
-    options.push({
-      id: 'mixed',
-      label: 'Peu importe, laisse le choix automatique',
-      impact: 'Vue mixte',
-      delta: { layout: { table: 1, cards: 1 } },
-    })
-  }
+const ROW_FOCUS_QUESTION: Question = {
+  id: 'row-focus',
+  category: 'donnees',
+  summaryLabel: 'Une ligne',
+  text: 'En regardant une ligne, tu cherches surtout...',
+  options: [
+    { id: 'compare', label: 'Comparer des valeurs', delta: { widget: { stats: 2 }, layout: { dashboard: 1 } } },
+    { id: 'status', label: 'Voir un statut', delta: { interaction: 0 } },
+    { id: 'visual', label: 'Repérer visuellement', delta: { layout: { gallery: 2 } } },
+    { id: 'identifier', label: "L'identifiant/le nom", delta: { layout: { table: 2 } } },
+  ],
+}
 
+const EDIT_QUESTION: Question = {
+  id: 'edit',
+  category: 'usage',
+  summaryLabel: 'Modifications',
+  text: 'Tu vas modifier ces données ?',
+  options: [
+    { id: 'often', label: 'Souvent', delta: { interaction: 2 } },
+    { id: 'reference', label: "Rarement, c'est une référence", delta: { interaction: -1, layout: { table: 1 } } },
+    { id: 'never', label: "Jamais après l'import", delta: { interaction: -2 } },
+  ],
+}
+
+function buildNumbersQuestion(): Question {
   return {
-    id: 'layout',
-    category: 'presentation',
-    summaryLabel: 'Vue principale',
-    text: 'Comment veux-tu parcourir tes données ?',
-    options,
+    id: 'numbers',
+    category: 'donnees',
+    summaryLabel: 'Chiffres',
+    text: 'Ces chiffres, tu veux les...',
+    options: [
+      { id: 'chart', label: 'Comparer en graphique', delta: { widget: { chart: 3 } } },
+      { id: 'total', label: 'Suivre un total', delta: { widget: { stats: 3 } } },
+      { id: 'consult', label: 'Juste consulter', delta: { widget: { chart: -1, stats: -1 } } },
+    ],
   }
 }
 
-function buildInsightsQuestion(hasMeaningfulChart: boolean): Question {
-  const options: QuestionOption[] = [
-    {
-      id: 'raw',
-      label: 'Afficher surtout les données',
-      impact: 'Données essentielles',
-      delta: { widget: { chart: -3, stats: -3 } },
-    },
-    {
-      id: 'stats',
-      label: 'Ajouter les indicateurs clés',
-      impact: 'Indicateurs clés',
-      delta: { widget: { chart: -3, stats: 3 } },
-    },
-  ]
+const IMAGES_QUESTION: Question = {
+  id: 'images',
+  category: 'donnees',
+  summaryLabel: 'Photos',
+  text: 'Les photos sont importantes ?',
+  options: [
+    { id: 'yes', label: 'Oui, mets-les en avant', delta: { layout: { gallery: 3 } } },
+    { id: 'no', label: 'Non', delta: { layout: { gallery: -1 } } },
+  ],
+}
 
-  if (hasMeaningfulChart) {
-    options.push({
-      id: 'charts',
-      label: 'Ajouter les indicateurs et des graphiques',
-      impact: 'Indicateurs + graphiques',
-      delta: { widget: { chart: 3, stats: 3 } },
-    })
-  } else {
-    options.push({
-      id: 'mixed',
-      label: 'Un peu des deux, selon ce qui est pertinent',
-      impact: 'Synthèse légère',
-      delta: { widget: { stats: 1 } },
-    })
-  }
+const VOLUME_QUESTION: Question = {
+  id: 'volume',
+  category: 'usage',
+  summaryLabel: 'Volume',
+  text: 'Combien de lignes environ ?',
+  options: [
+    { id: 'few', label: 'Peu (moins de 50)', delta: { density: -1 } },
+    { id: 'many', label: 'Beaucoup (plus de 500)', delta: { density: 2, widget: { stats: 1 } } },
+    { id: 'medium', label: 'Entre les deux', delta: {} },
+  ],
+}
 
-  return {
-    id: 'insights',
-    category: 'contenu',
-    summaryLabel: 'Synthèse',
-    text: 'Quel niveau de synthèse souhaites-tu ?',
-    options,
-  }
+const THEME_QUESTION: Question = {
+  id: 'theme',
+  category: 'confort',
+  summaryLabel: 'Thème',
+  text: 'Thème de la webapp ?',
+  options: [
+    { id: 'dark', label: 'Sombre', delta: { theme: 'dark' } },
+    { id: 'light', label: 'Clair', delta: { theme: 'light' } },
+    { id: 'neutral', label: 'Peu importe', delta: { theme: 'dark' } },
+  ],
 }
 
 function buildPrimaryTableQuestion(
@@ -130,207 +134,132 @@ function buildPrimaryTableQuestion(
     .map((table) => ({
       id: `primary-${table.tableName}`,
       label: table.tableName,
-      impact: table.tableName,
       delta: { primaryTableName: table.tableName },
     }))
 
   return {
     id: 'primary-table',
-    category: 'contenu',
-    summaryLabel: 'Écran d’accueil',
-    text: 'Quelle table doit s’ouvrir en premier ?',
+    category: 'usage',
+    summaryLabel: 'Table principale',
+    text: 'Table la plus importante ?',
     options,
   }
 }
 
-export function buildQuestionBank(context: QuestionBankContext): Question[] {
-  const primaryTableQuestion = buildPrimaryTableQuestion(context.tables)
+// ─── Branches : sous-questions insérées après leur question déclenchante ─────
 
-  return [
-    buildLayoutQuestion(context.hasImages, context.hasMeaningfulChart),
-    {
-      id: 'access',
-      category: 'usage',
-      summaryLabel: 'Actions',
-      text: 'Les utilisateurs doivent-ils modifier les données ?',
-      options: [
-        {
-          id: 'edit',
-          label: 'Oui, ajouter, modifier et supprimer',
-          impact: 'Modification autorisée',
-          delta: { interaction: 2 },
-        },
-        {
-          id: 'read',
-          label: 'Non, consultation uniquement',
-          impact: 'Lecture seule',
-          delta: { interaction: -2 },
-        },
-        {
-          id: 'mixed',
-          label: 'Un peu des deux (consultation surtout, modification occasionnelle)',
-          impact: 'Usage mixte',
-          delta: { interaction: 0 },
-        },
-      ],
-    },
-    buildInsightsQuestion(context.hasMeaningfulChart),
-    {
-      id: 'density',
-      category: 'confort',
-      summaryLabel: 'Densité',
-      text: 'Quelle densité d’affichage préfères-tu ?',
-      options: [
-        {
-          id: 'compact',
-          label: 'Compacte, pour voir plus de données',
-          impact: 'Affichage compact',
-          delta: { density: 2 },
-        },
-        {
-          id: 'comfortable',
-          label: 'Aérée, pour faciliter la lecture',
-          impact: 'Affichage aéré',
-          delta: { density: -2 },
-        },
-        {
-          id: 'neutral',
-          label: 'Peu importe',
-          impact: 'Densité par défaut',
-          delta: { density: 0 },
-        },
-      ],
-    },
-    {
-      id: 'navigation',
-      category: 'presentation',
-      summaryLabel: 'Navigation',
-      text: 'Comment veux-tu naviguer entre les tables ?',
-      options: [
-        {
-          id: 'tabs',
-          label: 'Avec des onglets en haut',
-          impact: 'Navigation par onglets',
-          delta: { navigation: 'tabs' },
-        },
-        {
-          id: 'sidebar',
-          label: 'Avec un menu latéral',
-          impact: 'Menu latéral',
-          delta: { navigation: 'sidebar' },
-        },
-        {
-          id: 'neutral',
-          label: 'Peu importe',
-          impact: 'Navigation par défaut',
-          delta: { navigation: 'tabs' },
-        },
-      ],
-    },
-    {
-      id: 'search',
-      category: 'usage',
-      summaryLabel: 'Recherche',
-      text: 'Faut-il une recherche rapide dans les données ?',
-      options: [
-        {
-          id: 'visible',
-          label: 'Oui, toujours visible',
-          impact: 'Recherche visible',
-          delta: { searchEnabled: true },
-        },
-        {
-          id: 'hidden',
-          label: 'Non, garder l’interface minimale',
-          impact: 'Sans barre de recherche',
-          delta: { searchEnabled: false },
-        },
-        {
-          id: 'neutral',
-          label: 'Peu importe',
-          impact: 'Recherche par défaut',
-          delta: { searchEnabled: true },
-        },
-      ],
-    },
-    {
-      id: 'sort',
-      category: 'contenu',
-      summaryLabel: 'Tri initial',
-      text: 'Dans quel ordre afficher les données au départ ?',
-      options: [
-        {
-          id: 'source',
-          label: 'Conserver l’ordre du fichier Excel',
-          impact: 'Ordre du fichier',
-          delta: { sortMode: 'source' },
-        },
-        {
-          id: 'alphabetical',
-          label: 'Trier automatiquement de A à Z',
-          impact: 'Tri alphabétique',
-          delta: { sortMode: 'alphabetical' },
-        },
-        {
-          id: 'neutral',
-          label: 'Peu importe',
-          impact: 'Tri par défaut',
-          delta: { sortMode: 'source' },
-        },
-      ],
-    },
-    {
-      id: 'exports',
-      category: 'usage',
-      summaryLabel: 'Exports',
-      text: 'Quels exports doivent être proposés ?',
-      options: [
-        {
-          id: 'all',
-          label: 'Excel et SQL',
-          impact: 'Exports Excel + SQL',
-          delta: { exportMode: 'all' },
-        },
-        {
-          id: 'excel',
-          label: 'Excel uniquement',
-          impact: 'Export Excel',
-          delta: { exportMode: 'excel' },
-        },
-        {
-          id: 'none',
-          label: 'Aucun export',
-          impact: 'Exports masqués',
-          delta: { exportMode: 'none' },
-        },
-      ],
-    },
-    {
-      id: 'theme',
-      category: 'confort',
-      summaryLabel: 'Thème',
-      text: 'Quel thème utiliser pour la webapp ?',
-      options: [
-        {
-          id: 'dark',
-          label: 'Sombre, pour réduire la luminosité',
-          impact: 'Thème sombre',
-          delta: { theme: 'dark' },
-        },
-        {
-          id: 'light',
-          label: 'Clair, pour une lecture lumineuse',
-          impact: 'Thème clair',
-          delta: { theme: 'light' },
-        },
-        {
-          id: 'neutral',
-          label: 'Peu importe, garder le thème actuel de l’outil',
-          impact: 'Thème par défaut',
-          delta: { theme: 'dark' },
-        },
-      ],
-    },
-    ...(primaryTableQuestion ? [primaryTableQuestion] : []),
+const CHART_KIND_QUESTION: Question = {
+  id: 'chart-kind',
+  category: 'donnees',
+  summaryLabel: 'Type de graphique',
+  text: 'Comparer comment ?',
+  options: [
+    { id: 'time', label: 'Évolution dans le temps', delta: { chartPreference: 'time' } },
+    { id: 'category', label: 'Par catégorie', delta: { chartPreference: 'category' } },
+    { id: 'neutral', label: 'Peu importe', delta: {} },
+  ],
+}
+
+const STATUS_EDITABLE_QUESTION: Question = {
+  id: 'status-editable',
+  category: 'donnees',
+  summaryLabel: 'Statut',
+  text: 'Ce statut, tu le modifies souvent ?',
+  options: [
+    { id: 'yes', label: 'Oui, facilement', delta: { interaction: 2 } },
+    { id: 'no', label: 'Non, juste informatif', delta: { interaction: 0 } },
+    { id: 'neutral', label: 'Peu importe', delta: {} },
+  ],
+}
+
+const FOCUS_QUESTIONS: Record<string, Question> = {
+  contacts: {
+    id: 'focus-contacts',
+    category: 'donnees',
+    summaryLabel: 'Priorité contacts',
+    text: 'Tu veux surtout...',
+    options: [
+      { id: 'find', label: 'Retrouver vite quelqu\'un', delta: { layout: { table: 2 } } },
+      { id: 'cards', label: 'Des fiches individuelles', delta: { layout: { cards: 2 } } },
+      { id: 'visual', label: 'Une vue visuelle', delta: { layout: { gallery: 2 } } },
+    ],
+  },
+  sales: {
+    id: 'focus-sales',
+    category: 'donnees',
+    summaryLabel: 'Priorité ventes',
+    text: 'Le plus important ?',
+    options: [
+      { id: 'total', label: 'Le total', delta: { widget: { stats: 2 }, archetype: { sales: 2 } } },
+      { id: 'evolution', label: "L'évolution", delta: { widget: { chart: 2 }, chartPreference: 'time' } },
+      { id: 'who', label: 'Qui a acheté quoi', delta: { layout: { table: 2 } } },
+    ],
+  },
+  inventory: {
+    id: 'focus-inventory',
+    category: 'donnees',
+    summaryLabel: 'Priorité catalogue',
+    text: 'Tu veux surtout...',
+    options: [
+      { id: 'stock', label: 'Suivre le stock', delta: { widget: { stats: 2 }, archetype: { inventory: 2 } } },
+      { id: 'visual', label: 'Mettre en valeur visuellement', delta: { layout: { gallery: 2 } } },
+      { id: 'prices', label: 'Comparer les prix', delta: { widget: { chart: 2 }, chartPreference: 'category' } },
+    ],
+  },
+  events: {
+    id: 'focus-events',
+    category: 'donnees',
+    summaryLabel: 'Priorité événements',
+    text: 'Tu veux surtout...',
+    options: [
+      { id: 'upcoming', label: 'Les prochains rendez-vous', delta: { layout: { table: 2 } } },
+      { id: 'history', label: "L'historique", delta: { layout: { table: 1 }, widget: { stats: 1 } } },
+      { id: 'calendar', label: 'Une vue calendrier', delta: { layout: { cards: 2 } } },
+    ],
+  },
+}
+
+// Insère la sous-question déclenchée par `answers[triggerId]` (si elle
+// existe et correspond à `whenOptionId`, ou à l'une des clés de `variants`)
+// juste après `afterId` dans la liste. Ne modifie rien si non déclenchée.
+function insertAfter(questions: Question[], afterId: string, toInsert: Question | null): Question[] {
+  if (!toInsert) return questions
+  const index = questions.findIndex((q) => q.id === afterId)
+  if (index === -1) return questions
+  return [...questions.slice(0, index + 1), toInsert, ...questions.slice(index + 1)]
+}
+
+export function buildQuestionBank(context: QuestionBankContext): Question[] {
+  const { answers } = context
+
+  let questions: Question[] = [
+    IDENTITY_QUESTION,
+    ROW_FOCUS_QUESTION,
+    EDIT_QUESTION,
+    ...(context.hasMeaningfulChart ? [buildNumbersQuestion()] : []),
+    ...(context.hasImages ? [IMAGES_QUESTION] : []),
+    VOLUME_QUESTION,
+    ...(() => {
+      const primary = buildPrimaryTableQuestion(context.tables)
+      return primary ? [primary] : []
+    })(),
+    THEME_QUESTION,
   ]
+
+  // Branche B : variante selon l'archétype choisi en question 1.
+  const identityAnswer = answers.identity
+  const focusQuestion = identityAnswer ? FOCUS_QUESTIONS[identityAnswer.optionId] ?? null : null
+  questions = insertAfter(questions, 'identity', focusQuestion)
+
+  // Branche C : ce statut est-il modifié souvent.
+  const rowFocusAnswer = answers['row-focus']
+  const statusFollowUp = rowFocusAnswer?.optionId === 'status' ? STATUS_EDITABLE_QUESTION : null
+  questions = insertAfter(questions, 'row-focus', statusFollowUp)
+
+  // Branche A : quel type de graphique.
+  const numbersAnswer = answers.numbers
+  const chartKindFollowUp = numbersAnswer?.optionId === 'chart' ? CHART_KIND_QUESTION : null
+  questions = insertAfter(questions, 'numbers', chartKindFollowUp)
+
+  return questions
 }

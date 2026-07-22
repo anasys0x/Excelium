@@ -11,6 +11,7 @@ export type NavigationMode = 'tabs' | 'sidebar'
 export type SortMode = 'source' | 'alphabetical'
 export type ExportMode = 'all' | 'excel' | 'none'
 export type AppTheme = 'dark' | 'light'
+export type ChartPreference = 'time' | 'category'
 
 export interface PreferenceDelta {
   archetype?: Partial<Record<TableArchetype, number>>
@@ -24,6 +25,7 @@ export interface PreferenceDelta {
   sortMode?: SortMode
   exportMode?: ExportMode
   theme?: AppTheme
+  chartPreference?: ChartPreference
 }
 
 export interface QuestionAnswer {
@@ -44,6 +46,7 @@ export interface PreferenceProfile {
   sortMode: SortMode
   exportMode: ExportMode
   theme: AppTheme
+  chartPreference?: ChartPreference
 }
 
 function addRecord<K extends string>(
@@ -89,6 +92,7 @@ export function buildPreferenceProfile(answers: readonly QuestionAnswer[]): Pref
       sortMode: delta.sortMode ?? profile.sortMode,
       exportMode: delta.exportMode ?? profile.exportMode,
       theme: delta.theme ?? profile.theme,
+      chartPreference: delta.chartPreference ?? profile.chartPreference,
     }
   }, initial)
 }

@@ -1,12 +1,14 @@
 import type { AnalyzedColumn } from '../../lib/semantic'
 import { isMetricRole } from '../../lib/semantic'
 import ChartWidget from './ChartWidget'
+import type { ChartPreference } from '../../lib/preferenceEngine'
 
 interface Props {
   columns: AnalyzedColumn[]
   rows: unknown[][]
   showChart?: boolean
   showStats?: boolean
+  chartPreference?: ChartPreference
 }
 
 const nf = new Intl.NumberFormat('fr-FR')
@@ -21,7 +23,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-function DashboardView({ columns, rows, showChart = false, showStats = false }: Props) {
+function DashboardView({ columns, rows, showChart = false, showStats = false, chartPreference }: Props) {
   const stats: { label: string; value: string }[] = [{ label: 'Enregistrements', value: nf.format(rows.length) }]
 
   if (showStats) {
@@ -42,7 +44,7 @@ function DashboardView({ columns, rows, showChart = false, showStats = false }: 
       <div className="dashboard-grid">
         {stats.map((s, i) => <Stat key={i} label={s.label} value={s.value} />)}
       </div>
-      {showChart && <ChartWidget columns={columns} rows={rows} />}
+      {showChart && <ChartWidget columns={columns} rows={rows} preference={chartPreference} />}
     </div>
   )
 }

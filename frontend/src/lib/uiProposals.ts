@@ -8,6 +8,7 @@ import {
 } from './preferenceEngine'
 import type {
   AppTheme,
+  ChartPreference,
   DisplayDensity,
   ExportMode,
   NavigationMode,
@@ -26,6 +27,7 @@ export interface UiConfiguration {
   canEdit: boolean
   showStats: boolean
   showChart: boolean
+  chartPreference?: ChartPreference
 }
 
 export interface UiProposal {
@@ -62,6 +64,7 @@ export function buildUiProposals(profile: PreferenceProfile, context: UiProposal
     canEdit: shouldAllowEditing(profile),
     showStats: shouldShowStatsWidget(profile),
     showChart: shouldShowChartWidget(profile),
+    chartPreference: profile.chartPreference,
   }
   const exact: UiProposal = {
     id: 'recommended',

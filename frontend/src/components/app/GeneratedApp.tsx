@@ -4,7 +4,7 @@ import { analyzeColumns, suggestLayouts } from '../../lib/semantic'
 import type { LayoutKind } from '../../lib/semantic'
 import { ARCHETYPE_PRESETS, detectArchetype } from '../../lib/archetype'
 import type { TableArchetype } from '../../lib/archetype'
-import type { DisplayDensity, ExportMode, NavigationMode, SortMode } from '../../lib/preferenceEngine'
+import type { ChartPreference, DisplayDensity, ExportMode, NavigationMode, SortMode } from '../../lib/preferenceEngine'
 import TableView from './TableView'
 import GalleryView from './GalleryView'
 import DashboardView from './DashboardView'
@@ -34,6 +34,7 @@ interface Props {
   initialActiveTableId: string | null
   showChartWidget: boolean
   showStatsWidget: boolean
+  chartPreference?: ChartPreference
   canEdit: boolean
   density: DisplayDensity
   navigation: NavigationMode
@@ -53,7 +54,7 @@ interface PendingOp {
 function GeneratedApp({
   tables, onBack,
   initialArchetypeOverrides, initialLayoutOverrides, initialActiveTableId,
-  showChartWidget, showStatsWidget, canEdit, density,
+  showChartWidget, showStatsWidget, chartPreference, canEdit, density,
   navigation, searchEnabled, sortMode, exportMode, sessionId,
 }: Props) {
   const initialTabIndex = initialActiveTableId
@@ -429,6 +430,7 @@ function GeneratedApp({
                 rows={displayRows}
                 showChart={showChartWidget}
                 showStats={showStatsWidget}
+                chartPreference={chartPreference}
               />
             </div>
           )}
@@ -459,7 +461,7 @@ function GeneratedApp({
               ? <RowDependencyGraph row={depRow} table={active} allTables={tables} onClose={() => { setDepRow(null); setDepRowIndex(null) }} />
               : null}
           />}
-          {effectiveLayout === 'dashboard' && <DashboardView columns={analyzed} rows={displayRows} showChart={showChartWidget} showStats={showStatsWidget} />}
+          {effectiveLayout === 'dashboard' && <DashboardView columns={analyzed} rows={displayRows} showChart={showChartWidget} showStats={showStatsWidget} chartPreference={chartPreference} />}
         </>
       )}
       </>

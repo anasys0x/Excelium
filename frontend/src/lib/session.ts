@@ -3,7 +3,7 @@ import { ARCHETYPE_PRESETS, detectArchetype } from './archetype'
 import type { TableArchetype } from './archetype'
 import type { LayoutKind } from './semantic'
 import { analyzeColumns } from './semantic'
-import type { DisplayDensity, ExportMode, NavigationMode, SortMode } from './preferenceEngine'
+import type { ChartPreference, DisplayDensity, ExportMode, NavigationMode, SortMode } from './preferenceEngine'
 
 interface StoredForeignKey {
   refTable: string
@@ -106,6 +106,10 @@ export function restoreSession(data: SessionApiResponse): RestoredSession {
     ? preset.exportMode
     : 'all'
   const theme: Theme = preset.theme === 'light' ? 'light' : 'dark'
+  const chartPreference: ChartPreference | undefined =
+    preset.chartPreference === 'time' || preset.chartPreference === 'category'
+      ? preset.chartPreference
+      : undefined
 
   return {
     sheets: [{ name: sheetName, tables }],
@@ -115,6 +119,7 @@ export function restoreSession(data: SessionApiResponse): RestoredSession {
       primaryTableId,
       showChartWidget: booleanValue(preset.showChartWidget, false),
       showStatsWidget: booleanValue(preset.showStatsWidget, false),
+      chartPreference,
       canEdit: booleanValue(preset.canEdit, true),
       density,
       navigation,

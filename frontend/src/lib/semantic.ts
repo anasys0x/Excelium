@@ -112,14 +112,23 @@ function isMeaningfulMetric(column: AnalyzedColumn): boolean {
 // Un graphique n'est proposé que si les colonnes expriment une vraie relation
 // analytique. Les attributs descriptifs d'une personne (âge, naissance, etc.)
 // ne sont jamais transformés automatiquement en graphique.
-export function findChartRecommendation(columns: AnalyzedColumn[]): ChartRecommendation | null {
+//
+// `preference` (issue du questionnaire) inverse l'ordre de test entre date et
+// catégorie quand les deux existent : 'time' fait tester la date en premier.
+// Sans préférence (ou preference 'category'), comportement inchangé — la
+// catégorie est toujours testée en premier.
+export function findChartRecommendation(
+  columns: AnalyzedColumn[],
+  preference?: 'time' | 'category',
+): ChartRecommendation | null {
   const metric = columns.find(isMeaningfulMetric)
   if (!metric) return null
 
   const category = columns.find((column) => column.role === 'category' || column.role === 'status')
-  if (category) return { kind: 'category', dimension: category, metric }
-
   const date = columns.find((column) => column.role === 'date' && !PERSONAL_DATE_RE.test(column.name))
+
+  if (preference === 'time' && date) return { kind: 'time', dimension: date, metric }
+  if (category) return { kind: 'category', dimension: category, metric }
   if (date) return { kind: 'time', dimension: date, metric }
 
   return null

@@ -21,7 +21,7 @@ import {
   computeTablePreset,
 } from './lib/preferenceEngine'
 import type { AutoDetectedTablePreset, DisplayDensity, PreferenceProfile, QuestionAnswer } from './lib/preferenceEngine'
-import type { ExportMode, NavigationMode, SortMode } from './lib/preferenceEngine'
+import type { ChartPreference, ExportMode, NavigationMode, SortMode } from './lib/preferenceEngine'
 import { buildUiProposals } from './lib/uiProposals'
 import type { UiProposal } from './lib/uiProposals'
 import { restoreSession } from './lib/session'
@@ -80,6 +80,7 @@ export interface GeneratedAppSeed {
   primaryTableId: string | null
   showChartWidget: boolean
   showStatsWidget: boolean
+  chartPreference: ChartPreference | undefined
   canEdit: boolean
   density: DisplayDensity
   navigation: NavigationMode
@@ -320,6 +321,7 @@ function App() {
     const {
       showChart: showChartWidget,
       showStats: showStatsWidget,
+      chartPreference,
       canEdit,
       density,
       navigation,
@@ -354,6 +356,7 @@ function App() {
               layoutOverrides,
               showChartWidget,
               showStatsWidget,
+              chartPreference,
               canEdit,
               density,
               navigation,
@@ -379,6 +382,7 @@ function App() {
         primaryTableId,
         showChartWidget,
         showStatsWidget,
+        chartPreference,
         canEdit,
         density,
         navigation,
@@ -438,20 +442,23 @@ function App() {
       analyzed: analyzeColumns(columns, rows),
     }
   })
-  const hasImages = questionnaireTables.some((table) =>
-    table.analyzed.some((column) => column.role === 'image')
-  )
-  const hasMeaningfulChart = questionnaireTables.some((table) =>
-    findChartRecommendation(table.analyzed) !== null
-  )
+  const proposalPreviewTable = allTables.find(
+    (table) => table.tableName === answers['primary-table']?.delta.primaryTableName
+  ) ?? allTables[0]
+  // hasImages/hasMeaningfulChart portent sur la table réellement prévisualisée
+  // (pas « n'importe quelle table du classeur ») pour que les questions et
+  // l'aperçu en direct restent cohérents avec ce que l'utilisateur voit.
+  const previewAnalyzed = questionnaireTables.find(
+    (table) => table.tableName === proposalPreviewTable?.tableName
+  )?.analyzed ?? questionnaireTables[0]?.analyzed ?? []
+  const hasImages = previewAnalyzed.some((column) => column.role === 'image')
+  const hasMeaningfulChart = findChartRecommendation(previewAnalyzed) !== null
   const questionBank = buildQuestionBank({
     tables: questionnaireTables,
     hasImages,
     hasMeaningfulChart,
+    answers,
   })
-  const proposalPreviewTable = allTables.find(
-    (table) => table.tableName === answers['primary-table']?.delta.primaryTableName
-  ) ?? allTables[0]
 
   // Aperçu en direct des 3 propositions, recalculé à chaque réponse (pas besoin
   // d'atteindre la fin du questionnaire pour les voir).
@@ -763,6 +770,7 @@ function App() {
             initialActiveTableId={appSeed.primaryTableId}
             showChartWidget={appSeed.showChartWidget}
             showStatsWidget={appSeed.showStatsWidget}
+            chartPreference={appSeed.chartPreference}
             canEdit={appSeed.canEdit}
             density={appSeed.density}
             navigation={appSeed.navigation}

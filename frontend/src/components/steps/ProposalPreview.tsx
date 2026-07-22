@@ -1,5 +1,7 @@
 import type { TableConfig } from '../../App'
 import type { UiProposal } from '../../lib/uiProposals'
+import { analyzeColumns } from '../../lib/semantic'
+import MiniChart from './MiniChart'
 
 interface Props {
   proposal: UiProposal
@@ -21,6 +23,10 @@ function ProposalPreview({ proposal, table }: Props) {
       : 0
     )
     .slice(0, 4)
+  const includedIdx = table.columns.map((_, i) => i).filter((i) => !table.columns[i].excluded)
+  const includedColumns = includedIdx.map((i) => table.columns[i])
+  const includedRows = table.rows.map((row) => includedIdx.map((i) => row[i]))
+  const analyzed = analyzeColumns(includedColumns, includedRows)
 
   return (
     <div className={`proposal-preview theme-${config.theme} density-${config.density}`} aria-hidden="true">
@@ -57,7 +63,7 @@ function ProposalPreview({ proposal, table }: Props) {
 
           {config.showChart && config.layout !== 'dashboard' && (
             <div className="proposal-preview-chart-line">
-              <span /><span /><span /><span /><span />
+              <MiniChart columns={analyzed} rows={includedRows} preference={config.chartPreference} height={44} />
             </div>
           )}
 
@@ -93,7 +99,11 @@ function ProposalPreview({ proposal, table }: Props) {
             <div className="proposal-mini-dashboard">
               <span><small>Enregistrements</small><strong>{table.rows.length}</strong></span>
               {config.showStats && <span><small>Champs</small><strong>{table.columns.length}</strong></span>}
-              {config.showChart && <div className="proposal-mini-chart"><i /><i /><i /><i /></div>}
+              {config.showChart && (
+                <div className="proposal-mini-chart">
+                  <MiniChart columns={analyzed} rows={includedRows} preference={config.chartPreference} height={36} />
+                </div>
+              )}
             </div>
           )}
         </div>

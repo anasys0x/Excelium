@@ -22,10 +22,7 @@ function QuestionCard({ question, selectedOptionId, onSelect }: Props) {
             aria-pressed={selectedOptionId === option.id}
           >
             <span className="question-option-marker" aria-hidden="true" />
-            <span>
-              <span className="question-option-label">{option.label}</span>
-              <span className="question-option-impact">{option.impact}</span>
-            </span>
+            <span className="question-option-label">{option.label}</span>
           </button>
         ))}
       </div>

@@ -1478,7 +1478,6 @@
   background: #fff;
 }
 .question-option-label { display: block; font-weight: 600; color: var(--text); }
-.question-option-impact { display: block; margin-top: 2px; color: var(--text-muted); font-size: 12px; }
 .questionnaire-progress { margin-bottom: 14px; }
 .questionnaire-progress-copy {
   display: flex;
@@ -1654,22 +1653,13 @@
 .proposal-preview-stats strong,
 .proposal-mini-dashboard strong { margin-top: 2px; font-size: 11px; }
 .proposal-preview-chart-line {
-  display: flex;
-  align-items: flex-end;
-  gap: 5px;
-  height: 28px;
+  height: 44px;
   margin-bottom: 7px;
-  padding: 5px 7px;
+  padding: 3px 5px;
   border: 1px solid var(--p-soft);
   border-radius: 4px;
   background: var(--p-surface);
 }
-.proposal-preview-chart-line span { flex: 1; border-radius: 2px 2px 0 0; background: var(--p-accent); opacity: .8; }
-.proposal-preview-chart-line span:nth-child(1) { height: 35%; }
-.proposal-preview-chart-line span:nth-child(2) { height: 70%; }
-.proposal-preview-chart-line span:nth-child(3) { height: 48%; }
-.proposal-preview-chart-line span:nth-child(4) { height: 85%; }
-.proposal-preview-chart-line span:nth-child(5) { height: 62%; }
 .proposal-mini-table { overflow: hidden; border: 1px solid var(--p-soft); border-radius: 4px; background: var(--p-surface); }
 .proposal-mini-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--p-soft); }
 .proposal-mini-row:first-child { border-top: 0; }
@@ -1684,12 +1674,7 @@
 .proposal-mini-cards small { margin-top: 4px; color: var(--p-muted); }
 .proposal-mini-cards i { display: block; height: 48px; margin: -8px -8px 7px; background: var(--p-soft); }
 .proposal-mini-dashboard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
-.proposal-mini-chart { grid-column: 1 / -1; display: flex; align-items: flex-end; gap: 9px; height: 70px; padding: 10px; border: 1px solid var(--p-soft); border-radius: 4px; background: var(--p-surface); }
-.proposal-mini-chart i { width: 18%; border-radius: 2px 2px 0 0; background: var(--p-accent); opacity: .8; }
-.proposal-mini-chart i:nth-child(1) { height: 35%; }
-.proposal-mini-chart i:nth-child(2) { height: 68%; }
-.proposal-mini-chart i:nth-child(3) { height: 48%; }
-.proposal-mini-chart i:nth-child(4) { height: 82%; }
+.proposal-mini-chart { grid-column: 1 / -1; height: 56px; padding: 8px; border: 1px solid var(--p-soft); border-radius: 4px; background: var(--p-surface); }
 
 @media (max-width: 820px) {
   .app-header { padding: 0 20px; }

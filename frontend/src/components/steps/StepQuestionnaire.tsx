@@ -45,7 +45,7 @@ function StepQuestionnaire({
   const answerImpact = (item: Question): string => {
     const answer = validAnswer(item)
     if (!answer) return 'À définir'
-    return item.options.find((option) => option.id === answer.optionId)?.impact ?? 'À définir'
+    return item.options.find((option) => option.id === answer.optionId)?.label ?? 'À définir'
   }
 
   return (
