@@ -83,27 +83,29 @@ function StepQuestionnaire({ questions, answers, onAnswer, onBack, onCreateWebAp
 
             {!isLastQuestion && (
               <button
-                className="btn-primary btn-ml-auto"
+                className="btn btn-secondary"
                 onClick={() => setIndex((current) => Math.min(current + 1, total - 1))}
-                disabled={!selected || isCreating}
+                disabled={isCreating}
               >
                 Suivant →
               </button>
             )}
 
-            {isLastQuestion && (
-              <button
-                className="btn-primary btn-ml-auto"
-                onClick={onCreateWebApp}
-                disabled={!isComplete || isCreating}
-              >
-                Voir les 3 propositions →
-              </button>
-            )}
+            <button
+              className="btn-primary btn-ml-auto"
+              onClick={onCreateWebApp}
+              disabled={isCreating}
+              title={isComplete ? undefined : 'Les questions sans réponse gardent la détection automatique'}
+            >
+              Voir les 3 propositions →
+            </button>
           </div>
 
           {!selected && (
-            <p className="questionnaire-help">Choisis une réponse pour continuer.</p>
+            <p className="questionnaire-help">
+              Choisis une réponse, ou passe directement à la suite — les questions laissées
+              de côté gardent la détection automatique.
+            </p>
           )}
         </div>
 
