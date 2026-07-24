@@ -68,7 +68,7 @@ function StepTableConfirmation({ tables, onBack, onNext }: Props) {
                       title={isLinked ? `Référence vers ${col.foreignKey!.refTable}.${col.foreignKey!.refColumn}` : undefined}
                       className={`col-chip${col.isPrimaryKey ? ' pk' : isLinked ? ' fk' : ''}`}
                     >
-                      {col.isPrimaryKey && <span className="col-chip-badge pk">ID</span>}
+                      {col.isPrimaryKey && <span className="col-chip-badge pk">Identifiant</span>}
                       {isLinked && <span className="col-chip-badge fk">LIEN</span>}
                       <span className="col-chip-name">{col.name}</span>
                       <span className="type-badge" style={{ background: badge.bg, color: badge.color }}>
@@ -95,21 +95,6 @@ function StepTableConfirmation({ tables, onBack, onNext }: Props) {
           )
         })}
       </div>
-
-      {allLinks.length > 0 && (
-        <div className="links-summary">
-          <p className="links-summary-title">Liens entre feuilles</p>
-          <div className="links-summary-list">
-            {allLinks.map((lk, i) => (
-              <div key={i} className="links-summary-row">
-                <span className="done-link-from">{lk.fromTable}.{lk.fromCol}</span>
-                <span className="done-link-arrow">→</span>
-                <span className="done-link-to">{lk.toTable}.{lk.toCol}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="confirm-actions">
         <button className="btn btn-secondary" onClick={onBack}>← Retour</button>

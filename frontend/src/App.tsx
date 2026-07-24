@@ -94,6 +94,7 @@ export interface GeneratedAppSeed {
 function App() {
   const [step, setStep]                        = useState<Step>('landing')
   const [sheets, setSheets]                    = useState<SheetData[]>([])
+  const [showPendingModal, setShowPendingModal] = useState(false)
   const [selectedSheetNames, setSelectedNames] = useState<string[]>([])
   const [activeSheetName, setActiveSheetName]  = useState<string | null>(null)
   const [activeTableId, setActiveTableId]      = useState<string | null>(null)
@@ -231,6 +232,10 @@ function App() {
     setSelectedNames((prev) =>
       prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
     )
+  }
+
+  const toggleAllSheets = () => {
+    setSelectedNames((prev) => (prev.length === sheets.length ? [] : sheets.map((s) => s.name)))
   }
 
   const confirmSelection = () => {
@@ -450,6 +455,28 @@ function App() {
       }))
   )
 
+  // Références détectées mais pas encore acceptées/refusées : elles seraient
+  // perdues à la création si l'utilisateur ne les traite pas.
+  const colIsPending    = (c: ColumnConfig) => Boolean(c.foreignKey) && !c.foreignKeyConfirmed && !c.foreignKeyRefused
+  const tableHasPending = (t: TableConfig) => t.columns.some(colIsPending)
+  const pendingLinks = allTables.flatMap((t) =>
+    t.columns.filter(colIsPending).map((c) => ({
+      fromTable: t.tableName, fromCol: c.name,
+      toTable: c.foreignKey!.refTable, toCol: c.foreignKey!.refColumn,
+    }))
+  )
+  const confirmAllPendingLinks = () => {
+    setSheets((prev) => prev.map((sheet) => ({
+      ...sheet,
+      tables: sheet.tables.map((t) => ({
+        ...t,
+        columns: t.columns.map((c) =>
+          colIsPending(c) ? { ...c, foreignKeyConfirmed: true } : c
+        ),
+      })),
+    })))
+  }
+
   const questionnaireTables = allTables.map((table) => {
     const { columns, rows } = getIncludedTableData(table)
     return {
@@ -574,6 +601,7 @@ function App() {
             sheets={sheets}
             selected={selectedSheetNames}
             onToggle={toggleSheet}
+            onToggleAll={toggleAllSheets}
             onBack={() => setStep('upload')}
             onConfirm={confirmSelection}
           />
@@ -591,6 +619,7 @@ function App() {
                     className={`config-tab${sheet.name === activeSheet.name ? ' active' : ''}`}
                   >
                     {sheet.name}
+                    {sheet.tables.some(tableHasPending) && <span className="pending-dot" title="Références non confirmées" />}
                   </button>
                 ))}
               </div>
@@ -613,6 +642,7 @@ function App() {
                     className={`config-pill${table.id === activeTable.id ? ' active' : ''}`}
                   >
                     {table.tableName}
+                    {tableHasPending(table) && <span className="pending-dot" title="Références non confirmées" />}
                   </button>
                 ))}
               </div>
@@ -620,19 +650,39 @@ function App() {
 
             <SplitView
               left={
-                <TablePreview
-                  columns={activeTable.columns}
-                  rows={activeTable.rows}
-                  focusedColumn={focusedColumn}
-                  onTypeChange={(originalName, newType) => {
-                    updateTable({
-                      ...activeTable,
-                      columns: activeTable.columns.map((c) =>
-                        c.originalName === originalName ? { ...c, type: newType } : c
-                      ),
-                    })
-                  }}
-                />
+                <>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label className="section-label mb6">Nom du tableau</label>
+                    <input
+                      type="text"
+                      value={activeTable.tableName}
+                      onChange={(e) => updateTable({ ...activeTable, tableName: e.target.value })}
+                      style={{ width: '100%', maxWidth: '360px' }}
+                    />
+                  </div>
+                  <TablePreview
+                    columns={activeTable.columns}
+                    rows={activeTable.rows}
+                    focusedColumn={focusedColumn}
+                    onTypeChange={(originalName, newType) => {
+                      updateTable({
+                        ...activeTable,
+                        columns: activeTable.columns.map((c) =>
+                          c.originalName === originalName ? { ...c, type: newType } : c
+                        ),
+                      })
+                    }}
+                    onNameChange={(originalName, newName) => {
+                      updateTable({
+                        ...activeTable,
+                        columns: activeTable.columns.map((c) =>
+                          c.originalName === originalName ? { ...c, name: newName } : c
+                        ),
+                      })
+                    }}
+                    onFocusColumn={setFocusedColumn}
+                  />
+                </>
               }
               right={
                 <StepKeySelector
@@ -649,28 +699,60 @@ function App() {
                 ← Retour
               </button>
 
-              {missingKeyCount > 0 && (
-                <span className="config-nav-warn">
-                  {missingKeyCount} table{missingKeyCount > 1 ? 's' : ''} sans identifiant
-                </span>
-              )}
-              {duplicateNames.length > 0 && (
-                <span className="config-nav-error">
-                  Tableaux en double : {[...new Set(duplicateNames)].join(', ')}
-                </span>
-              )}
-              {emptyTableName    && <span className="config-nav-error">Nom de tableau vide</span>}
-              {emptyColName      && <span className="config-nav-error">Nom de colonne vide</span>}
-              {hasDuplicateColNames && <span className="config-nav-error">Colonnes en double dans un tableau</span>}
+              <div className="config-nav-right">
+                {missingKeyCount > 0 && (
+                  <span className="config-nav-warn">
+                    {missingKeyCount} table{missingKeyCount > 1 ? 's' : ''} sans identifiant
+                  </span>
+                )}
+                {pendingLinks.length > 0 && (
+                  <span className="config-nav-warn">
+                    {pendingLinks.length} référence{pendingLinks.length > 1 ? 's' : ''} non confirmée{pendingLinks.length > 1 ? 's' : ''}
+                  </span>
+                )}
+                {duplicateNames.length > 0 && (
+                  <span className="config-nav-error">
+                    Tableaux en double : {[...new Set(duplicateNames)].join(', ')}
+                  </span>
+                )}
+                {emptyTableName    && <span className="config-nav-error">Nom de tableau vide</span>}
+                {emptyColName      && <span className="config-nav-error">Nom de colonne vide</span>}
+                {hasDuplicateColNames && <span className="config-nav-error">Colonnes en double dans un tableau</span>}
 
-              <button
-                className="btn-primary btn-ml-auto"
-                onClick={() => setStep('confirm')}
-                disabled={!canProceed}
-              >
-                Vérifier et créer →
-              </button>
+                <button
+                  className="btn-primary"
+                  onClick={() => { if (pendingLinks.length > 0) setShowPendingModal(true); else setStep('confirm') }}
+                  disabled={!canProceed}
+                >
+                  Vérifier et créer →
+                </button>
+              </div>
             </div>
+
+            {showPendingModal && (
+              <div className="modal-overlay" onClick={() => setShowPendingModal(false)}>
+                <div className="confirm-modal pending-modal" onClick={(e) => e.stopPropagation()}>
+                  <p className="confirm-modal-title">Références non confirmées</p>
+                  <p className="confirm-modal-msg">
+                    {pendingLinks.length} référence{pendingLinks.length > 1 ? 's ont' : ' a'} été détectée{pendingLinks.length > 1 ? 's' : ''} mais pas encore confirmée{pendingLinks.length > 1 ? 's' : ''}&nbsp;:
+                  </p>
+                  <div className="pending-links-list">
+                    {pendingLinks.map((lk, i) => (
+                      <div key={i} className="pending-link-row">
+                        <span className="pending-link-from">{lk.fromTable}.{lk.fromCol}</span>
+                        <span className="pending-link-arrow">→</span>
+                        <span className="pending-link-to">{lk.toTable}.{lk.toCol}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pending-modal-actions">
+                    <button className="confirm-btn-cancel" onClick={() => setShowPendingModal(false)}>Revenir vérifier</button>
+                    <button className="btn btn-secondary" onClick={() => { setShowPendingModal(false); setStep('confirm') }}>Ignorer et continuer</button>
+                    <button className="btn-primary" onClick={() => { confirmAllPendingLinks(); setShowPendingModal(false); setStep('confirm') }}>Tout accepter et continuer</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -752,21 +834,6 @@ function App() {
                 )
               })}
             </div>
-
-            {confirmedLinks.length > 0 && (
-              <div className="done-links-card">
-                <p className="done-links-title">Relations créées</p>
-                <div className="done-link-list">
-                  {confirmedLinks.map((lk, i) => (
-                    <div key={i} className="done-link-row">
-                      <span className="done-link-from">{lk.fromTable}.{lk.fromCol}</span>
-                      <span className="done-link-arrow">→</span>
-                      <span className="done-link-to">{lk.toTable}.{lk.toCol}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Code de session pour reprendre plus tard */}
             {appSeed?.sessionId && (

@@ -19,11 +19,13 @@ interface Props {
   focusedColumn?: string | null
   showMeta?: boolean
   onTypeChange?: (originalName: string, newType: string) => void
+  onNameChange?: (originalName: string, newName: string) => void
+  onFocusColumn?: (name: string | null) => void
 }
 
 interface HighlightRect { left: number; top: number; width: number; height: number }
 
-function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeChange }: Props) {
+function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeChange, onNameChange, onFocusColumn }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const scrollRef  = useRef<HTMLDivElement>(null)
   const tableRef   = useRef<HTMLTableElement>(null)
@@ -77,15 +79,29 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
                       className={`preview-th${isFocused ? ' focused' : ''}`}
                     >
                       <div className="preview-th-inner">
-                        {col.isPrimaryKey && <span className="preview-th-key" title="Identifiant unique">CLÉ</span>}
-                        <span className={`preview-th-name${isFocused ? ' focused' : ''}`}>{col.name}</span>
+                        {col.isPrimaryKey && <span className="preview-th-key" title="Identifiant unique">Identifiant</span>}
+                        {onNameChange ? (
+                          <input
+                            className={`preview-th-name-input${isFocused ? ' focused' : ''}`}
+                            value={col.name}
+                            onChange={(e) => onNameChange(col.originalName, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onFocus={() => onFocusColumn?.(col.originalName)}
+                            onBlur={() => onFocusColumn?.(null)}
+                            spellCheck={false}
+                            title="Renommer la colonne"
+                            style={{ width: `${Math.max(col.name.length, 3) + 1.5}ch` }}
+                          />
+                        ) : (
+                          <span className={`preview-th-name${isFocused ? ' focused' : ''}`}>{col.name}</span>
+                        )}
                         {onTypeChange ? (
                           <select
                             value={col.type}
                             onChange={(e) => { e.stopPropagation(); onTypeChange(col.originalName, e.target.value) }}
                             onClick={(e) => e.stopPropagation()}
                             className="type-badge-select"
-                            style={{ background: badge.bg, color: badge.color, border: `1px solid ${badge.bg}` }}
+                            style={{ backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.bg}` }}
                           >
                             {ALL_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
                           </select>

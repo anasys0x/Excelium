@@ -101,7 +101,7 @@ function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props)
               <div key={col.originalName} className="form-field">
                 <label className="form-label">
                   {col.name}
-                  {col.isPrimaryKey && <span className="form-label-pk">ID</span>}
+                  {col.isPrimaryKey && <span className="form-label-pk">Identifiant</span>}
                   {isReadOnly && <span className="form-label-readonly">lecture seule</span>}
                 </label>
                 {inputFor(col, formData[col.name], (v) => setField(col.name, v), isReadOnly)}
