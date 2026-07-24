@@ -13,18 +13,6 @@ const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
   MIXED:  { bg: 'var(--badge-orange-bg)', color: 'var(--badge-orange-text)' },
 }
 
-function GripIcon() {
-  return (
-    <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
-      {[3, 8, 13].map((cy) =>
-        [2, 8].map((cx) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1.4" fill="currentColor" />
-        ))
-      )}
-    </svg>
-  )
-}
-
 interface FkTarget { value: string; label: string; tableName: string; colName: string }
 
 interface Props {
@@ -35,8 +23,6 @@ interface Props {
 }
 
 function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) {
-  const [dragIndex, setDragIndex]           = useState<number | null>(null)
-  const [overIndex, setOverIndex]           = useState<number | null>(null)
   const [newFkCol, setNewFkCol]             = useState('')
   const [newFkTarget, setNewFkTarget]       = useState('')
   const [refusedTargets, setRefusedTargets] = useState<Record<string, string>>({})
@@ -54,8 +40,6 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
         }))
     )
 
-  const updateTableName = (name: string) => onChange({ ...config, tableName: name })
-
   const updateColumnName = (originalName: string, newName: string) => {
     const columns = config.columns.map((col) =>
       col.originalName === originalName ? { ...col, name: newName } : col
@@ -72,13 +56,6 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
 
   const updatePrimaryKey = (originalName: string) => {
     const columns = config.columns.map((col) => ({ ...col, isPrimaryKey: col.originalName === originalName }))
-    onChange({ ...config, columns })
-  }
-
-  const excludeColumn = (originalName: string) => {
-    const columns = config.columns.map((col) =>
-      col.originalName === originalName ? { ...col, excluded: true, isPrimaryKey: false } : col
-    )
     onChange({ ...config, columns })
   }
 
@@ -155,26 +132,6 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
     })
   }
 
-  const moveColumn = (from: number, to: number) => {
-    if (from === to) return
-    const columns = [...config.columns]
-    const [movedCol] = columns.splice(from, 1)
-    columns.splice(to, 0, movedCol)
-    const rows = config.rows.map((row) => {
-      const newRow = [...row]
-      const [movedCell] = newRow.splice(from, 1)
-      newRow.splice(to, 0, movedCell)
-      return newRow
-    })
-    onChange({ ...config, columns, rows })
-  }
-
-  const handleDrop = (targetIndex: number) => {
-    if (dragIndex !== null) moveColumn(dragIndex, targetIndex)
-    setDragIndex(null)
-    setOverIndex(null)
-  }
-
   const primaryKey   = config.columns.find((col) => col.isPrimaryKey && !col.excluded)
   const hasAutoId    = config.columns.some((col) => col.isAuto)
   const activeCols   = config.columns.filter((c) => !c.excluded)
@@ -191,105 +148,64 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
       <div>
         <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>Personnaliser</h2>
         <p className="section-desc">
-          Renommez les colonnes, ajustez les types, réorganisez et choisissez l'identifiant unique.
+          Renommez les colonnes et ajustez leur type directement dans l'en-tête du tableau, puis choisissez l'identifiant unique ci-dessous.
         </p>
       </div>
 
       <div>
-        <label className="section-label mb6">Nom du tableau</label>
-        <input type="text" value={config.tableName} onChange={(e) => updateTableName(e.target.value)} style={{ width: '100%' }} />
-      </div>
-
-      <div>
-        <label className="section-label">Colonnes &amp; identifiant unique</label>
+        <label className="section-label">Identifiant unique</label>
         <p className="section-desc">
-          Cochez l'identifiant unique. Changez le type si nécessaire. Cliquez ✕ pour exclure une colonne.
+          Cochez la colonne qui identifie chaque ligne de façon unique. Seules les colonnes éligibles (sans doublon) sont proposées.
         </p>
 
         <div className="col-legend">
-          <span /><span className="center">ID</span><span>Nom</span><span>Type</span><span />
+          <span className="center">Identifiant</span><span>Nom</span><span>Type</span>
         </div>
 
         <div className="col-list">
-          {config.columns.filter((c) => !c.excluded).map((col: ColumnConfig, index) => {
-            const badge       = TYPE_BADGE[col.type] ?? { bg: 'var(--line)', color: 'var(--cell-text)' }
-            const isSelected  = col.isPrimaryKey
-            const isDragging  = dragIndex === index
-            const isOver      = overIndex === index && dragIndex !== null && dragIndex !== index
-            const isCandidate = col.isAuto || col.isPkCandidate === true
-            const isGrayed    = !isCandidate && !isSelected
+          {config.columns
+            .filter((col) => !col.excluded && (col.isAuto || col.isPkCandidate === true || col.isPrimaryKey))
+            .map((col) => {
+            const badge      = TYPE_BADGE[col.type] ?? { bg: 'var(--line)', color: 'var(--cell-text)' }
+            const isSelected = col.isPrimaryKey
 
             return (
               <div
                 key={col.originalName}
-                onDragOver={(e) => { e.preventDefault(); setOverIndex(index) }}
-                onDrop={(e) => { e.preventDefault(); handleDrop(index) }}
-                className={[
-                  'col-row',
-                  isSelected  ? 'selected'  : '',
-                  isOver      ? 'over'      : '',
-                  isDragging  ? 'dragging'  : '',
-                  isGrayed    ? 'grayed'    : '',
-                  isCandidate && !isSelected && !isOver ? 'candidate' : '',
-                ].filter(Boolean).join(' ')}
+                className={`col-row${isSelected ? ' selected' : ' candidate'}`}
               >
-                <div
-                  className="col-grip"
-                  draggable
-                  onDragStart={(e) => { setDragIndex(index); e.dataTransfer.effectAllowed = 'move' }}
-                  onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
-                  title="Glisser pour réorganiser"
-                >
-                  <GripIcon />
-                </div>
-
                 <div className="col-radio-wrap">
                   <input
                     type="radio"
                     name="primaryKey"
                     checked={isSelected}
-                    onChange={() => isCandidate && updatePrimaryKey(col.originalName)}
-                    disabled={!isCandidate}
-                    title={isCandidate ? 'Choisir comme identifiant unique' : 'Cette colonne contient des doublons'}
+                    onChange={() => updatePrimaryKey(col.originalName)}
+                    title="Choisir comme identifiant unique"
                     className="col-radio"
-                    style={{ cursor: isCandidate ? 'pointer' : 'not-allowed' }}
                   />
                 </div>
 
                 <input
                   type="text"
                   value={col.name}
-                  readOnly={isGrayed}
-                  onChange={(e) => !isGrayed && updateColumnName(col.originalName, e.target.value)}
-                  onFocus={() => !isGrayed && onFocusColumn(col.originalName)}
+                  onChange={(e) => updateColumnName(col.originalName, e.target.value)}
+                  onFocus={() => onFocusColumn(col.originalName)}
                   onBlur={() => onFocusColumn(null)}
-                  className={`col-name-input${isGrayed ? ' grayed' : ''}`}
-                  style={{ pointerEvents: isGrayed ? 'none' : undefined }}
+                  className="col-name-input"
                 />
 
                 <select
                   value={col.type}
                   onChange={(e) => updateColumnType(col.originalName, e.target.value)}
-                  disabled={isGrayed}
                   className="app-select"
                   style={{
                     padding: '3px 6px', fontSize: '11px',
                     background: badge.bg, color: badge.color,
                     border: `1px solid ${badge.bg}`,
-                    opacity: isGrayed ? 0.5 : 1,
                   }}
                 >
                   {ALL_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
                 </select>
-
-                <button
-                  className="col-exclude-btn"
-                  onClick={() => excludeColumn(col.originalName)}
-                  disabled={col.isPrimaryKey || col.isAuto || isGrayed}
-                  title={col.isPrimaryKey ? "L'identifiant ne peut pas être exclu" : 'Exclure cette colonne'}
-                >
-                  ✕
-                </button>
               </div>
             )
           })}
@@ -307,7 +223,7 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
           </div>
         )}
 
-        <p className="col-hint">Glissez la poignée pour réorganiser. Cliquez sur un nom pour surligner la colonne.</p>
+        <p className="col-hint">Cliquez sur un nom pour surligner la colonne.</p>
       </div>
 
       {hasAutoId ? (
