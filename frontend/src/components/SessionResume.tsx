@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useI18n } from '../lib/i18n'
 
 interface Props {
   onResume: (sessionId: string) => void
@@ -7,14 +8,15 @@ interface Props {
 }
 
 function SessionResume({ onResume, isLoading, error }: Props) {
+  const { t } = useI18n()
   const [sessionId, setSessionId] = useState('')
   const normalizedId = sessionId.trim()
 
   return (
     <section className="session-resume">
-      <div className="session-resume-divider"><span>ou</span></div>
-      <h2>Reprendre une session</h2>
-      <p>Colle l’identifiant reçu lors de la création pour rouvrir la webapp.</p>
+      <div className="session-resume-divider"><span>{t('resume.or')}</span></div>
+      <h2>{t('resume.title')}</h2>
+      <p>{t('resume.desc')}</p>
       <form
         className="session-resume-form"
         onSubmit={(event) => {
@@ -22,7 +24,7 @@ function SessionResume({ onResume, isLoading, error }: Props) {
           if (normalizedId) onResume(normalizedId)
         }}
       >
-        <label htmlFor="session-id">Identifiant de session</label>
+        <label htmlFor="session-id">{t('resume.label')}</label>
         <div>
           <input
             id="session-id"
@@ -35,7 +37,7 @@ function SessionResume({ onResume, isLoading, error }: Props) {
             disabled={isLoading}
           />
           <button type="submit" className="btn-primary" disabled={!normalizedId || isLoading}>
-            {isLoading ? 'Chargement…' : 'Reprendre'}
+            {isLoading ? t('resume.loading') : t('resume.button')}
           </button>
         </div>
       </form>

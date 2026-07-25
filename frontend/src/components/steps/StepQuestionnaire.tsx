@@ -4,6 +4,7 @@ import type { QuestionAnswer } from '../../lib/preferenceEngine'
 import type { UiProposal } from '../../lib/uiProposals'
 import QuestionCard from './QuestionCard'
 import ProposalPreview from './ProposalPreview'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   questions: Question[]
@@ -23,6 +24,7 @@ function StepQuestionnaire({
   questions, answers, onAnswer, onBack, onCreateWebApp, isCreating, error,
   liveProposals, previewTable, index: rawIndex, onIndexChange,
 }: Props) {
+  const { t } = useI18n()
   const total = questions.length
   const index = Math.min(rawIndex, total - 1)
   const setIndex = (updater: number | ((current: number) => number)) => {
@@ -44,31 +46,29 @@ function StepQuestionnaire({
 
   const answerImpact = (item: Question): string => {
     const answer = validAnswer(item)
-    if (!answer) return 'À définir'
-    return item.options.find((option) => option.id === answer.optionId)?.label ?? 'À définir'
+    if (!answer) return t('q.toDefine')
+    return item.options.find((option) => option.id === answer.optionId)?.label ?? t('q.toDefine')
   }
 
   return (
     <div className="questionnaire-section">
       <div className="questionnaire-heading">
         <div>
-          <p className="questionnaire-kicker">Personnalisation</p>
-          <h1 className="questionnaire-title">Construisons ta webapp</h1>
-          <p className="questionnaire-intro">
-            Chaque réponse configure directement le rendu généré.
-          </p>
+          <p className="questionnaire-kicker">{t('q.kicker')}</p>
+          <h1 className="questionnaire-title">{t('q.title')}</h1>
+          <p className="questionnaire-intro">{t('q.intro')}</p>
         </div>
-        <span className="questionnaire-count">{answeredCount}/{total} réponses</span>
+        <span className="questionnaire-count">{answeredCount}/{total} {t('q.answersLabel')}</span>
       </div>
 
       {previewTable && liveProposals.length > 0 && (
-        <div className="questionnaire-live-proposals" aria-label="Les 3 propositions, mises à jour en direct">
+        <div className="questionnaire-live-proposals" aria-label={t('q.liveAria')}>
           {liveProposals.map((proposal) => (
             <div key={proposal.id} className="questionnaire-live-proposal">
               <ProposalPreview proposal={proposal} table={previewTable} />
               <span className="questionnaire-live-proposal-title">
                 {proposal.title}
-                {proposal.recommended && <small>Recommandée</small>}
+                {proposal.recommended && <small>{t('q.recommended')}</small>}
               </span>
             </div>
           ))}
@@ -79,7 +79,7 @@ function StepQuestionnaire({
         <div className="questionnaire-main">
           <div className="questionnaire-progress">
             <div className="questionnaire-progress-copy">
-              <span>Question {index + 1} sur {total}</span>
+              <span>{t('q.questionOf', { n: index + 1, total })}</span>
               <span>{Math.round(((index + 1) / total) * 100)} %</span>
             </div>
             <div className="questionnaire-progress-bar">
@@ -104,7 +104,7 @@ function StepQuestionnaire({
               onClick={index === 0 ? onBack : () => setIndex((current) => current - 1)}
               disabled={isCreating}
             >
-              ← {index === 0 ? 'Retour' : 'Précédent'}
+              ← {index === 0 ? t('common.back') : t('q.previous')}
             </button>
 
             {!isLastQuestion && (
@@ -113,7 +113,7 @@ function StepQuestionnaire({
                 onClick={() => setIndex((current) => Math.min(current + 1, total - 1))}
                 disabled={isCreating}
               >
-                Suivant →
+                {t('q.next')} →
               </button>
             )}
 
@@ -121,23 +121,20 @@ function StepQuestionnaire({
               className="btn-primary btn-ml-auto"
               onClick={onCreateWebApp}
               disabled={isCreating}
-              title={isComplete ? undefined : 'Les questions sans réponse gardent la détection automatique'}
+              title={isComplete ? undefined : t('q.unansweredHint')}
             >
-              Choisir une proposition →
+              {t('q.chooseProposal')} →
             </button>
           </div>
 
           {!selected && (
-            <p className="questionnaire-help">
-              Choisis une réponse, ou passe directement à la suite — les questions laissées
-              de côté gardent la détection automatique.
-            </p>
+            <p className="questionnaire-help">{t('q.help')}</p>
           )}
         </div>
 
-        <aside className="questionnaire-summary" aria-label="Résumé de la webapp">
-          <p className="questionnaire-summary-eyebrow">Aperçu de la configuration</p>
-          <h2>Ta webapp</h2>
+        <aside className="questionnaire-summary" aria-label={t('q.summaryAria')}>
+          <p className="questionnaire-summary-eyebrow">{t('q.summaryEyebrow')}</p>
+          <h2>{t('q.yourWebapp')}</h2>
           <div className="questionnaire-summary-list">
             {questions.map((item, itemIndex) => (
               <button
@@ -152,9 +149,7 @@ function StepQuestionnaire({
               </button>
             ))}
           </div>
-          <p className="questionnaire-summary-note">
-            Tu pourras revenir modifier ces choix après la génération.
-          </p>
+          <p className="questionnaire-summary-note">{t('q.summaryNote')}</p>
         </aside>
       </div>
     </div>

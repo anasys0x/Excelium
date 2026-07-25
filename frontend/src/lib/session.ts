@@ -49,9 +49,12 @@ function booleanValue(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
 }
 
-export function restoreSession(data: SessionApiResponse): RestoredSession {
+export function restoreSession(
+  data: SessionApiResponse,
+  invalidSchemaMsg = 'Cette session ne contient aucun schéma exploitable.',
+): RestoredSession {
   if (!data.id || !Array.isArray(data.dbSchema?.tables) || data.dbSchema.tables.length === 0) {
-    throw new Error('Cette session ne contient aucun schéma exploitable.')
+    throw new Error(invalidSchemaMsg)
   }
 
   const sheetName = 'Session reprise'

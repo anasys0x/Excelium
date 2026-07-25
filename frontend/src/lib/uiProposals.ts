@@ -46,25 +46,13 @@ export interface UiProposalContext {
 
 const LAYOUTS: LayoutKind[] = ['table', 'cards', 'dashboard', 'gallery']
 
-const LAYOUT_TITLES: Record<LayoutKind, string> = {
-  table: 'Tableau',
-  cards: 'Cartes',
-  dashboard: 'Tableau de bord',
-  gallery: 'Galerie',
-}
-
-const LAYOUT_DESCRIPTIONS: Record<LayoutKind, string> = {
-  table: 'Vue compacte, efficace pour parcourir et rechercher beaucoup de lignes.',
-  cards: 'Une fiche par élément, facile à parcourir visuellement.',
-  dashboard: 'Indicateurs et graphiques mis en avant, pour suivre des chiffres.',
-  gallery: 'Les images en avant, pour repérer visuellement chaque élément.',
-}
+type TFn = (key: string, vars?: Record<string, string | number>) => string
 
 // Les 3 propositions sont les 3 layouts les mieux notés selon les réponses
 // au questionnaire — jamais des gabarits fixes. N'importe quelle réponse qui
 // pèse sur `profile.layout` (ou sur le thème/densité/etc. partagés) change
 // donc visiblement les 3 aperçus, pas seulement le premier.
-export function buildUiProposals(profile: PreferenceProfile, context: UiProposalContext): UiProposal[] {
+export function buildUiProposals(profile: PreferenceProfile, context: UiProposalContext, t: TFn = (k) => k): UiProposal[] {
   const shared = {
     searchEnabled: profile.searchEnabled,
     sortMode: profile.sortMode,
@@ -98,11 +86,11 @@ export function buildUiProposals(profile: PreferenceProfile, context: UiProposal
 
   return ranked.slice(0, 3).map((layout, index) => ({
     id: layout,
-    title: LAYOUT_TITLES[layout],
+    title: t(`prop.layout.${layout}.title`),
     recommended: index === 0,
     description: context.archetype === 'contacts' && layout === 'cards'
-      ? 'Des fiches lisibles pour consulter chaque personne et ses informations.'
-      : LAYOUT_DESCRIPTIONS[layout],
+      ? t('prop.layout.cards.contactsDesc')
+      : t(`prop.layout.${layout}.desc`),
     config: { ...shared, layout },
   }))
 }

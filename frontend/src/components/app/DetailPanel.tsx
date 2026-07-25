@@ -1,5 +1,6 @@
 import type { AnalyzedColumn } from '../../lib/semantic'
 import { renderCell } from '../widgets/CellWidget'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   columns: AnalyzedColumn[]
@@ -10,11 +11,12 @@ interface Props {
 }
 
 function DetailPanel({ columns, row, onClose, onEdit, onDelete }: Props) {
+  const { t } = useI18n()
   return (
     <div className="detail-overlay" onClick={onClose}>
       <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
         <div className="detail-header">
-          <h2 className="detail-title">Détail</h2>
+          <h2 className="detail-title">{t('app.detailTitle')}</h2>
           <button className="detail-close" onClick={onClose}>✕</button>
         </div>
 
@@ -29,8 +31,8 @@ function DetailPanel({ columns, row, onClose, onEdit, onDelete }: Props) {
 
         {(onEdit || onDelete) && (
           <div className="detail-actions">
-            {onEdit   && <button className="detail-btn-edit"   onClick={onEdit}>✎ Modifier</button>}
-            {onDelete && <button className="detail-btn-delete" onClick={onDelete}>Supprimer</button>}
+            {onEdit   && <button className="detail-btn-edit"   onClick={onEdit}>✎ {t('common.edit')}</button>}
+            {onDelete && <button className="detail-btn-delete" onClick={onDelete}>{t('common.delete')}</button>}
           </div>
         )}
       </div>

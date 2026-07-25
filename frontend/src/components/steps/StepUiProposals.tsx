@@ -1,6 +1,7 @@
 import type { TableConfig } from '../../App'
 import type { UiProposal } from '../../lib/uiProposals'
 import ProposalPreview from './ProposalPreview'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   proposals: UiProposal[]
@@ -23,12 +24,13 @@ function StepUiProposals({
   isCreating,
   error,
 }: Props) {
+  const { t } = useI18n()
   return (
     <section className="proposals-section">
       <div className="proposals-heading">
-        <p className="questionnaire-kicker">Dernière étape</p>
-        <h1>Choisis ton interface</h1>
-        <p>Voici trois propositions générées à partir de tes réponses et de tes données.</p>
+        <p className="questionnaire-kicker">{t('prop.kicker')}</p>
+        <h1>{t('prop.title')}</h1>
+        <p>{t('prop.intro')}</p>
       </div>
 
       <div className="proposal-grid">
@@ -48,7 +50,7 @@ function StepUiProposals({
               <span className="proposal-card-copy">
                 <span>
                   <strong>{proposal.title}</strong>
-                  {proposal.recommended && <small>Recommandée</small>}
+                  {proposal.recommended && <small>{t('q.recommended')}</small>}
                 </span>
                 <span>{proposal.description}</span>
               </span>
@@ -61,10 +63,10 @@ function StepUiProposals({
 
       <div className="proposal-actions">
         <button className="btn btn-secondary" onClick={onBack} disabled={isCreating}>
-          ← Modifier mes réponses
+          ← {t('prop.editAnswers')}
         </button>
         <button className="btn-primary" onClick={onConfirm} disabled={!selectedId || isCreating}>
-          {isCreating ? 'Création en cours…' : 'Confirmer et créer'}
+          {isCreating ? t('prop.creating') : t('prop.confirmCreate')}
         </button>
       </div>
     </section>

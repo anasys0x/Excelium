@@ -35,6 +35,15 @@
   transition: color .15s ease, border-color .15s ease;
 }
 .landing-nav-link:hover { color: var(--accent-text); border-color: var(--accent-text); }
+.landing-lang { display: flex; align-items: center; gap: 7px; }
+.landing-lang-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  transition: color .15s ease;
+}
+.landing-lang-btn:hover { color: var(--accent-text); }
+.landing-lang-btn.active { color: var(--accent-text); font-weight: 700; }
+.landing-lang-sep { color: var(--border-strong); font-size: 13px; }
 .landing-nav-theme {
   display: grid;
   place-items: center;

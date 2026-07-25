@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ColumnConfig } from '../../App'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   columns: ColumnConfig[]
@@ -56,6 +57,7 @@ function inputFor(col: ColumnConfig, value: unknown, onChange: (v: unknown) => v
 }
 
 function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props) {
+  const { t } = useI18n()
   const includedCols = columns.filter((c) => !c.excluded)
 
   const [formData, setFormData] = useState<Record<string, unknown>>(() => {
@@ -78,7 +80,7 @@ function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props)
     try {
       await onSubmit(formData)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+      setError(err instanceof Error ? err.message : t('app.unknownError'))
     } finally {
       setSaving(false)
     }
@@ -89,7 +91,7 @@ function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props)
       <div className="form-panel" onClick={(e) => e.stopPropagation()}>
         <div className="form-header">
           <h2 className="form-title">
-            {mode === 'create' ? 'Ajouter une ligne' : 'Modifier la ligne'}
+            {mode === 'create' ? t('app.addRow') : t('app.editRow')}
           </h2>
           <button className="form-close" onClick={onCancel}>✕</button>
         </div>
@@ -101,8 +103,8 @@ function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props)
               <div key={col.originalName} className="form-field">
                 <label className="form-label">
                   {col.name}
-                  {col.isPrimaryKey && <span className="form-label-pk">Identifiant</span>}
-                  {isReadOnly && <span className="form-label-readonly">lecture seule</span>}
+                  {col.isPrimaryKey && <span className="form-label-pk">{t('common.identifier')}</span>}
+                  {isReadOnly && <span className="form-label-readonly">{t('preview.readonly')}</span>}
                 </label>
                 {inputFor(col, formData[col.name], (v) => setField(col.name, v), isReadOnly)}
               </div>
@@ -117,9 +119,9 @@ function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props)
             disabled={saving}
             className="form-submit"
           >
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
-          <button onClick={onCancel} className="form-cancel">Annuler</button>
+          <button onClick={onCancel} className="form-cancel">{t('common.cancel')}</button>
         </div>
       </div>
     </div>

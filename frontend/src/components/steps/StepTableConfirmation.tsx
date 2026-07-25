@@ -1,5 +1,6 @@
 import type { TableConfig } from '../../App'
 import { typeLabel } from '../../lib/typeLabels'
+import { useI18n } from '../../lib/i18n'
 
 const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
   INT:    { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
@@ -14,27 +15,30 @@ interface Props {
   tables: TableConfig[]
   onBack: () => void
   onNext: () => void
+  isCreating?: boolean
+  error?: string | null
 }
 
-function StepTableConfirmation({ tables, onBack, onNext }: Props) {
-  const totalRows = tables.reduce((sum, t) => sum + t.rows.length, 0)
+function StepTableConfirmation({ tables, onBack, onNext, isCreating = false, error = null }: Props) {
+  const { t, lang } = useI18n()
+  const totalRows = tables.reduce((sum, tbl) => sum + tbl.rows.length, 0)
 
-  const allLinks = tables.flatMap((t) =>
-    t.columns
+  const allLinks = tables.flatMap((tbl) =>
+    tbl.columns
       .filter((c) => c.foreignKey && c.foreignKeyConfirmed)
       .map((c) => ({
-        fromTable: t.tableName, fromCol: c.name,
+        fromTable: tbl.tableName, fromCol: c.name,
         toTable: c.foreignKey!.refTable, toCol: c.foreignKey!.refColumn,
       }))
   )
 
   return (
     <div className="confirm-section">
-      <h1 className="confirm-title">Récapitulatif avant création</h1>
+      <h1 className="confirm-title">{t('recap.title')}</h1>
       <p className="confirm-subtitle">
-        {tables.length} tableau{tables.length > 1 ? 'x' : ''} · {totalRows} ligne{totalRows > 1 ? 's' : ''} au total
+        {tables.length} {t('word.table', { count: tables.length })} · {totalRows} {t('word.row', { count: totalRows })} {t('recap.total')}
         {allLinks.length > 0 && (
-          <> · <span className="green">{allLinks.length} lien{allLinks.length > 1 ? 's' : ''} entre feuilles</span></>
+          <> · <span className="green">{allLinks.length} {t('word.link', { count: allLinks.length })} {t('recap.betweenSheets')}</span></>
         )}
       </p>
 
@@ -48,13 +52,13 @@ function StepTableConfirmation({ tables, onBack, onNext }: Props) {
                 <div>
                   <div className="table-card-name">{table.tableName}</div>
                   <p className="table-card-meta">
-                    feuille : {table.sheetName} · {table.rows.length} ligne{table.rows.length > 1 ? 's' : ''}
+                    {t('recap.sheet')} : {table.sheetName} · {table.rows.length} {t('word.row', { count: table.rows.length })}
                   </p>
                 </div>
                 <span className={`table-card-pk${pk ? '' : ' warn'}`}>
                   {pk
-                    ? <>Identifiant : <strong>{pk.name}</strong></>
-                    : 'sans identifiant'}
+                    ? <>{t('common.identifier')} : <strong>{pk.name}</strong></>
+                    : t('recap.noId')}
                 </span>
               </div>
 
@@ -65,14 +69,14 @@ function StepTableConfirmation({ tables, onBack, onNext }: Props) {
                   return (
                     <span
                       key={col.originalName}
-                      title={isLinked ? `Référence vers ${col.foreignKey!.refTable}.${col.foreignKey!.refColumn}` : undefined}
+                      title={isLinked ? `${t('recap.refersTo')} ${col.foreignKey!.refTable}.${col.foreignKey!.refColumn}` : undefined}
                       className={`col-chip${col.isPrimaryKey ? ' pk' : isLinked ? ' fk' : ''}`}
                     >
-                      {col.isPrimaryKey && <span className="col-chip-badge pk">Identifiant</span>}
-                      {isLinked && <span className="col-chip-badge fk">LIEN</span>}
+                      {col.isPrimaryKey && <span className="col-chip-badge pk">{t('common.identifier')}</span>}
+                      {isLinked && <span className="col-chip-badge fk">{t('recap.linkBadge')}</span>}
                       <span className="col-chip-name">{col.name}</span>
                       <span className="type-badge" style={{ background: badge.bg, color: badge.color }}>
-                        {typeLabel(col.type)}
+                        {typeLabel(col.type, lang)}
                       </span>
                     </span>
                   )
@@ -85,7 +89,7 @@ function StepTableConfirmation({ tables, onBack, onNext }: Props) {
                     <div key={col.originalName} className="fk-row">
                       <span className="fk-row-icon">↗</span>
                       <span className="fk-row-col">{col.name}</span>
-                      <span className="fk-row-sep">fait référence à</span>
+                      <span className="fk-row-sep">{t('recap.refersTo')}</span>
                       <span className="fk-row-ref">{col.foreignKey!.refTable}.{col.foreignKey!.refColumn}</span>
                     </div>
                   ))}
@@ -96,9 +100,13 @@ function StepTableConfirmation({ tables, onBack, onNext }: Props) {
         })}
       </div>
 
+      {error && <p className="confirm-error">{error}</p>}
+
       <div className="confirm-actions">
-        <button className="btn btn-secondary" onClick={onBack}>← Retour</button>
-        <button className="btn-primary" onClick={onNext}>Continuer →</button>
+        <button className="btn btn-secondary" onClick={onBack} disabled={isCreating}>← {t('common.back')}</button>
+        <button className="btn-primary" onClick={onNext} disabled={isCreating}>
+          {isCreating ? t('recap.creating') : `${t('recap.createDb')} →`}
+        </button>
       </div>
     </div>
   )
