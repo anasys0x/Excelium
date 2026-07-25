@@ -1,5 +1,6 @@
 import { useState, useRef, useLayoutEffect, useCallback } from 'react'
 import type { TableConfig } from '../../App'
+import { useI18n } from '../../lib/i18n'
 
 interface FK { fromTable: string; fromCol: string; toTable: string; toCol: string }
 interface Pos { x: number; y: number }
@@ -37,6 +38,7 @@ function circleLayout(tables: TableConfig[], w: number, h: number): Record<strin
 }
 
 function SchemaView({ tables }: { tables: TableConfig[] }) {
+  const { t } = useI18n()
   const [hovered, setHovered] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [positions, setPositions] = useState<Record<string, Pos>>({})
@@ -179,7 +181,7 @@ function SchemaView({ tables }: { tables: TableConfig[] }) {
       })}
 
       {fks.length === 0 && (
-        <div className="schema-empty">Aucune relation détectée entre les tables</div>
+        <div className="schema-empty">{t('app.noRelations')}</div>
       )}
     </div>
   )

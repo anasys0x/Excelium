@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AnalyzedColumn } from '../../lib/semantic'
 import { renderCell } from '../widgets/CellWidget'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   columns: AnalyzedColumn[]
@@ -12,6 +13,7 @@ interface Props {
 }
 
 function CardListView({ columns, rows, onRowClick, onDependency, expandedRowIndex, expandedContent }: Props) {
+  const { t } = useI18n()
   const titleCol  = columns.find((c) => c.role === 'title') ?? columns.find((c) => c.role === 'text')
   const badgeCols = columns.filter((c) => c.role === 'status' || c.role === 'category').slice(0, 2)
   const infoCols  = columns
@@ -88,7 +90,7 @@ function CardListView({ columns, rows, onRowClick, onDependency, expandedRowInde
                       className={`card-dep-btn${isExpanded ? ' active' : ''}`}
                       onClick={(e) => { e.stopPropagation(); onDependency(ri) }}
                     >
-                      {isExpanded ? 'Dépendances ▲' : 'Dépendances ▼'}
+                      {t('app.dependencies')} {isExpanded ? '▲' : '▼'}
                     </button>
                   )}
                 </div>

@@ -2,84 +2,13 @@ import './landing.css'
 import HeroGrid from './HeroGrid'
 import Faq from './Faq'
 import { useReveal } from './useReveal'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   onStart: () => void
   theme: 'dark' | 'light'
   onToggleTheme: () => void
 }
-
-const STEPS = [
-  {
-    n: '01',
-    title: 'Dépose ton fichier',
-    body: 'Glisse un .xlsx. Excelium lit chaque feuille, chaque tableau, et devine le type de chaque colonne.',
-  },
-  {
-    n: '02',
-    title: 'Vérifie la structure',
-    body: 'Clé primaire, clés étrangères entre feuilles, colonnes à exclure : tout est proposé, rien n\'est figé.',
-  },
-  {
-    n: '03',
-    title: 'Réponds à quelques questions',
-    body: 'Une dizaine de questions courtes sur le sens de tes données. Trois interfaces se dessinent en direct pendant que tu réponds.',
-  },
-  {
-    n: '04',
-    title: 'Choisis et c\'est prêt',
-    body: 'Base PostgreSQL créée, webapp générée avec CRUD complet. Modifiable, exportable, à tout moment.',
-  },
-]
-
-const FEATURES = [
-  {
-    title: 'Détection de types',
-    body: 'Nombre, décimal, texte, date, oui/non, mixte, devinés colonne par colonne à partir des valeurs réelles.',
-  },
-  {
-    title: 'Clés & relations',
-    body: 'Identifiants, doublons, et références entre feuilles détectés automatiquement, avec analyse d\'impact avant suppression.',
-  },
-  {
-    title: 'Interface qui comprend le sens',
-    body: 'Contacts, ventes, catalogue, événements : Excelium reconnaît le type de tes données et propose la vue qui leur correspond.',
-  },
-  {
-    title: 'Export sans verrou',
-    body: 'Ressors tes données en Excel ou en SQL brut à tout moment. Rien n\'est retenu en otage.',
-  },
-]
-
-const FORMATS = [
-  { label: 'Fichier', value: '.xlsx' },
-  { label: 'Feuilles', value: 'Plusieurs feuilles, plusieurs tableaux par feuille' },
-  { label: 'Types de colonnes', value: 'Nombre · Décimal · Texte · Date · Oui/Non · Mixte' },
-  { label: 'Formats de date lus', value: 'JJ/MM/AAAA, AAAA-MM-JJ, MM/JJ/AAAA et variantes' },
-]
-
-const FAQ_ITEMS = [
-  {
-    question: 'Mes formules Excel (SOMME, MOYENNE...) sont-elles conservées ?',
-    answer: 'Non. Excelium importe les valeurs calculées, pas les formules elles-mêmes. Une fois dans la webapp, les totaux et moyennes que tu vois sont recalculés en direct sur les données réelles, mais la formule Excel d\'origine n\'est pas rejouée.',
-  },
-  {
-    question: 'Où sont stockées mes données ?',
-    answer: 'Dans une base PostgreSQL que tu contrôles. Le backend tourne en local, sur ta propre machine ou ton propre serveur. Rien n\'est envoyé à un service tiers.',
-  },
-  {
-    question: 'Je n\'ai pas de colonne identifiant, ça bloque ?',
-    answer: 'Non. Si aucune colonne ne fait un bon identifiant unique, Excelium peut en générer un automatiquement, numéroté de 1 à N.',
-  },
-  {
-    question: 'Puis-je changer l\'interface après la génération ?',
-    answer: 'Oui. Le modèle de vue (tableau, cartes, galerie, tableau de bord) reste modifiable depuis la webapp générée, à tout moment, sans repartir de zéro.',
-  },
-  {
-    question: 'Est-ce que je peux reprendre une session plus tard ?',
-    answer: 'Oui. Un identifiant de session t\'est donné à la création. Colle-le sur l\'écran d\'import pour rouvrir ta webapp et modifier tes choix.',
-  },
-]
 
 function Reveal({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const [ref, visible] = useReveal<HTMLDivElement>()
@@ -91,6 +20,37 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
 }
 
 function Landing({ onStart, theme, onToggleTheme }: Props) {
+  const { t, lang, setLang } = useI18n()
+
+  const STEPS = [
+    { n: '01', title: t('landing.step1.title'), body: t('landing.step1.body') },
+    { n: '02', title: t('landing.step2.title'), body: t('landing.step2.body') },
+    { n: '03', title: t('landing.step3.title'), body: t('landing.step3.body') },
+    { n: '04', title: t('landing.step4.title'), body: t('landing.step4.body') },
+  ]
+
+  const FEATURES = [
+    { title: t('landing.feat1.title'), body: t('landing.feat1.body') },
+    { title: t('landing.feat2.title'), body: t('landing.feat2.body') },
+    { title: t('landing.feat3.title'), body: t('landing.feat3.body') },
+    { title: t('landing.feat4.title'), body: t('landing.feat4.body') },
+  ]
+
+  const FORMATS = [
+    { label: t('landing.fmt.file'), value: t('landing.fmt.fileVal') },
+    { label: t('landing.fmt.sheets'), value: t('landing.fmt.sheetsVal') },
+    { label: t('landing.fmt.colTypes'), value: t('landing.fmt.colTypesVal') },
+    { label: t('landing.fmt.dates'), value: t('landing.fmt.datesVal') },
+  ]
+
+  const FAQ_ITEMS = [
+    { question: t('landing.faq1.q'), answer: t('landing.faq1.a') },
+    { question: t('landing.faq2.q'), answer: t('landing.faq2.a') },
+    { question: t('landing.faq3.q'), answer: t('landing.faq3.a') },
+    { question: t('landing.faq4.q'), answer: t('landing.faq4.a') },
+    { question: t('landing.faq5.q'), answer: t('landing.faq5.a') },
+  ]
+
   return (
     <div className="landing">
       <header className="landing-nav">
@@ -101,38 +61,41 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
           Excelium
         </button>
         <div className="landing-nav-actions">
-          <a
-            className="landing-nav-link"
-            href="https://github.com/anasys0x/Excelium"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Code source
-          </a>
           <button className="landing-nav-theme" onClick={onToggleTheme}>
             {theme === 'dark' ? '🌙' : '☀️'}
           </button>
+          <div className="landing-lang" role="group" aria-label="Language">
+            <button
+              className={`landing-lang-btn${lang === 'fr' ? ' active' : ''}`}
+              onClick={() => setLang('fr')}
+            >
+              FR
+            </button>
+            <span className="landing-lang-sep">|</span>
+            <button
+              className={`landing-lang-btn${lang === 'en' ? ' active' : ''}`}
+              onClick={() => setLang('en')}
+            >
+              EN
+            </button>
+          </div>
         </div>
       </header>
 
       <section className="landing-hero">
         <div className="landing-hero-copy">
-          <p className="landing-eyebrow">Excel → webapp</p>
-          <p className="landing-formula">=TRANSFORMER(classeur.xlsx)</p>
+          <p className="landing-eyebrow">{t('landing.eyebrow')}</p>
+          <p className="landing-formula">{t('landing.formula')}</p>
           <h1 className="landing-title">
-            Ton classeur devient<br />une vraie application web.
+            {t('landing.titleLine1')}<br />{t('landing.titleLine2')}
           </h1>
-          <p className="landing-subtitle">
-            Dépose un fichier Excel, réponds à quelques questions sur le sens de tes données,
-            et repars avec une base PostgreSQL et une interface CRUD générée pour toi.
-            Pas un tableau statique de plus.
-          </p>
+          <p className="landing-subtitle">{t('landing.subtitle')}</p>
           <div className="landing-cta-row">
             <button className="landing-cta-primary" onClick={onStart}>
-              Créer ma WebApp →
+              {t('landing.ctaPrimary')} →
             </button>
             <a className="landing-cta-secondary" href="#comment-ca-marche">
-              Voir comment ça marche
+              {t('landing.ctaSecondary')}
             </a>
           </div>
         </div>
@@ -141,8 +104,8 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
 
       <section id="comment-ca-marche" className="landing-section">
         <Reveal>
-          <p className="landing-section-eyebrow">Le parcours</p>
-          <h2 className="landing-section-title">Comment ça marche</h2>
+          <p className="landing-section-eyebrow">{t('landing.howEyebrow')}</p>
+          <h2 className="landing-section-title">{t('landing.howTitle')}</h2>
         </Reveal>
         <div className="landing-steps">
           {STEPS.map((step, i) => (
@@ -159,8 +122,8 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
 
       <section className="landing-section">
         <Reveal>
-          <p className="landing-section-eyebrow">Sous le capot</p>
-          <h2 className="landing-section-title">Ce qu'Excelium détecte pour toi</h2>
+          <p className="landing-section-eyebrow">{t('landing.underHoodEyebrow')}</p>
+          <h2 className="landing-section-title">{t('landing.underHoodTitle')}</h2>
         </Reveal>
         <div className="landing-features">
           {FEATURES.map((feature, i) => (
@@ -176,8 +139,8 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
 
       <section className="landing-section landing-formats-section">
         <Reveal>
-          <p className="landing-section-eyebrow">Ce qui est supporté</p>
-          <h2 className="landing-section-title">Formats reconnus</h2>
+          <p className="landing-section-eyebrow">{t('landing.supportedEyebrow')}</p>
+          <h2 className="landing-section-title">{t('landing.supportedTitle')}</h2>
         </Reveal>
         <Reveal>
           <dl className="landing-formats">
@@ -193,8 +156,8 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
 
       <section className="landing-section">
         <Reveal>
-          <p className="landing-section-eyebrow">Questions fréquentes</p>
-          <h2 className="landing-section-title">FAQ</h2>
+          <p className="landing-section-eyebrow">{t('landing.faqEyebrow')}</p>
+          <h2 className="landing-section-title">{t('landing.faqTitle')}</h2>
         </Reveal>
         <Reveal className="landing-faq-wrap">
           <Faq items={FAQ_ITEMS} />
@@ -203,15 +166,15 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
 
       <section className="landing-final-cta">
         <Reveal>
-          <h2>Prêt à transformer ton premier classeur ?</h2>
+          <h2>{t('landing.finalCta')}</h2>
           <button className="landing-cta-primary" onClick={onStart}>
-            Créer ma WebApp →
+            {t('landing.ctaPrimary')} →
           </button>
         </Reveal>
       </section>
 
       <footer className="landing-footer">
-        <span>Excelium · IFT3150, Été 2026</span>
+        <span>{t('landing.footer')}</span>
         <span>Anas Mrani Alaoui · Farah Romdhane</span>
       </footer>
     </div>

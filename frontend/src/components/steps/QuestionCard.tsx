@@ -1,5 +1,5 @@
-import { CATEGORY_LABELS } from '../../lib/questions'
 import type { Question, QuestionOption } from '../../lib/questions'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   question: Question
@@ -8,9 +8,10 @@ interface Props {
 }
 
 function QuestionCard({ question, selectedOptionId, onSelect }: Props) {
+  const { t } = useI18n()
   return (
     <div className="question-card">
-      <p className="question-card-category">{CATEGORY_LABELS[question.category]}</p>
+      <p className="question-card-category">{t(`qb.cat.${question.category}`)}</p>
       <h2 className="question-card-text">{question.text}</h2>
       <div className="question-card-options">
         {question.options.map((option) => (

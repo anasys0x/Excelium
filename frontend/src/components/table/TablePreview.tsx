@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { ColumnConfig } from '../../App'
 import { typeLabel } from '../../lib/typeLabels'
+import { useI18n } from '../../lib/i18n'
 
 const ALL_TYPES = ['INT', 'FLOAT', 'STRING', 'DATE', 'BOOL', 'MIXED']
 
@@ -26,6 +27,7 @@ interface Props {
 interface HighlightRect { left: number; top: number; width: number; height: number }
 
 function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeChange, onNameChange, onFocusColumn }: Props) {
+  const { t, lang } = useI18n()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const scrollRef  = useRef<HTMLDivElement>(null)
   const tableRef   = useRef<HTMLTableElement>(null)
@@ -61,7 +63,7 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
     <div>
       {showMeta && (
         <p className="preview-meta">
-          {rows.length} ligne{rows.length > 1 ? 's' : ''} · {columns.length} colonnes — lecture seule
+          {rows.length} {t('word.row', { count: rows.length })} · {columns.length} {t('word.column', { count: columns.length })} — {t('preview.readonly')}
         </p>
       )}
       <div ref={wrapperRef} className="preview-wrapper">
@@ -79,7 +81,7 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
                       className={`preview-th${isFocused ? ' focused' : ''}`}
                     >
                       <div className="preview-th-inner">
-                        {col.isPrimaryKey && <span className="preview-th-key" title="Identifiant unique">Identifiant</span>}
+                        {col.isPrimaryKey && <span className="preview-th-key" title={t('preview.idTitle')}>{t('common.identifier')}</span>}
                         {onNameChange ? (
                           <input
                             className={`preview-th-name-input${isFocused ? ' focused' : ''}`}
@@ -89,7 +91,7 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
                             onFocus={() => onFocusColumn?.(col.originalName)}
                             onBlur={() => onFocusColumn?.(null)}
                             spellCheck={false}
-                            title="Renommer la colonne"
+                            title={t('preview.rename')}
                             style={{ width: `${Math.max(col.name.length, 3) + 1.5}ch` }}
                           />
                         ) : (
@@ -103,11 +105,11 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
                             className="type-badge-select"
                             style={{ backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.bg}` }}
                           >
-                            {ALL_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
+                            {ALL_TYPES.map((ty) => <option key={ty} value={ty}>{typeLabel(ty, lang)}</option>)}
                           </select>
                         ) : (
                           <span className="type-badge-sm" style={{ background: badge.bg, color: badge.color }}>
-                            {typeLabel(col.type)}
+                            {typeLabel(col.type, lang)}
                           </span>
                         )}
                       </div>

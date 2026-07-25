@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { AnalyzedColumn } from '../../lib/semantic'
 import { isMetricRole } from '../../lib/semantic'
 import { renderCell } from '../widgets/CellWidget'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   columns: AnalyzedColumn[]
@@ -16,6 +17,7 @@ interface Props {
 }
 
 function TableView({ columns, rows, onRowClick, onEdit, onDelete, onDependency, expandedRowIndex, expandedContent }: Props) {
+  const { t } = useI18n()
   const hasCrud = onEdit || onDelete || onDependency
   const colSpan = columns.length + (hasCrud ? 1 : 0)
 
@@ -56,13 +58,13 @@ function TableView({ columns, rows, onRowClick, onEdit, onDelete, onDependency, 
                             <button
                               className={`crud-btn-dep${isExpanded ? ' active' : ''}`}
                               onClick={(e) => { e.stopPropagation(); onDependency(ri) }}
-                              title="Voir les dépendances"
+                              title={t('app.viewDeps')}
                             >
                               {isExpanded ? '▲' : '▼'}
                             </button>
                           )}
-                          {onEdit && <button className="crud-btn-edit" onClick={(e) => { e.stopPropagation(); onEdit(ri) }} title="Modifier">✎</button>}
-                          {onDelete && <button className="crud-btn-delete" onClick={(e) => { e.stopPropagation(); onDelete(ri) }} title="Supprimer">✕</button>}
+                          {onEdit && <button className="crud-btn-edit" onClick={(e) => { e.stopPropagation(); onEdit(ri) }} title={t('common.edit')}>✎</button>}
+                          {onDelete && <button className="crud-btn-delete" onClick={(e) => { e.stopPropagation(); onDelete(ri) }} title={t('common.delete')}>✕</button>}
                         </div>
                       </td>
                     )}
@@ -79,7 +81,7 @@ function TableView({ columns, rows, onRowClick, onEdit, onDelete, onDependency, 
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={colSpan} className="table-empty">Aucune donnée</td>
+                <td colSpan={colSpan} className="table-empty">{t('app.noData')}</td>
               </tr>
             )}
           </tbody>

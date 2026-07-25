@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Reference } from './ImpactModal'
 import type { TableConfig } from '../../App'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   row: Record<string, unknown>
@@ -46,6 +47,7 @@ function MiniTable({ columns, rows }: { columns: string[]; rows: Record<string, 
 }
 
 function RowDependencyGraph({ row, table, onClose }: Props) {
+  const { t } = useI18n()
   const [refs, setRefs]           = useState<Reference[]>([])
   const [parents, setParents]     = useState<ParentRow[]>([])
   const [loading, setLoading]     = useState(true)
@@ -110,20 +112,20 @@ function RowDependencyGraph({ row, table, onClose }: Props) {
       </div>
 
       {loading ? (
-        <div className="dep-loading">Chargement…</div>
+        <div className="dep-loading">{t('app.loading')}</div>
       ) : (
         <div className="dep-body">
 
           {/* ── Parents : tables que cette ligne référence ── */}
           {hasParents && (
             <div className="dep-section">
-              <div className="dep-section-label dep-label-parent">Références sortantes</div>
+              <div className="dep-section-label dep-label-parent">{t('app.outgoingRefs')}</div>
               <div className="dep-children">
                 {parents.map((p) => (
                   <div key={p.fkColOriginal} className="dep-child-block">
                     <div className="dep-child-title">
                       <span className="dep-child-table">{p.refTable}</span>
-                      <span className="dep-child-count">1 ligne</span>
+                      <span className="dep-child-count">1 {t('word.row', { count: 1 })}</span>
                       <span className="dep-child-col">via {p.fkColName} → {p.refColumn}</span>
                     </div>
                     {p.parentRow && p.columns.length > 0 ? (
@@ -132,7 +134,7 @@ function RowDependencyGraph({ row, table, onClose }: Props) {
                       </div>
                     ) : (
                       <div className="dep-loading" style={{ fontSize: '12px', padding: '8px 0' }}>
-                        Valeur : {val(p.fkValue)}
+                        {t('app.depValue')} {val(p.fkValue)}
                       </div>
                     )}
                   </div>
@@ -144,7 +146,7 @@ function RowDependencyGraph({ row, table, onClose }: Props) {
           {/* ── Children : lignes qui référencent cette ligne ── */}
           {hasChildren && (
             <div className="dep-section">
-              <div className="dep-section-label dep-label-child">Références entrantes</div>
+              <div className="dep-section-label dep-label-child">{t('app.incomingRefs')}</div>
               <div className="dep-children">
                 {refs.map((ref) => {
                   const previewKeys = ref.preview.length > 0 ? Object.keys(ref.preview[0]) : []
@@ -152,7 +154,7 @@ function RowDependencyGraph({ row, table, onClose }: Props) {
                     <div key={ref.table} className="dep-child-block">
                       <div className="dep-child-title">
                         <span className="dep-child-table">{ref.table}</span>
-                        <span className="dep-child-count">{ref.count} ligne{ref.count > 1 ? 's' : ''}</span>
+                        <span className="dep-child-count">{ref.count} {t('word.row', { count: ref.count })}</span>
                         <span className="dep-child-col">via {ref.column}</span>
                       </div>
                       {ref.preview.length > 0 && (
@@ -160,7 +162,7 @@ function RowDependencyGraph({ row, table, onClose }: Props) {
                           <MiniTable columns={previewKeys} rows={ref.preview} />
                           {ref.count > ref.preview.length && (
                             <div className="dep-more">
-                              + {ref.count - ref.preview.length} ligne{ref.count - ref.preview.length > 1 ? 's' : ''} supplémentaire{ref.count - ref.preview.length > 1 ? 's' : ''}
+                              + {ref.count - ref.preview.length} {t('app.moreRows', { count: ref.count - ref.preview.length })}
                             </div>
                           )}
                         </div>
@@ -173,7 +175,7 @@ function RowDependencyGraph({ row, table, onClose }: Props) {
           )}
 
           {!hasParents && !hasChildren && (
-            <div className="dep-loading">Aucune dépendance pour cette ligne.</div>
+            <div className="dep-loading">{t('app.noDepsRow')}</div>
           )}
         </div>
       )}

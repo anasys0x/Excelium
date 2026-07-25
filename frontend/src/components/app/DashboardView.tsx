@@ -2,6 +2,7 @@ import type { AnalyzedColumn } from '../../lib/semantic'
 import { isMetricRole } from '../../lib/semantic'
 import ChartWidget from './ChartWidget'
 import type { ChartPreference } from '../../lib/preferenceEngine'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   columns: AnalyzedColumn[]
@@ -24,7 +25,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function DashboardView({ columns, rows, showChart = false, showStats = false, chartPreference }: Props) {
-  const stats: { label: string; value: string }[] = [{ label: 'Enregistrements', value: nf.format(rows.length) }]
+  const { t } = useI18n()
+  const stats: { label: string; value: string }[] = [{ label: t('app.recordsTitle'), value: nf.format(rows.length) }]
 
   if (showStats) {
     for (const c of columns.filter((col) => isMetricRole(col.role))) {

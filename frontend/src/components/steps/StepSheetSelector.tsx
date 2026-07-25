@@ -1,5 +1,6 @@
 import type { SheetData } from '../../App'
 import TablePreview from '../table/TablePreview'
+import { useI18n } from '../../lib/i18n'
 
 interface Props {
   sheets: SheetData[]
@@ -11,20 +12,21 @@ interface Props {
 }
 
 function StepSheetSelector({ sheets, selected, onToggle, onToggleAll, onBack, onConfirm }: Props) {
+  const { t } = useI18n()
   const count = selected.length
   const allSelected = count === sheets.length && sheets.length > 0
 
   return (
     <div className="sheet-selector">
-      <h1>Choisissez les feuilles à importer</h1>
+      <h1>{t('sheets.title')}</h1>
       <p style={{ color: 'var(--text-2)', fontSize: '14px', marginBottom: '20px', lineHeight: '1.6' }}>
-        {sheets.length} feuilles ont été détectées. Cochez celles à transformer en tables : leur aperçu s'affiche en dessous.
+        {t('sheets.desc', { n: sheets.length })}
       </p>
 
       <div className="sheet-list-head">
-        <span className="sheet-list-count">{count} / {sheets.length} sélectionnée{count > 1 ? 's' : ''}</span>
+        <span className="sheet-list-count">{t('sheets.selectedCount', { n: count, total: sheets.length, count })}</span>
         <button type="button" className="sheet-select-all" onClick={onToggleAll}>
-          {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+          {t(allSelected ? 'sheets.deselectAll' : 'sheets.selectAll')}
         </button>
       </div>
 
@@ -32,7 +34,7 @@ function StepSheetSelector({ sheets, selected, onToggle, onToggleAll, onBack, on
         {sheets.map((sheet) => {
           const isSelected = selected.includes(sheet.name)
           const tableCount = sheet.tables.length
-          const rowCount   = sheet.tables.reduce((sum, t) => sum + t.rows.length, 0)
+          const rowCount   = sheet.tables.reduce((sum, tb) => sum + tb.rows.length, 0)
           const table      = sheet.tables[0]
           return (
             <div key={sheet.name} className={`sheet-item${isSelected ? ' selected' : ''}`}>
@@ -46,7 +48,7 @@ function StepSheetSelector({ sheets, selected, onToggle, onToggleAll, onBack, on
                 <div className="sheet-item-body">
                   <div className="sheet-item-name">{sheet.name}</div>
                   <p className="sheet-item-meta">
-                    {tableCount} tableau{tableCount > 1 ? 'x' : ''} · {rowCount} ligne{rowCount > 1 ? 's' : ''}
+                    {tableCount} {t('word.table', { count: tableCount })} · {rowCount} {t('word.row', { count: rowCount })}
                   </p>
                 </div>
               </label>
@@ -59,7 +61,7 @@ function StepSheetSelector({ sheets, selected, onToggle, onToggleAll, onBack, on
                     showMeta={false}
                   />
                   {table.rows.length > 3 && (
-                    <p className="sheet-preview-note">Aperçu des 3 premières lignes.</p>
+                    <p className="sheet-preview-note">{t('sheets.previewNote')}</p>
                   )}
                 </div>
               )}
@@ -69,13 +71,13 @@ function StepSheetSelector({ sheets, selected, onToggle, onToggleAll, onBack, on
       </div>
 
       <div className="sheet-actions">
-        <button className="btn btn-secondary" onClick={onBack}>← Changer de fichier</button>
+        <button className="btn btn-secondary" onClick={onBack}>← {t('sheets.changeFile')}</button>
         <button
           className="btn-primary"
           onClick={onConfirm}
           disabled={count === 0}
         >
-          Configurer {count} feuille{count > 1 ? 's' : ''} →
+          {t('sheets.configureN', { n: count, count })} →
         </button>
       </div>
     </div>

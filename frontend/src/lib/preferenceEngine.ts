@@ -61,7 +61,7 @@ function addRecord<K extends string>(
   return next
 }
 
-export function buildPreferenceProfile(answers: readonly QuestionAnswer[]): PreferenceProfile {
+export function buildPreferenceProfile(answers: readonly QuestionAnswer[], defaultTheme: AppTheme = 'dark'): PreferenceProfile {
   const initial: PreferenceProfile = {
     archetype: {},
     layout: {},
@@ -72,7 +72,7 @@ export function buildPreferenceProfile(answers: readonly QuestionAnswer[]): Pref
     searchEnabled: true,
     sortMode: 'source',
     exportMode: 'all',
-    theme: 'dark',
+    theme: defaultTheme,
   }
 
   return answers.reduce<PreferenceProfile>((profile, answer) => {

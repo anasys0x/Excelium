@@ -27,8 +27,9 @@ import { buildUiProposals } from './lib/uiProposals'
 import type { UiProposal } from './lib/uiProposals'
 import { restoreSession } from './lib/session'
 import type { SessionApiResponse } from './lib/session'
+import { useI18n } from './lib/i18n'
 
-export type Step = 'landing' | 'upload' | 'select' | 'config' | 'confirm' | 'questionnaire' | 'proposals' | 'done' | 'app'
+export type Step = 'landing' | 'upload' | 'select' | 'config' | 'confirm' | 'created' | 'questionnaire' | 'proposals' | 'done' | 'app'
 export type Theme = 'dark' | 'light'
 
 interface CreatedTable {
@@ -92,6 +93,7 @@ export interface GeneratedAppSeed {
 }
 
 function App() {
+  const { t, lang, setLang } = useI18n()
   const [step, setStep]                        = useState<Step>('landing')
   const [sheets, setSheets]                    = useState<SheetData[]>([])
   const [showPendingModal, setShowPendingModal] = useState(false)
@@ -158,7 +160,7 @@ function App() {
         setStep('select')
       }
     } catch {
-      setError('Impossible de lire le fichier. Vérifiez que le backend est lancé.')
+      setError(t('app.parseError'))
     } finally {
       setIsLoading(false)
     }
@@ -179,10 +181,10 @@ function App() {
       const response = await fetch(`http://localhost:8000/sessions/${encodeURIComponent(sessionId)}`)
       const data = await response.json().catch(() => null)
       if (!response.ok) {
-        throw new Error(data?.detail ?? 'Impossible de charger cette session.')
+        throw new Error(data?.detail ?? t('app.sessionLoadError'))
       }
 
-      const restored = restoreSession(data as SessionApiResponse)
+      const restored = restoreSession(data as SessionApiResponse, t('app.sessionNoSchema'))
       const [sheet] = restored.sheets
       setSheets(restored.sheets)
       setSelectedNames([sheet.name])
@@ -197,7 +199,7 @@ function App() {
       setResumeError(
         resumeFailure instanceof Error
           ? resumeFailure.message
-          : 'Impossible de charger cette session.'
+          : t('app.sessionLoadError')
       )
     } finally {
       setIsResuming(false)
@@ -299,16 +301,53 @@ function App() {
   })
 
   const handleReviewProposals = () => {
-    const profile = buildPreferenceProfile(getValidAnswers())
+    const profile = buildPreferenceProfile(getValidAnswers(), theme)
     const primaryTable = questionnaireTables.find((table) => table.tableName === profile.primaryTableHint)
       ?? questionnaireTables[0]
     const archetype = primaryTable
       ? computeFinalArchetype(primaryTable.analyzed, primaryTable.tableName, profile)
       : 'generic'
-    setUiProposals(buildUiProposals(profile, { hasImages, hasMeaningfulChart, archetype }))
+    setUiProposals(buildUiProposals(profile, { hasImages, hasMeaningfulChart, archetype }, t))
     setSelectedProposalId(null)
     setCreateError(null)
     setStep('proposals')
+  }
+
+  const buildTablesPayload = () => ({
+    tables: allTables.map((t) => {
+      const { columns, rows } = getIncludedTableData(t)
+      return {
+        tableName: t.tableName,
+        columns: columns.map((c) => ({
+          name: c.name,
+          type: c.type,
+          isPrimaryKey: c.isPrimaryKey,
+          ...(c.foreignKey && c.foreignKeyConfirmed ? { foreignKey: c.foreignKey } : {}),
+        })),
+        rows,
+      }
+    }),
+  })
+
+  // Étape « Vérifier » : crée réellement la base, puis affiche l'écran de succès.
+  const handleCreateDatabase = async () => {
+    setIsCreating(true)
+    setCreateError(null)
+    try {
+      const response = await fetch('http://localhost:8000/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildTablesPayload()),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.detail ?? t('app.createErrorUnknown'))
+      setCreatedTables(data.created ?? [])
+      setStep('created')
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : t('app.createError'))
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   const handleCreateWebApp = async () => {
@@ -318,23 +357,9 @@ function App() {
     setIsCreating(true)
     setCreateError(null)
 
-    const payload = {
-      tables: allTables.map((t) => {
-        const { columns, rows } = getIncludedTableData(t)
-        return {
-          tableName: t.tableName,
-          columns: columns.map((c) => ({
-            name: c.name,
-            type: c.type,
-            isPrimaryKey: c.isPrimaryKey,
-            ...(c.foreignKey && c.foreignKeyConfirmed ? { foreignKey: c.foreignKey } : {}),
-          })),
-          rows,
-        }
-      }),
-    }
+    const payload = buildTablesPayload()
 
-    const profile = buildPreferenceProfile(getValidAnswers())
+    const profile = buildPreferenceProfile(getValidAnswers(), theme)
     const { archetypeOverrides } = buildInitialOverrides(allTables, profile)
     const layoutOverrides = Object.fromEntries(
       allTables.map((table) => [table.id, selectedProposal.config.layout]),
@@ -356,15 +381,6 @@ function App() {
       : null
 
     try {
-      const response = await fetch('http://localhost:8000/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data?.detail ?? 'Erreur inconnue lors de la création.')
-      setCreatedTables(data.created ?? [])
-
       let newSessionId: string | null = null
       try {
         const sessionRes = await fetch('http://localhost:8000/sessions', {
@@ -415,7 +431,7 @@ function App() {
       setTheme(selectedTheme)
       setStep('done')
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Erreur lors de la création.')
+      setCreateError(err instanceof Error ? err.message : t('app.createError'))
     } finally {
       setIsCreating(false)
     }
@@ -501,18 +517,18 @@ function App() {
     hasImages,
     hasMeaningfulChart,
     answers,
-  })
+  }, t)
 
   // Aperçu en direct des 3 propositions, recalculé à chaque réponse (pas besoin
   // d'atteindre la fin du questionnaire pour les voir).
-  const liveProfile = buildPreferenceProfile(getValidAnswers())
+  const liveProfile = buildPreferenceProfile(getValidAnswers(), theme)
   const livePrimaryTable = questionnaireTables.find((table) => table.tableName === liveProfile.primaryTableHint)
     ?? questionnaireTables[0]
   const liveArchetype = livePrimaryTable
     ? computeFinalArchetype(livePrimaryTable.analyzed, livePrimaryTable.tableName, liveProfile)
     : 'generic'
   const liveProposals = proposalPreviewTable
-    ? buildUiProposals(liveProfile, { hasImages, hasMeaningfulChart, archetype: liveArchetype })
+    ? buildUiProposals(liveProfile, { hasImages, hasMeaningfulChart, archetype: liveArchetype }, t)
     : []
 
   const tableNames         = allTables.map((t) => t.tableName)
@@ -528,19 +544,17 @@ function App() {
 
   const indicatorSteps = showSelect
     ? [
-        { key: 'upload', label: 'Importer'   },
-        { key: 'select', label: 'Feuilles'   },
-        { key: 'config', label: 'Configurer' },
-        { key: 'confirm', label: 'Créer'     },
-        { key: 'questionnaire', label: 'Personnaliser' },
-        { key: 'proposals', label: 'Choisir' },
+        { key: 'upload', label: t('step.import')    },
+        { key: 'select', label: t('step.sheets')    },
+        { key: 'config', label: t('step.verify')    },
+        { key: 'questionnaire', label: t('step.customize') },
+        { key: 'proposals', label: t('step.choose') },
       ]
     : [
-        { key: 'upload', label: 'Importer'   },
-        { key: 'config', label: 'Configurer' },
-        { key: 'confirm', label: 'Créer'     },
-        { key: 'questionnaire', label: 'Personnaliser' },
-        { key: 'proposals', label: 'Choisir' },
+        { key: 'upload', label: t('step.import')    },
+        { key: 'config', label: t('step.verify')    },
+        { key: 'questionnaire', label: t('step.customize') },
+        { key: 'proposals', label: t('step.choose') },
       ]
 
   if (step === 'landing') {
@@ -559,33 +573,52 @@ function App() {
       <header className="app-header">
         <button className="app-header-logo" onClick={() => setStep('landing')}>Excelium</button>
         <span className="app-header-sep">|</span>
-        <span className="app-header-tagline">Excel → Base de données</span>
+        <span className="app-header-tagline">{t('header.tagline')}</span>
         <button
           className="app-theme-btn"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+          title={theme === 'dark' ? t('header.toLight') : t('header.toDark')}
         >
-          {theme === 'dark' ? '🌙 Dark Mode' : '☀️ Soft Sand'}
+          {theme === 'dark' ? t('header.themeDark') : t('header.themeLight')}
         </button>
+        <div className="app-lang" role="group" aria-label="Language">
+          <button
+            className={`app-lang-opt${lang === 'fr' ? ' active' : ''}`}
+            onClick={() => setLang('fr')}
+          >
+            FR
+          </button>
+          <span className="app-lang-sep">|</span>
+          <button
+            className={`app-lang-opt${lang === 'en' ? ' active' : ''}`}
+            onClick={() => setLang('en')}
+          >
+            EN
+          </button>
+        </div>
       </header>
 
       <main className="app-main">
 
         {step !== 'app' && (
-          <StepIndicator steps={indicatorSteps} currentKey={step === 'done' ? 'proposals' : step} />
+          <StepIndicator
+            steps={indicatorSteps}
+            currentKey={
+              step === 'done' ? 'proposals'
+                : step === 'confirm' ? 'config'
+                : step === 'created' ? 'questionnaire'
+                : step
+            }
+          />
         )}
 
         {/* Étape 1 : Importer */}
         {step === 'upload' && (
           <div className="upload-section">
-            <h1 className="upload-title">Importez votre fichier Excel</h1>
-            <p className="upload-desc">
-              Déposez un fichier{' '}
-              <code className="upload-code">.xlsx</code>{' '}
-              — Excelium détecte les feuilles, les colonnes et leurs types.
-            </p>
+            <h1 className="upload-title">{t('upload.title')}</h1>
+            <p className="upload-desc">{t('upload.desc')}</p>
             <DropZone onFileSelected={handleFileSelected} />
-            {isLoading && <p className="upload-loading">Analyse du fichier en cours…</p>}
+            {isLoading && <p className="upload-loading">{t('upload.loading')}</p>}
             {error    && <p className="upload-error">{error}</p>}
             <SessionResume
               onResume={handleResumeSession}
@@ -619,7 +652,7 @@ function App() {
                     className={`config-tab${sheet.name === activeSheet.name ? ' active' : ''}`}
                   >
                     {sheet.name}
-                    {sheet.tables.some(tableHasPending) && <span className="pending-dot" title="Références non confirmées" />}
+                    {sheet.tables.some(tableHasPending) && <span className="pending-dot" title={t('modal.pendingTitle')} />}
                   </button>
                 ))}
               </div>
@@ -627,14 +660,14 @@ function App() {
 
             {selectedSheets.length === 1 && activeSheet.tables.length > 1 && (
               <p className="config-sheet-label">
-                Feuille :{' '}
+                {t('config.sheetLabel')}{' '}
                 <strong>{activeSheet.name}</strong>
               </p>
             )}
 
             {activeSheet.tables.length > 1 && (
               <div className="config-table-selector">
-                <span className="config-table-label">Tableau :</span>
+                <span className="config-table-label">{t('config.tableLabel')}</span>
                 {activeSheet.tables.map((table) => (
                   <button
                     key={table.id}
@@ -642,7 +675,7 @@ function App() {
                     className={`config-pill${table.id === activeTable.id ? ' active' : ''}`}
                   >
                     {table.tableName}
-                    {tableHasPending(table) && <span className="pending-dot" title="Références non confirmées" />}
+                    {tableHasPending(table) && <span className="pending-dot" title={t('modal.pendingTitle')} />}
                   </button>
                 ))}
               </div>
@@ -652,7 +685,7 @@ function App() {
               left={
                 <>
                   <div style={{ marginBottom: '14px' }}>
-                    <label className="section-label mb6">Nom du tableau</label>
+                    <label className="section-label mb6">{t('config.tableNameLabel')}</label>
                     <input
                       type="text"
                       value={activeTable.tableName}
@@ -696,35 +729,35 @@ function App() {
 
             <div className="config-nav">
               <button className="btn btn-secondary" onClick={() => setStep(showSelect ? 'select' : 'upload')}>
-                ← Retour
+                ← {t('common.back')}
               </button>
 
               <div className="config-nav-right">
                 {missingKeyCount > 0 && (
                   <span className="config-nav-warn">
-                    {missingKeyCount} table{missingKeyCount > 1 ? 's' : ''} sans identifiant
+                    {missingKeyCount} {t('config.missingKey', { count: missingKeyCount })}
                   </span>
                 )}
                 {pendingLinks.length > 0 && (
                   <span className="config-nav-warn">
-                    {pendingLinks.length} référence{pendingLinks.length > 1 ? 's' : ''} non confirmée{pendingLinks.length > 1 ? 's' : ''}
+                    {pendingLinks.length} {t('config.pendingRefs', { count: pendingLinks.length })}
                   </span>
                 )}
                 {duplicateNames.length > 0 && (
                   <span className="config-nav-error">
-                    Tableaux en double : {[...new Set(duplicateNames)].join(', ')}
+                    {t('config.dupTables')} {[...new Set(duplicateNames)].join(', ')}
                   </span>
                 )}
-                {emptyTableName    && <span className="config-nav-error">Nom de tableau vide</span>}
-                {emptyColName      && <span className="config-nav-error">Nom de colonne vide</span>}
-                {hasDuplicateColNames && <span className="config-nav-error">Colonnes en double dans un tableau</span>}
+                {emptyTableName    && <span className="config-nav-error">{t('config.emptyTableName')}</span>}
+                {emptyColName      && <span className="config-nav-error">{t('config.emptyColName')}</span>}
+                {hasDuplicateColNames && <span className="config-nav-error">{t('config.dupCols')}</span>}
 
                 <button
                   className="btn-primary"
                   onClick={() => { if (pendingLinks.length > 0) setShowPendingModal(true); else setStep('confirm') }}
                   disabled={!canProceed}
                 >
-                  Vérifier et créer →
+                  {t('common.continue')} →
                 </button>
               </div>
             </div>
@@ -732,9 +765,9 @@ function App() {
             {showPendingModal && (
               <div className="modal-overlay" onClick={() => setShowPendingModal(false)}>
                 <div className="confirm-modal pending-modal" onClick={(e) => e.stopPropagation()}>
-                  <p className="confirm-modal-title">Références non confirmées</p>
+                  <p className="confirm-modal-title">{t('modal.pendingTitle')}</p>
                   <p className="confirm-modal-msg">
-                    {pendingLinks.length} référence{pendingLinks.length > 1 ? 's ont' : ' a'} été détectée{pendingLinks.length > 1 ? 's' : ''} mais pas encore confirmée{pendingLinks.length > 1 ? 's' : ''}&nbsp;:
+                    {t('modal.pendingBody', { n: pendingLinks.length, count: pendingLinks.length })}
                   </p>
                   <div className="pending-links-list">
                     {pendingLinks.map((lk, i) => (
@@ -746,9 +779,9 @@ function App() {
                     ))}
                   </div>
                   <div className="pending-modal-actions">
-                    <button className="confirm-btn-cancel" onClick={() => setShowPendingModal(false)}>Revenir vérifier</button>
-                    <button className="btn btn-secondary" onClick={() => { setShowPendingModal(false); setStep('confirm') }}>Ignorer et continuer</button>
-                    <button className="btn-primary" onClick={() => { confirmAllPendingLinks(); setShowPendingModal(false); setStep('confirm') }}>Tout accepter et continuer</button>
+                    <button className="confirm-btn-cancel" onClick={() => setShowPendingModal(false)}>{t('modal.pendingBack')}</button>
+                    <button className="btn btn-secondary" onClick={() => { setShowPendingModal(false); setStep('confirm') }}>{t('modal.pendingIgnore')}</button>
+                    <button className="btn-primary" onClick={() => { confirmAllPendingLinks(); setShowPendingModal(false); setStep('confirm') }}>{t('modal.pendingAccept')}</button>
                   </div>
                 </div>
               </div>
@@ -761,7 +794,9 @@ function App() {
           <StepTableConfirmation
             tables={allTables}
             onBack={() => setStep('config')}
-            onNext={() => setStep('questionnaire')}
+            onNext={handleCreateDatabase}
+            isCreating={isCreating}
+            error={createError}
           />
         )}
 
@@ -771,7 +806,7 @@ function App() {
             questions={questionBank}
             answers={answers}
             onAnswer={handleAnswer}
-            onBack={() => setStep('confirm')}
+            onBack={() => setStep('created')}
             onCreateWebApp={handleReviewProposals}
             isCreating={isCreating}
             error={createError}
@@ -796,34 +831,34 @@ function App() {
           />
         )}
 
-        {/* Étape 7 : Terminé */}
-        {step === 'done' && (
+        {/* Base créée : succès juste après la création (avant la personnalisation) */}
+        {step === 'created' && (
           <div className="done-section">
             <div className="done-header">
               <div className="done-check">✓</div>
-              <h1 className="done-title">Base de données créée</h1>
+              <h1 className="done-title">{t('done.createdTitle')}</h1>
               <p className="done-subtitle">
-                {createdTables.length} table{createdTables.length > 1 ? 's' : ''} créée{createdTables.length > 1 ? 's' : ''} avec succès
+                {createdTables.length} {t('word.table', { count: createdTables.length })} {t('done.createdOk', { count: createdTables.length })}
                 {confirmedLinks.length > 0 && (
-                  <> · <span className="done-green">{confirmedLinks.length} lien{confirmedLinks.length > 1 ? 's' : ''} entre feuilles</span></>
+                  <> · <span className="done-green">{confirmedLinks.length} {t('word.link', { count: confirmedLinks.length })} {t('recap.betweenSheets')}</span></>
                 )}
               </p>
             </div>
 
             <div className="done-tables-card">
-              <div className="done-tables-head">Tables</div>
-              {createdTables.map((t) => {
-                const tableConfig = allTables.find((at) => at.tableName === t.table || at.tableName.toLowerCase().replace(/[^a-z0-9]/g, '_') === t.table)
+              <div className="done-tables-head">{t('done.tablesHead')}</div>
+              {createdTables.map((ct) => {
+                const tableConfig = allTables.find((at) => at.tableName === ct.table || at.tableName.toLowerCase().replace(/[^a-z0-9]/g, '_') === ct.table)
                 const pk     = tableConfig?.columns.find((c) => c.isPrimaryKey)
                 const fkCols = tableConfig?.columns.filter((c) => c.foreignKey && c.foreignKeyConfirmed) ?? []
                 return (
-                  <div key={t.table} className="done-table-row">
+                  <div key={ct.table} className="done-table-row">
                     <div className="done-table-row-header">
-                      <span className="done-table-name">{t.table}</span>
-                      <span className="done-table-meta">{t.rows} ligne{t.rows > 1 ? 's' : ''}</span>
+                      <span className="done-table-name">{ct.table}</span>
+                      <span className="done-table-meta">{ct.rows} {t('word.row', { count: ct.rows })}</span>
                     </div>
                     <div className="done-badges">
-                      {pk && <span className="done-badge-pk">ID: {pk.name}</span>}
+                      {pk && <span className="done-badge-pk">{t('common.identifier')}: {pk.name}</span>}
                       {fkCols.map((c) => (
                         <span key={c.originalName} className="done-badge-fk">
                           {c.name} → {c.foreignKey!.refTable}
@@ -835,21 +870,38 @@ function App() {
               })}
             </div>
 
+            <div className="done-actions">
+              <button className="btn btn-secondary" onClick={() => setStep('confirm')}>← {t('common.back')}</button>
+              <button className="btn-primary" onClick={() => setStep('questionnaire')}>{t('done.customizeApp')} →</button>
+              <button className="btn btn-secondary" onClick={resetAll}>{t('common.importAnother')}</button>
+            </div>
+          </div>
+        )}
+
+        {/* Application prête : après la personnalisation */}
+        {step === 'done' && (
+          <div className="done-section">
+            <div className="done-header">
+              <div className="done-check">✓</div>
+              <h1 className="done-title">{t('done.readyTitle')}</h1>
+              <p className="done-subtitle">{t('done.readyDesc')}</p>
+            </div>
+
             {/* Code de session pour reprendre plus tard */}
             {appSeed?.sessionId && (
               <div className="session-save-box">
                 <div className="session-code-display">
-                  <span className="session-code-label">Votre code de session :</span>
+                  <span className="session-code-label">{t('done.sessionLabel')}</span>
                   <span className="session-code">{appSeed.sessionId}</span>
-                  <span className="session-code-hint">Notez ce code pour reprendre plus tard</span>
+                  <span className="session-code-hint">{t('done.sessionHint')}</span>
                 </div>
               </div>
             )}
 
             <div className="done-actions">
-              <button className="btn btn-secondary" onClick={() => setStep('proposals')}>← Retour</button>
-              <button className="btn-primary" onClick={() => setStep('app')}>Ouvrir l'application générée →</button>
-              <button className="btn btn-secondary" onClick={resetAll}>Importer un autre fichier</button>
+              <button className="btn btn-secondary" onClick={() => setStep('proposals')}>← {t('common.back')}</button>
+              <button className="btn-primary" onClick={() => setStep('app')}>{t('done.openApp')} →</button>
+              <button className="btn btn-secondary" onClick={resetAll}>{t('common.importAnother')}</button>
             </div>
           </div>
         )}

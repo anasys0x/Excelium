@@ -16,15 +16,9 @@ import type { Reference } from './ImpactModal'
 import SchemaView from './SchemaView'
 import RowDependencyGraph from './RowDependencyGraph'
 import ConfirmModal from './ConfirmModal'
+import { useI18n } from '../../lib/i18n'
 
 const API = 'http://localhost:8000'
-
-const LAYOUT_LABELS: Record<LayoutKind, string> = {
-  table:     'Table',
-  gallery:   'Galerie',
-  dashboard: 'Tableau de bord',
-  cards:     'Cartes',
-}
 
 interface Props {
   tables: TableConfig[]
@@ -57,6 +51,7 @@ function GeneratedApp({
   showChartWidget, showStatsWidget, chartPreference, canEdit, density,
   navigation, searchEnabled, sortMode, exportMode, sessionId,
 }: Props) {
+  const { t } = useI18n()
   const initialTabIndex = initialActiveTableId
     ? Math.max(0, tables.findIndex((t) => t.id === initialActiveTableId))
     : 0
@@ -92,7 +87,7 @@ function GeneratedApp({
       const data = await res.json()
       setLiveRows(data.rows ?? [])
     } catch {
-      setFetchError('Impossible de charger les données. Vérifiez que le backend est lancé.')
+      setFetchError(t('app.fetchError'))
     } finally {
       setLoading(false)
     }
@@ -110,7 +105,7 @@ function GeneratedApp({
         if (!cancelled) setLiveRows(data.rows ?? [])
       })
       .catch(() => {
-        if (!cancelled) setFetchError('Impossible de charger les données. Vérifiez que le backend est lancé.')
+        if (!cancelled) setFetchError(t('app.fetchError'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -134,7 +129,7 @@ function GeneratedApp({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
     })
-    if (!res.ok) { const err = await res.json(); throw new Error(err.detail ?? 'Erreur lors de la création.') }
+    if (!res.ok) { const err = await res.json(); throw new Error(err.detail ?? t('app.errCreate')) }
     setFormMode(null)
     fetchRows()
   }
@@ -165,7 +160,7 @@ function GeneratedApp({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (!res.ok) { const err = await res.json(); throw new Error(err.detail ?? 'Erreur lors de la modification.') }
+    if (!res.ok) { const err = await res.json(); throw new Error(err.detail ?? t('app.errUpdate')) }
     setFormMode(null)
     setEditingRow(null)
     setPendingOp(null)
@@ -200,7 +195,7 @@ function GeneratedApp({
     const res = await fetch(url, { method: 'DELETE' })
     if (!res.ok) {
       const err = await res.json()
-      setFetchError(err.detail ?? 'Erreur lors de la suppression.')
+      setFetchError(err.detail ?? t('app.errDelete'))
     }
     setSelectedRow(null)
     setPendingOp(null)
@@ -307,7 +302,7 @@ function GeneratedApp({
     <div className={`generated-app density-${density} navigation-${navigation}`}>
       {navigation === 'sidebar' && (
         <nav className="gen-side-nav" aria-label="Tables">
-          <span className="gen-side-title">Tables</span>
+          <span className="gen-side-title">{t('done.tablesHead')}</span>
           {tables.map((table, index) => (
             <button
               key={table.id}
@@ -321,7 +316,7 @@ function GeneratedApp({
             onClick={() => { setActiveTab('schema'); setSelectedRow(null); setFormMode(null) }}
             className={`gen-side-link${activeTab === 'schema' ? ' active' : ''}`}
           >
-            Schéma
+            {t('app.schema')}
           </button>
         </nav>
       )}
@@ -352,15 +347,15 @@ function GeneratedApp({
             <button
               type="button"
               className="session-badge"
-              title={`Copier l'identifiant de session : ${sessionId}`}
-              aria-label={`Copier l'identifiant de session ${sessionId}`}
+              title={`${t('app.copySession')} ${sessionId}`}
+              aria-label={`${t('app.copySession')} ${sessionId}`}
               onClick={() => {
                 navigator.clipboard.writeText(sessionId)
                 setCopied(true)
                 setTimeout(() => setCopied(false), 1500)
               }}
             >
-              Session : {sessionId.slice(0, 8)}… {copied ? '✓ copié' : '⧉'}
+              {t('app.session')} {sessionId.slice(0, 8)}… {copied ? t('app.copied') : '⧉'}
             </button>
           )}
           {exportMode !== 'none' && (
@@ -384,13 +379,13 @@ function GeneratedApp({
           <h1 className="gen-title">{active.tableName}</h1>
           <p className="gen-count">
             {loading
-              ? 'Chargement…'
+              ? t('app.loading')
               : searchQuery.trim()
-                ? `${sourceRows.length} résultat${sourceRows.length !== 1 ? 's' : ''} sur ${liveRows.length}`
-                : `${liveRows.length} enregistrement${liveRows.length !== 1 ? 's' : ''}`}
+                ? t('app.resultsOf', { n: sourceRows.length, total: liveRows.length, count: sourceRows.length })
+                : `${liveRows.length} ${t('app.records', { count: liveRows.length })}`}
             {!loading && detected !== 'generic' && (
               <span style={{ color: 'var(--text-muted)' }}>
-                {' '}· détecté : {ARCHETYPE_PRESETS[detected].label}
+                {' '}· {t('app.detected')} {t(`archetype.${detected}`)}
               </span>
             )}
           </p>
@@ -403,17 +398,17 @@ function GeneratedApp({
                 type="search"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Rechercher…"
-                aria-label={`Rechercher dans ${active.tableName}`}
+                placeholder={t('app.searchPlaceholder')}
+                aria-label={t('app.searchIn', { table: active.tableName })}
               />
             </label>
           )}
           <span className="gen-mode-badge">
-            {LAYOUT_LABELS[effectiveLayout]} · {canEdit ? 'Modification' : 'Lecture seule'}
+            {t(`app.layout.${effectiveLayout}`)} · {canEdit ? t('app.editMode') : t('app.readOnly')}
           </span>
           {canEdit && (
             <button className="add-btn" onClick={() => { setFormMode('create'); setEditingRow(null) }}>
-              + Ajouter
+              + {t('app.add')}
             </button>
           )}
         </div>
@@ -466,7 +461,7 @@ function GeneratedApp({
       )}
       </>
       )}
-      <button className="back-btn" onClick={onBack}>← Retour</button>
+      <button className="back-btn" onClick={onBack}>← {t('common.back')}</button>
 
       {/* Detail panel */}
       {activeTab !== 'schema' && selectedRow !== null && displayRows[selectedRow] && (
@@ -493,7 +488,7 @@ function GeneratedApp({
       {/* Simple confirm modal (no dependencies) */}
       {confirmPending && (
         <ConfirmModal
-          message="Supprimer cette ligne ?"
+          message={t('app.deleteRowConfirm')}
           onConfirm={confirmPending}
           onCancel={() => setConfirmPending(null)}
         />
