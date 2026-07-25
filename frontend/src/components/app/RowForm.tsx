@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ColumnConfig } from '../../App'
 import { useI18n } from '../../lib/i18n'
 
@@ -8,6 +8,7 @@ interface Props {
   mode: 'create' | 'edit'
   onSubmit: (data: Record<string, unknown>) => Promise<void>
   onCancel: () => void
+  existingRows?: Record<string, unknown>[]
 }
 
 function inputFor(col: ColumnConfig, value: unknown, onChange: (v: unknown) => void, readOnly: boolean) {
@@ -56,13 +57,29 @@ function inputFor(col: ColumnConfig, value: unknown, onChange: (v: unknown) => v
   )
 }
 
-function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props) {
+function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel, existingRows = [] }: Props) {
   const { t } = useI18n()
   const includedCols = columns.filter((c) => !c.excluded)
+  const pkCol = includedCols.find((c) => c.isPrimaryKey)
+  const labelCol = includedCols.find((c) => !c.isPrimaryKey && (c.type === 'TEXT' || c.type === 'STRING')) ?? includedCols.find((c) => !c.isPrimaryKey)
+
+  // Prochain identifiant disponible, suggéré pour une clé primaire numérique en création.
+  const suggestedId = useMemo(() => {
+    if (mode !== 'create' || !pkCol || pkCol.type !== 'INT') return null
+    const max = existingRows.reduce((acc, row) => {
+      const v = Number(row[pkCol.name])
+      return Number.isFinite(v) && v > acc ? v : acc
+    }, 0)
+    return max + 1
+  }, [mode, pkCol, existingRows])
 
   const [formData, setFormData] = useState<Record<string, unknown>>(() => {
     const init: Record<string, unknown> = {}
     for (const col of includedCols) {
+      if (mode === 'create' && col.isPrimaryKey && suggestedId !== null) {
+        init[col.name] = suggestedId
+        continue
+      }
       init[col.name] = initialData[col.name] ?? (col.type === 'BOOL' ? false : '')
     }
     return init
@@ -72,6 +89,16 @@ function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props)
 
   const setField = (name: string, value: unknown) =>
     setFormData((prev) => ({ ...prev, [name]: value }))
+
+  // Validation d'unicité de l'identifiant en temps réel (création uniquement).
+  const duplicateRow = useMemo(() => {
+    if (mode !== 'create' || !pkCol) return null
+    const value = formData[pkCol.name]
+    if (value === null || value === undefined || value === '') return null
+    return existingRows.find((row) => String(row[pkCol.name]) === String(value)) ?? null
+  }, [mode, pkCol, formData, existingRows])
+
+  const idHasConflict = duplicateRow !== null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,6 +134,19 @@ function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props)
                   {isReadOnly && <span className="form-label-readonly">{t('preview.readonly')}</span>}
                 </label>
                 {inputFor(col, formData[col.name], (v) => setField(col.name, v), isReadOnly)}
+                {col.isPrimaryKey && mode === 'create' && (
+                  idHasConflict
+                    ? (
+                      <div className="form-field-error">
+                        {t('app.idDuplicate', {
+                          label: labelCol ? String(duplicateRow![labelCol.name] ?? '') : String(formData[col.name]),
+                        })}
+                      </div>
+                    )
+                    : suggestedId !== null && formData[col.name] === suggestedId && (
+                      <div className="form-field-hint">{t('app.idSuggested', { value: suggestedId })}</div>
+                    )
+                )}
               </div>
             )
           })}
@@ -116,7 +156,7 @@ function RowForm({ columns, initialData = {}, mode, onSubmit, onCancel }: Props)
         <div className="form-footer">
           <button
             onClick={handleSubmit as unknown as React.MouseEventHandler}
-            disabled={saving}
+            disabled={saving || idHasConflict}
             className="form-submit"
           >
             {saving ? t('common.saving') : t('common.save')}

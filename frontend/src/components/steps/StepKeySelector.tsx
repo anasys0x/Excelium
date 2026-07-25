@@ -230,11 +230,18 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
           <button className="auto-id-remove" onClick={removeAutoIdColumn}>{t('keySel.remove')}</button>
         </div>
       ) : (
-        <div className="auto-id-absent">
+        <div className={`auto-id-absent${primaryKey ? '' : ' needs-attention'}`}>
           <p className="auto-id-absent-desc">{t('keySel.autoIdAbsent', { n: config.rows.length })}</p>
           <button className="auto-id-btn" onClick={addAutoIdColumn}>{t('keySel.autoIdBtn')}</button>
         </div>
       )}
+
+      <div className={`pk-status${primaryKey ? ' ok' : ''}`}>
+        {primaryKey
+          ? <>{t('preview.idTitle')} : <strong>{primaryKey.name}</strong></>
+          : <>{t('keySel.pkStatusNone')}</>
+        }
+      </div>
 
       <div>
         <label className="section-label">{t('keySel.refsTitle')}</label>
@@ -338,13 +345,6 @@ function StepKeySelector({ config, allTables, onChange, onFocusColumn }: Props) 
             <p>{t('keySel.fkEmpty')}</p>
           </div>
         )}
-      </div>
-
-      <div className={`pk-status${primaryKey ? ' ok' : ''}`}>
-        {primaryKey
-          ? <>{t('preview.idTitle')} : <strong>{primaryKey.name}</strong></>
-          : <>{t('keySel.pkStatusNone')}</>
-        }
       </div>
 
     </div>

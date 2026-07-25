@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from datetime import datetime
 
@@ -43,6 +44,18 @@ def looks_like_date(value):
     return False
 
 
+TIME_PATTERN = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
+
+
+def looks_like_time(value):
+    return bool(TIME_PATTERN.match(str(value).strip()))
+
+
+def looks_like_alnum_code(value):
+    v = str(value).strip()
+    return any(c.isdigit() for c in v) and any(c.isalpha() for c in v)
+
+
 def get_value_type(value):
     from datetime import date, datetime as dt
     if value is None:
@@ -59,8 +72,12 @@ def get_value_type(value):
         v = value.strip()
         if looks_like_date(v):
             return "date"
+        if looks_like_time(v):
+            return "time"
         if looks_like_number(v):
             return "numeric_str"
+        if looks_like_alnum_code(v):
+            return "alnum_code"
         return "str"
     return "unknown"
 
