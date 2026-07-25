@@ -108,6 +108,14 @@ def _all_fixed_prefix_codes(values):
     return len({m.group(1) for m in matches}) == 1
 
 
+def _all_code_format(values):
+    """Toutes les valeurs sont du type PREFIXE+chiffres, préfixes variables (IFT1015, MAT1400, PHY1001...)."""
+    strs = [str(v).strip() for v in values if v is not None]
+    if len(strs) < 2:
+        return False
+    return all(_CODE_RE.match(v) for v in strs)
+
+
 def _value_format_score(values):
     if _all_uuid(values):
         return 4
@@ -115,6 +123,8 @@ def _value_format_score(values):
         return 4
     if _all_fixed_prefix_codes(values):
         return 3
+    if _all_code_format(values):
+        return 2
     return 0
 
 

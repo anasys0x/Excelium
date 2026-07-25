@@ -338,7 +338,7 @@ function GeneratedApp({
               onClick={() => { setActiveTab('schema'); setSelectedRow(null); setFormMode(null) }}
               className={`gen-tab${activeTab === 'schema' ? ' active' : ''}`}
             >
-              Schéma
+              {t('app.schema')}
             </button>
           </div>
         )}
@@ -482,6 +482,7 @@ function GeneratedApp({
           mode={formMode}
           onSubmit={formMode === 'create' ? handleCreate : handleUpdate}
           onCancel={() => { setFormMode(null); setEditingRow(null) }}
+          existingRows={liveRows}
         />
       )}
 

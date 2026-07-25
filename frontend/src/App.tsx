@@ -172,6 +172,7 @@ function App() {
     setFocusedColumn(null)
   }
 
+
   const handleResumeSession = async (sessionId: string) => {
     setIsResuming(true)
     setResumeError(null)
@@ -460,7 +461,9 @@ function App() {
   const allTables       = selectedSheets.flatMap((s) => s.tables)
   const activeSheet     = selectedSheets.find((s) => s.name === activeSheetName) ?? selectedSheets[0] ?? null
   const activeTable     = activeSheet?.tables.find((t) => t.id === activeTableId) ?? activeSheet?.tables[0] ?? null
-  const missingKeyCount = allTables.filter((t) => !t.columns.some((c) => c.isPrimaryKey && !c.excluded)).length
+  const tableMissingKey = (t: TableConfig) => !t.columns.some((c) => c.isPrimaryKey && !c.excluded)
+  const missingKeyTables = allTables.filter(tableMissingKey)
+  const missingKeyCount  = missingKeyTables.length
 
   const confirmedLinks = allTables.flatMap((t) =>
     t.columns
@@ -653,6 +656,7 @@ function App() {
                   >
                     {sheet.name}
                     {sheet.tables.some(tableHasPending) && <span className="pending-dot" title={t('modal.pendingTitle')} />}
+                    {sheet.tables.some(tableMissingKey) && <span className="missing-key-dot" title={t('config.missingKeyTitle')} />}
                   </button>
                 ))}
               </div>
@@ -676,6 +680,7 @@ function App() {
                   >
                     {table.tableName}
                     {tableHasPending(table) && <span className="pending-dot" title={t('modal.pendingTitle')} />}
+                    {tableMissingKey(table) && <span className="missing-key-dot" title={t('config.missingKeyTitle')} />}
                   </button>
                 ))}
               </div>
