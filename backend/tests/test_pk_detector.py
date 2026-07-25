@@ -11,6 +11,7 @@ from models.excel.table import Table
 from models.excel.workbook import Workbook
 from models.excel.worksheet import Worksheet
 from services.pk_detector import (
+    _all_code_format,
     _all_fixed_prefix_codes,
     _all_uuid,
     _is_sequential,
@@ -107,7 +108,18 @@ class ValueFormatSignalsTest(unittest.TestCase):
     def test_score_hierarchy(self):
         self.assertEqual(_value_format_score([1, 2, 3]), 4)
         self.assertEqual(_value_format_score(["EMP001", "EMP002"]), 3)
+        self.assertEqual(_value_format_score(["IFT1015", "MAT1400", "PHY1001"]), 2)
         self.assertEqual(_value_format_score(["Alice", "Bob"]), 0)
+
+    def test_mixed_prefix_codes(self):
+        # Succès : structure lettres+chiffres cohérente, préfixes variables (codes de cours)
+        self.assertTrue(_all_code_format(["IFT1015", "MAT1400", "PHY1001"]))
+        # Succès : un seul préfixe est aussi un cas valide (sous-cas du format général)
+        self.assertTrue(_all_code_format(["EMP001", "EMP002"]))
+        # Échec : une valeur ne suit pas le format lettres+chiffres
+        self.assertFalse(_all_code_format(["IFT1015", "sans-code"]))
+        # Échec : trop court pour être un signal fiable
+        self.assertFalse(_all_code_format(["IFT1015"]))
 
 
 class GetPkCandidatesTest(unittest.TestCase):
