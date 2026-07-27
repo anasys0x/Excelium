@@ -1,41 +1,42 @@
-/* ─── Thème par défaut : Dark Mode (Deep Ocean Blue) ──────────────────────── */
+/* ─── Thème par défaut : Dark Mode ──────────────────────────────────────── */
 :root {
-  --bg-app:        #0f2129;
-  --surface:       #15323b;
-  --surface-alt:   #122d35;
-  --row-hover:     #123942;
-  --accent-soft:   #0c3a40;
-  --border:        #27505c;
-  --border-strong: #356470;
+  --bg-app:        #152128;
+  --surface:       #20313A;
+  --surface-alt:   #1C2C34;
+  --row-hover:     #26404A;
+  --accent-soft:   #24444A;
+  --border:        #36505B;
+  --border-strong: #4C6874;
 
-  --accent:        #0d7377;
-  --accent-hover:  #0f8a8f;
-  --accent-text:   #5eead4;
-  --highlight:     #2dd4bf;
-  --accent-border: #1f7a80;
+  --accent:        #3E7176;
+  --accent-hover:  #4C848A;
+  --accent-text:   #7EE6E0;
+  --highlight:     #7EE6E0;
+  --accent-border: #4C848A;
 
-  --text:          #E6EEF2;
-  --cell-text:     #C2D2DA;
-  --text-2:        #A7BBC4;
-  --text-muted:    #8AA1AC;
-  --text-faint:    #6E8893;
-  --line:          #1d3e48;
+  --text:          #E8EEF2;
+  --cell-text:     #DAE4E9;
+  --text-2:        #ADBBC3;
+  --text-muted:    #8C9BA3;
+  --text-faint:    #7F8C95;
+  --line:          #2B4048;
 
-  --badge-blue-bg:    #13314a; --badge-blue-text:   #7FB4F0;
-  --badge-green-bg:   #103528; --badge-green-text:  #6FD79B;
-  --badge-amber-bg:   #3a2e12; --amber-text:        #E3B765;
-  --badge-violet-bg:  #241f3d; --badge-violet-text: #B79DEB;
-  --badge-orange-bg:  #3a2415; --badge-orange-text: #E59A6B;
+  --badge-blue-bg:    #1B3A56; --badge-blue-text:   #8FC6FF;
+  --badge-indigo-bg:  #26295C; --badge-indigo-text: #B0B8FF;
+  --badge-green-bg:   #14382C; --badge-green-text:  #7EE6B0;
+  --badge-amber-bg:   #3D2F12; --amber-text:        #F0C674;
+  --badge-violet-bg:  #2B2350; --badge-violet-text: #CBAAF0;
+  --badge-orange-bg:  #3D2716; --badge-orange-text: #F0A876;
 
-  --warn-bg:       #33280f; --warn-border:   #6b5a1e;
-  --ok-bg:         #0e3329; --ok-border:     #1f5c3f;
-  --danger-text:   #F08A8A; --danger-border: #7a3a3a;
+  --warn-bg:       #3D2F12; --warn-border:   #7A5F22;
+  --ok-bg:         #14382C; --ok-border:     #256B47;
+  --danger-text:   #F2938E; --danger-border: #8A4444;
 
-  --glow:          rgba(45, 212, 191, .30);
-  --glow-soft:     rgba(45, 212, 191, .12);
-  --input-bg:      #0c2027;
-  --focus-ring:    rgba(13, 115, 119, .35);
-  --selection:     rgba(45, 212, 191, .30);
+  --glow:          rgba(126, 230, 224, .30);
+  --glow-soft:     rgba(126, 230, 224, .12);
+  --input-bg:      #101C22;
+  --focus-ring:    rgba(126, 230, 224, .35);
+  --selection:     rgba(126, 230, 224, .28);
 
   --radius:    8px;
   --radius-sm: 4px;
@@ -67,6 +68,7 @@
   --line:          #e3d8c9;
 
   --badge-blue-bg:    #DBEAFE; --badge-blue-text:   #1E40AF;
+  --badge-indigo-bg:  #E0E3FA; --badge-indigo-text: #3730A3;
   --badge-green-bg:   #DCFCE7; --badge-green-text:  #166534;
   --badge-amber-bg:   #FEF3C7; --amber-text:        #92400E;
   --badge-violet-bg:  #EDE9FE; --badge-violet-text: #5B21B6;

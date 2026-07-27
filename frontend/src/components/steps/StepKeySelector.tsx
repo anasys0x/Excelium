@@ -7,7 +7,7 @@ const ALL_TYPES = ['INT', 'FLOAT', 'STRING', 'DATE', 'BOOL', 'MIXED']
 
 const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
   INT:    { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
-  FLOAT:  { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
+  FLOAT:  { bg: 'var(--badge-indigo-bg)', color: 'var(--badge-indigo-text)' },
   STRING: { bg: 'var(--badge-green-bg)',  color: 'var(--badge-green-text)'  },
   DATE:   { bg: 'var(--badge-amber-bg)',  color: 'var(--amber-text)'        },
   BOOL:   { bg: 'var(--badge-violet-bg)', color: 'var(--badge-violet-text)' },

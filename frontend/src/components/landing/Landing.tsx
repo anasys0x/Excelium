@@ -1,5 +1,5 @@
 import './landing.css'
-import HeroGrid from './HeroGrid'
+import HeroDemo from './HeroDemo'
 import Faq from './Faq'
 import { useReveal } from './useReveal'
 import { useI18n } from '../../lib/i18n'
@@ -99,7 +99,7 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
             </a>
           </div>
         </div>
-        <HeroGrid />
+        <HeroDemo />
       </section>
 
       <section id="comment-ca-marche" className="landing-section">

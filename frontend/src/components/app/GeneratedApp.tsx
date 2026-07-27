@@ -23,6 +23,7 @@ const API = 'http://localhost:8000'
 interface Props {
   tables: TableConfig[]
   onBack: () => void
+  onNewImport: () => void
   initialArchetypeOverrides: Record<string, TableArchetype>
   initialLayoutOverrides: Record<string, LayoutKind>
   initialActiveTableId: string | null
@@ -46,7 +47,7 @@ interface PendingOp {
 }
 
 function GeneratedApp({
-  tables, onBack,
+  tables, onBack, onNewImport,
   initialArchetypeOverrides, initialLayoutOverrides, initialActiveTableId,
   showChartWidget, showStatsWidget, chartPreference, canEdit, density,
   navigation, searchEnabled, sortMode, exportMode, sessionId,
@@ -461,7 +462,10 @@ function GeneratedApp({
       )}
       </>
       )}
-      <button className="back-btn" onClick={onBack}>← {t('common.back')}</button>
+      <div className="app-footer-actions">
+        <button className="back-btn" onClick={onBack}>← {t('common.back')}</button>
+        <button className="new-import-btn" onClick={onNewImport}>{t('common.importAnother')}</button>
+      </div>
 
       {/* Detail panel */}
       {activeTab !== 'schema' && selectedRow !== null && displayRows[selectedRow] && (

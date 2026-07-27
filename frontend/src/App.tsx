@@ -12,6 +12,7 @@ import StepQuestionnaire from './components/steps/StepQuestionnaire'
 import StepUiProposals from './components/steps/StepUiProposals'
 import StepIndicator from './components/StepIndicator'
 import GeneratedApp from './components/app/GeneratedApp'
+import ConfirmModal from './components/app/ConfirmModal'
 import { buildQuestionBank } from './lib/questions'
 import { analyzeColumns, findChartRecommendation } from './lib/semantic'
 import type { AnalyzedColumn, LayoutKind } from './lib/semantic'
@@ -29,7 +30,7 @@ import { restoreSession } from './lib/session'
 import type { SessionApiResponse } from './lib/session'
 import { useI18n } from './lib/i18n'
 
-export type Step = 'landing' | 'upload' | 'select' | 'config' | 'confirm' | 'created' | 'questionnaire' | 'proposals' | 'done' | 'app'
+export type Step = 'landing' | 'upload' | 'select' | 'config' | 'confirm' | 'questionnaire' | 'proposals' | 'done' | 'app'
 export type Theme = 'dark' | 'light'
 
 interface CreatedTable {
@@ -97,6 +98,9 @@ function App() {
   const [step, setStep]                        = useState<Step>('landing')
   const [sheets, setSheets]                    = useState<SheetData[]>([])
   const [showPendingModal, setShowPendingModal] = useState(false)
+  const [showNewImportConfirm, setShowNewImportConfirm] = useState(false)
+  const [showRecreateConfirm, setShowRecreateConfirm] = useState(false)
+  const [hasVisitedApp, setHasVisitedApp]      = useState(false)
   const [selectedSheetNames, setSelectedNames] = useState<string[]>([])
   const [activeSheetName, setActiveSheetName]  = useState<string | null>(null)
   const [activeTableId, setActiveTableId]      = useState<string | null>(null)
@@ -195,6 +199,7 @@ function App() {
       setSelectedProposalId(null)
       setAppSeed(restored.seed)
       setTheme(restored.theme)
+      setHasVisitedApp(true)
       setStep('app')
     } catch (resumeFailure) {
       setResumeError(
@@ -330,27 +335,7 @@ function App() {
     }),
   })
 
-  // Étape « Vérifier » : crée réellement la base, puis affiche l'écran de succès.
-  const handleCreateDatabase = async () => {
-    setIsCreating(true)
-    setCreateError(null)
-    try {
-      const response = await fetch('http://localhost:8000/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildTablesPayload()),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data?.detail ?? t('app.createErrorUnknown'))
-      setCreatedTables(data.created ?? [])
-      setStep('created')
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : t('app.createError'))
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
+  // Étape finale : crée réellement la base, puis la session, puis affiche l'unique écran de succès.
   const handleCreateWebApp = async () => {
     const selectedProposal = uiProposals.find((proposal) => proposal.id === selectedProposalId)
     if (!selectedProposal) return
@@ -359,6 +344,21 @@ function App() {
     setCreateError(null)
 
     const payload = buildTablesPayload()
+
+    try {
+      const createResponse = await fetch('http://localhost:8000/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const createData = await createResponse.json()
+      if (!createResponse.ok) throw new Error(createData?.detail ?? t('app.createErrorUnknown'))
+      setCreatedTables(createData.created ?? [])
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : t('app.createError'))
+      setIsCreating(false)
+      return
+    }
 
     const profile = buildPreferenceProfile(getValidAnswers(), theme)
     const { archetypeOverrides } = buildInitialOverrides(allTables, profile)
@@ -438,6 +438,12 @@ function App() {
     }
   }
 
+  const handleNewImport = () => {
+    const hasProgress = step !== 'landing' && step !== 'upload'
+    if (hasProgress) { setShowNewImportConfirm(true); return }
+    resetAll()
+  }
+
   const resetAll = () => {
     setSheets([])
     setSelectedNames([])
@@ -453,6 +459,7 @@ function App() {
     setUiProposals([])
     setSelectedProposalId(null)
     setAppSeed(null)
+    setHasVisitedApp(false)
     setStep('upload')
   }
 
@@ -609,7 +616,6 @@ function App() {
             currentKey={
               step === 'done' ? 'proposals'
                 : step === 'confirm' ? 'config'
-                : step === 'created' ? 'questionnaire'
                 : step
             }
           />
@@ -799,9 +805,7 @@ function App() {
           <StepTableConfirmation
             tables={allTables}
             onBack={() => setStep('config')}
-            onNext={handleCreateDatabase}
-            isCreating={isCreating}
-            error={createError}
+            onNext={() => setStep('questionnaire')}
           />
         )}
 
@@ -811,7 +815,7 @@ function App() {
             questions={questionBank}
             answers={answers}
             onAnswer={handleAnswer}
-            onBack={() => setStep('created')}
+            onBack={() => setStep('confirm')}
             onCreateWebApp={handleReviewProposals}
             isCreating={isCreating}
             error={createError}
@@ -830,18 +834,18 @@ function App() {
             selectedId={selectedProposalId}
             onSelect={setSelectedProposalId}
             onBack={() => setStep('questionnaire')}
-            onConfirm={handleCreateWebApp}
+            onConfirm={() => { if (hasVisitedApp) setShowRecreateConfirm(true); else handleCreateWebApp() }}
             isCreating={isCreating}
             error={createError}
           />
         )}
 
-        {/* Base créée : succès juste après la création (avant la personnalisation) */}
-        {step === 'created' && (
+        {/* Application prête : unique écran de succès, après création DB + personnalisation */}
+        {step === 'done' && (
           <div className="done-section">
             <div className="done-header">
               <div className="done-check">✓</div>
-              <h1 className="done-title">{t('done.createdTitle')}</h1>
+              <h1 className="done-title">{t('done.readyTitle')}</h1>
               <p className="done-subtitle">
                 {createdTables.length} {t('word.table', { count: createdTables.length })} {t('done.createdOk', { count: createdTables.length })}
                 {confirmedLinks.length > 0 && (
@@ -875,23 +879,6 @@ function App() {
               })}
             </div>
 
-            <div className="done-actions">
-              <button className="btn btn-secondary" onClick={() => setStep('confirm')}>← {t('common.back')}</button>
-              <button className="btn-primary" onClick={() => setStep('questionnaire')}>{t('done.customizeApp')} →</button>
-              <button className="btn btn-secondary" onClick={resetAll}>{t('common.importAnother')}</button>
-            </div>
-          </div>
-        )}
-
-        {/* Application prête : après la personnalisation */}
-        {step === 'done' && (
-          <div className="done-section">
-            <div className="done-header">
-              <div className="done-check">✓</div>
-              <h1 className="done-title">{t('done.readyTitle')}</h1>
-              <p className="done-subtitle">{t('done.readyDesc')}</p>
-            </div>
-
             {/* Code de session pour reprendre plus tard */}
             {appSeed?.sessionId && (
               <div className="session-save-box">
@@ -905,8 +892,7 @@ function App() {
 
             <div className="done-actions">
               <button className="btn btn-secondary" onClick={() => setStep('proposals')}>← {t('common.back')}</button>
-              <button className="btn-primary" onClick={() => setStep('app')}>{t('done.openApp')} →</button>
-              <button className="btn btn-secondary" onClick={resetAll}>{t('common.importAnother')}</button>
+              <button className="btn-primary" onClick={() => { setHasVisitedApp(true); setStep('app') }}>{t('done.openApp')} →</button>
             </div>
           </div>
         )}
@@ -915,6 +901,7 @@ function App() {
           <GeneratedApp
             tables={allTables}
             onBack={() => setStep('done')}
+            onNewImport={handleNewImport}
             initialArchetypeOverrides={appSeed.archetypeOverrides}
             initialLayoutOverrides={appSeed.layoutOverrides}
             initialActiveTableId={appSeed.primaryTableId}
@@ -928,6 +915,24 @@ function App() {
             sortMode={appSeed.sortMode}
             exportMode={appSeed.exportMode}
             sessionId={appSeed.sessionId}
+          />
+        )}
+
+        {showNewImportConfirm && (
+          <ConfirmModal
+            message={t('header.newFileConfirm')}
+            confirmLabel={t('common.importAnother')}
+            onConfirm={() => { setShowNewImportConfirm(false); resetAll() }}
+            onCancel={() => setShowNewImportConfirm(false)}
+          />
+        )}
+
+        {showRecreateConfirm && (
+          <ConfirmModal
+            message={t('done.recreateConfirm')}
+            confirmLabel={t('prop.confirmCreate')}
+            onConfirm={() => { setShowRecreateConfirm(false); handleCreateWebApp() }}
+            onCancel={() => setShowRecreateConfirm(false)}
           />
         )}
 
