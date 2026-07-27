@@ -3,7 +3,7 @@
 <h1 align="center">Excelium</h1>
 
 <p align="center">
-  Application web qui transforme un fichier Excel (.xlsx) en base de données PostgreSQL avec une interface de visualisation et de gestion CRUD personnalisée selon les besoins de l'utilisateur, en détectant automatiquement la structure, les types et les dépendances entre feuilles.
+  Application web qui transforme un fichier Excel (.xlsx) en base de données PostgreSQL avec une interface de visualisation personnalisée selon les besoins de l'utilisateur, en détectant automatiquement la structure, les types et les dépendances entre feuilles.
 </p>
 
 ---
