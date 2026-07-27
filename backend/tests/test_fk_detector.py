@@ -192,6 +192,198 @@ class LookupFormulaStrategyTest(unittest.TestCase):
 
         self.assertIsNotNone(get_fk(db, "commandes", "ref"))
 
+    def test_absolute_reference_dollar_sign_is_understood(self):
+        # $B1 (référence absolue) : cassait le matching avant le correctif du $.
+        commandes = build_pair(
+            "commandes",
+            [
+                ("id", Type.INT, True, [10, 11]),
+                ("ref", Type.INT, False, [1, 2]),
+                ("nom_client", Type.STRING, False, ["Ali", "Farah"]),
+            ],
+            formulas={
+                (0, 2): "=VLOOKUP($B1, clients!$A:$B, 2, FALSE)",
+            },
+        )
+
+        workbook, db = build_db(build_pair(*CLIENTS), commandes)
+        detect_foreign_keys(workbook, db)
+
+        fk = get_fk(db, "commandes", "ref")
+        self.assertIsNotNone(fk)
+        self.assertEqual(fk.ref_table, "clients")
+
+    def test_xmatch_formula_creates_the_fk(self):
+        commandes = build_pair(
+            "commandes",
+            [
+                ("id", Type.INT, True, [10, 11]),
+                ("ref", Type.INT, False, [1, 2]),
+                ("nom_client", Type.STRING, False, ["Ali", "Farah"]),
+            ],
+            formulas={
+                (0, 2): "=XMATCH(B1, clients!A:A)",
+            },
+        )
+
+        workbook, db = build_db(build_pair(*CLIENTS), commandes)
+        detect_foreign_keys(workbook, db)
+
+        fk = get_fk(db, "commandes", "ref")
+        self.assertIsNotNone(fk)
+        self.assertEqual(fk.ref_table, "clients")
+
+    def test_sumif_formula_creates_the_fk(self):
+        # SUMIF : la plage-critère (feuille cible) vient avant la valeur cherchée,
+        # ordre inverse de VLOOKUP.
+        commandes = build_pair(
+            "commandes",
+            [
+                ("id", Type.INT, True, [10, 11]),
+                ("ref", Type.INT, False, [1, 2]),
+                ("total_client", Type.INT, False, [100, 200]),
+            ],
+            formulas={
+                (0, 2): "=SUMIF(clients!$A:$A, B1, clients!$C:$C)",
+            },
+        )
+
+        workbook, db = build_db(build_pair(*CLIENTS), commandes)
+        detect_foreign_keys(workbook, db)
+
+        fk = get_fk(db, "commandes", "ref")
+        self.assertIsNotNone(fk)
+        self.assertEqual(fk.ref_table, "clients")
+
+    def test_sumifs_formula_skips_the_leading_sum_range(self):
+        # SUMIFS : le 1er argument est la plage-somme (pas la feuille cible),
+        # la plage-critère vient en 2e position.
+        commandes = build_pair(
+            "commandes",
+            [
+                ("id", Type.INT, True, [10, 11]),
+                ("ref", Type.INT, False, [1, 2]),
+                ("total_client", Type.INT, False, [100, 200]),
+            ],
+            formulas={
+                (0, 2): "=SUMIFS(clients!$C:$C, clients!$A:$A, B1)",
+            },
+        )
+
+        workbook, db = build_db(build_pair(*CLIENTS), commandes)
+        detect_foreign_keys(workbook, db)
+
+        fk = get_fk(db, "commandes", "ref")
+        self.assertIsNotNone(fk)
+        self.assertEqual(fk.ref_table, "clients")
+
+    def test_hlookup_formula_creates_the_fk(self):
+        commandes = build_pair(
+            "commandes",
+            [
+                ("id", Type.INT, True, [10, 11]),
+                ("ref", Type.INT, False, [1, 2]),
+                ("nom_client", Type.STRING, False, ["Ali", "Farah"]),
+            ],
+            formulas={
+                (0, 2): "=HLOOKUP(B1, clients!$A:$B, 2, FALSE)",
+            },
+        )
+
+        workbook, db = build_db(build_pair(*CLIENTS), commandes)
+        detect_foreign_keys(workbook, db)
+
+        fk = get_fk(db, "commandes", "ref")
+        self.assertIsNotNone(fk)
+        self.assertEqual(fk.ref_table, "clients")
+
+    def test_countif_formula_creates_the_fk(self):
+        commandes = build_pair(
+            "commandes",
+            [
+                ("id", Type.INT, True, [10, 11]),
+                ("ref", Type.INT, False, [1, 2]),
+                ("nb_commandes_client", Type.INT, False, [3, 5]),
+            ],
+            formulas={
+                (0, 2): "=COUNTIF(clients!$A:$A, B1)",
+            },
+        )
+
+        workbook, db = build_db(build_pair(*CLIENTS), commandes)
+        detect_foreign_keys(workbook, db)
+
+        fk = get_fk(db, "commandes", "ref")
+        self.assertIsNotNone(fk)
+        self.assertEqual(fk.ref_table, "clients")
+
+    def test_countifs_formula_creates_the_fk(self):
+        commandes = build_pair(
+            "commandes",
+            [
+                ("id", Type.INT, True, [10, 11]),
+                ("ref", Type.INT, False, [1, 2]),
+                ("nb_commandes_client", Type.INT, False, [3, 5]),
+            ],
+            formulas={
+                (0, 2): "=COUNTIFS(clients!$A:$A, B1)",
+            },
+        )
+
+        workbook, db = build_db(build_pair(*CLIENTS), commandes)
+        detect_foreign_keys(workbook, db)
+
+        fk = get_fk(db, "commandes", "ref")
+        self.assertIsNotNone(fk)
+        self.assertEqual(fk.ref_table, "clients")
+
+    def test_french_function_variants_are_understood(self):
+        french_formulas = {
+            "EQUIVX":       "=EQUIVX(B1, clients!A:A)",
+            "SOMME.SI":     "=SOMME.SI(clients!$A:$A, B1, clients!$B:$B)",
+            "NB.SI":        "=NB.SI(clients!$A:$A, B1)",
+            "NB.SI.ENS":    "=NB.SI.ENS(clients!$A:$A, B1)",
+            "SOMME.SI.ENS": "=SOMME.SI.ENS(clients!$B:$B, clients!$A:$A, B1)",
+        }
+        for label, formula in french_formulas.items():
+            with self.subTest(function=label):
+                commandes = build_pair(
+                    "commandes",
+                    [
+                        ("id", Type.INT, True, [10, 11]),
+                        ("ref", Type.INT, False, [1, 2]),
+                        ("valeur", Type.INT, False, [3, 5]),
+                    ],
+                    formulas={(0, 2): formula},
+                )
+
+                workbook, db = build_db(build_pair(*CLIENTS), commandes)
+                detect_foreign_keys(workbook, db)
+
+                fk = get_fk(db, "commandes", "ref")
+                self.assertIsNotNone(fk, f"{label} aurait dû créer une FK")
+                self.assertEqual(fk.ref_table, "clients")
+
+    def test_unrelated_formula_does_not_create_a_false_fk(self):
+        # =SOMME(...) n'est ni une fonction de lookup ni une agrégation conditionnelle :
+        # aucun pattern ne doit matcher, et aucune FK ne doit apparaître par accident.
+        commandes = build_pair(
+            "commandes",
+            [
+                ("id", Type.INT, True, [10, 11]),
+                ("ref", Type.INT, False, [97, 98]),  # ne correspond à aucun id client
+                ("total", Type.INT, False, [100, 200]),
+            ],
+            formulas={
+                (0, 2): "=SOMME(A1:A10)",
+            },
+        )
+
+        workbook, db = build_db(build_pair(*CLIENTS), commandes)
+        detect_foreign_keys(workbook, db)
+
+        self.assertIsNone(get_fk(db, "commandes", "ref"))
+
 
 class HelpersTest(unittest.TestCase):
     def test_candidate_col_names_handles_plurals(self):
