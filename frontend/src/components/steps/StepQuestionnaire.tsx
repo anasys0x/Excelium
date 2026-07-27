@@ -1,10 +1,25 @@
+import { useEffect, useRef } from 'react'
 import type { TableConfig } from '../../App'
 import type { Question, QuestionOption } from '../../lib/questions'
 import type { QuestionAnswer } from '../../lib/preferenceEngine'
-import type { UiProposal } from '../../lib/uiProposals'
+import type { UiConfiguration, UiProposal } from '../../lib/uiProposals'
 import QuestionCard from './QuestionCard'
 import ProposalPreview from './ProposalPreview'
 import { useI18n } from '../../lib/i18n'
+
+const TRACKED_KEYS = [
+  'layout', 'density', 'navigation', 'searchEnabled',
+  'sortMode', 'exportMode', 'theme', 'canEdit', 'showStats', 'showChart',
+] as const
+
+function diffConfig(prev: UiConfiguration | undefined, next: UiConfiguration): Set<string> {
+  const changed = new Set<string>()
+  if (!prev) return changed
+  for (const key of TRACKED_KEYS) {
+    if (prev[key] !== next[key]) changed.add(key)
+  }
+  return changed
+}
 
 interface Props {
   questions: Question[]
@@ -25,6 +40,17 @@ function StepQuestionnaire({
   liveProposals, previewTable, index: rawIndex, onIndexChange,
 }: Props) {
   const { t } = useI18n()
+  const prevProposalsRef = useRef<Record<string, UiConfiguration>>({})
+  const changedKeysByProposal: Record<string, Set<string>> = {}
+  for (const proposal of liveProposals) {
+    changedKeysByProposal[proposal.id] = diffConfig(prevProposalsRef.current[proposal.id], proposal.config)
+  }
+  useEffect(() => {
+    const next: Record<string, UiConfiguration> = {}
+    for (const proposal of liveProposals) next[proposal.id] = proposal.config
+    prevProposalsRef.current = next
+  }, [liveProposals])
+
   const total = questions.length
   const index = Math.min(rawIndex, total - 1)
   const setIndex = (updater: number | ((current: number) => number)) => {
@@ -63,15 +89,21 @@ function StepQuestionnaire({
 
       {previewTable && liveProposals.length > 0 && (
         <div className="questionnaire-live-proposals" aria-label={t('q.liveAria')}>
-          {liveProposals.map((proposal) => (
-            <div key={proposal.id} className="questionnaire-live-proposal">
-              <ProposalPreview proposal={proposal} table={previewTable} />
-              <span className="questionnaire-live-proposal-title">
-                {proposal.title}
-                {proposal.recommended && <small>{t('q.recommended')}</small>}
-              </span>
-            </div>
-          ))}
+          {liveProposals.map((proposal) => {
+            const changedKeys = changedKeysByProposal[proposal.id]
+            return (
+              <div
+                key={proposal.id}
+                className={`questionnaire-live-proposal${changedKeys.size > 0 ? ' just-updated' : ''}`}
+              >
+                <ProposalPreview proposal={proposal} table={previewTable} changedKeys={changedKeys} />
+                <span className="questionnaire-live-proposal-title">
+                  {proposal.title}
+                  {proposal.recommended && <small>{t('q.recommended')}</small>}
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
 

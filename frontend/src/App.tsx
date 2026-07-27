@@ -154,6 +154,12 @@ function App() {
           rows: table.rows,
         })),
       }))
+      const totalTables = sheetsData.reduce((sum, s) => sum + s.tables.length, 0)
+      if (totalTables === 0) {
+        setError(t('app.emptyFileError'))
+        return
+      }
+
       setSheets(sheetsData)
       setSelectedNames(sheetsData.map((s) => s.name))
       setFocusedColumn(null)

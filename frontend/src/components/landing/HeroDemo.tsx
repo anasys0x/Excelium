@@ -29,6 +29,41 @@ const OTHER_TABS = ['produits', 'commandes']
 // Hauteurs d'un mini graphique décoratif (inscriptions par mois).
 const CHART_BARS = [38, 55, 46, 72, 60, 90, 68]
 
+// ─── Schéma relationnel : positions fixes (viewBox 484×300) + relations ────────
+interface SchemaNode {
+  id: string
+  title: string
+  x: number
+  y: number
+  w: number
+  h: number
+  fields: { name: string; pk?: boolean; fk?: boolean }[]
+}
+const SCHEMA_NODES: SchemaNode[] = [
+  { id: 'clients', title: 'clients', x: 8, y: 8, w: 132, h: 92, fields: [
+    { name: 'id', pk: true }, { name: 'nom' }, { name: 'email' },
+  ] },
+  { id: 'categories', title: 'categories', x: 352, y: 8, w: 124, h: 76, fields: [
+    { name: 'code', pk: true }, { name: 'libelle' },
+  ] },
+  { id: 'commandes', title: 'commandes', x: 172, y: 118, w: 140, h: 100, fields: [
+    { name: 'id', pk: true }, { name: 'client_id', fk: true }, { name: 'produit_id', fk: true }, { name: 'total' },
+  ] },
+  { id: 'produits', title: 'produits', x: 352, y: 148, w: 124, h: 100, fields: [
+    { name: 'id', pk: true }, { name: 'categorie_code', fk: true }, { name: 'fournisseur_id', fk: true },
+  ] },
+  { id: 'fournisseurs', title: 'fournisseurs', x: 8, y: 220, w: 132, h: 76, fields: [
+    { name: 'id', pk: true }, { name: 'pays' },
+  ] },
+]
+const SCHEMA_RELATIONS: { from: string; to: string; path: string }[] = [
+  { from: 'commandes', to: 'clients', path: 'M242,118 C242,90 200,80 138,55' },
+  { from: 'commandes', to: 'produits', path: 'M312,155 C335,155 335,180 352,190' },
+  { from: 'produits', to: 'categories', path: 'M414,148 C414,120 414,105 414,84' },
+  { from: 'produits', to: 'fournisseurs', path: 'M352,225 C260,255 200,245 140,245' },
+]
+const SCHEMA_ORDER = ['commandes', 'clients', 'produits', 'categories', 'fournisseurs']
+
 // Durées du cycle (ms) : temps de frappe géré par la longueur réelle du texte.
 const HOLD_EXCEL = 1400
 const TYPE_SPEED = 45
@@ -36,7 +71,8 @@ const HOLD_AFTER_TYPE = 350
 const HOLD_TABLE = 3200
 const HOLD_GALLERY = 3000
 const HOLD_DASHBOARD = 3200
-const HOLD_SCHEMA = 3200
+const SCHEMA_HOVER_INTERVAL = 1350
+const HOLD_SCHEMA = SCHEMA_HOVER_INTERVAL * SCHEMA_ORDER.length
 const RESET_PAUSE = 500
 
 function HeroDemo() {
@@ -46,9 +82,22 @@ function HeroDemo() {
   const [phase, setPhase] = useState<Phase>('excel')
   const [typed, setTyped] = useState('')
   const [sweepKey, setSweepKey] = useState(0)
+  const [schemaHover, setSchemaHover] = useState<string | null>(null)
   const reducedMotion = useRef(
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   )
+
+  // Simule un survol qui parcourt les tables du schéma automatiquement (le hero n'a pas de vraie souris).
+  useEffect(() => {
+    if (phase !== 'schema' || reducedMotion.current) { setSchemaHover(null); return }
+    let i = 0
+    setSchemaHover(SCHEMA_ORDER[0])
+    const id = setInterval(() => {
+      i = (i + 1) % SCHEMA_ORDER.length
+      setSchemaHover(SCHEMA_ORDER[i])
+    }, SCHEMA_HOVER_INTERVAL)
+    return () => clearInterval(id)
+  }, [phase])
 
   useEffect(() => {
     if (reducedMotion.current) {
@@ -113,6 +162,19 @@ function HeroDemo() {
   const colEmail   = isSpreadsheet ? 'B' : t('landing.demo.col.email')
   const colCity    = isSpreadsheet ? 'C' : t('landing.demo.col.city')
   const colStatus  = isSpreadsheet ? 'D' : t('landing.demo.col.status')
+
+  const relatedTo = (id: string) =>
+    SCHEMA_RELATIONS.filter((r) => r.from === id || r.to === id).map((r) => (r.from === id ? r.to : r.from))
+  const nodeState = (id: string): string => {
+    if (!schemaHover) return ''
+    if (id === schemaHover) return ' active'
+    if (relatedTo(schemaHover).includes(id)) return ' connected'
+    return ' dim'
+  }
+  const edgeState = (rel: { from: string; to: string }): string => {
+    if (!schemaHover) return ''
+    return rel.from === schemaHover || rel.to === schemaHover ? ' active' : ' dim'
+  }
 
   return (
     <div className="hero-demo" aria-hidden="true">
@@ -256,34 +318,26 @@ function HeroDemo() {
         )}
 
         {phase === 'schema' && (
-          <div key={sweepKey} className="hero-demo-schema">
-            <div className="hero-demo-node">
-              <div className="hero-demo-node-title">clients</div>
-              <div className="hero-demo-node-field">id</div>
-              <div className="hero-demo-node-field">nom</div>
-              <div className="hero-demo-node-field">email</div>
-            </div>
-            <div className="hero-demo-schema-link">
-              <span className="hero-demo-schema-line" />
-              <span className="hero-demo-schema-label">1—N</span>
-            </div>
-            <div className="hero-demo-node">
-              <div className="hero-demo-node-title">commandes</div>
-              <div className="hero-demo-node-field">id</div>
-              <div className="hero-demo-node-field highlight">client_id</div>
-              <div className="hero-demo-node-field highlight">produit_id</div>
-              <div className="hero-demo-node-field">total</div>
-            </div>
-            <div className="hero-demo-schema-link">
-              <span className="hero-demo-schema-line" />
-              <span className="hero-demo-schema-label">N—1</span>
-            </div>
-            <div className="hero-demo-node">
-              <div className="hero-demo-node-title">produits</div>
-              <div className="hero-demo-node-field">id</div>
-              <div className="hero-demo-node-field">nom</div>
-              <div className="hero-demo-node-field">prix</div>
-            </div>
+          <div key={sweepKey} className="hero-demo-schema-canvas">
+            <svg className="hero-demo-schema-svg" viewBox="0 0 484 300" aria-hidden="true">
+              {SCHEMA_RELATIONS.map((rel) => (
+                <path key={`${rel.from}-${rel.to}`} className={`hero-demo-schema-edge${edgeState(rel)}`} d={rel.path} />
+              ))}
+            </svg>
+            {SCHEMA_NODES.map((node) => (
+              <div
+                key={node.id}
+                className={`hero-demo-schema-node${nodeState(node.id)}`}
+                style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
+              >
+                <div className="hero-demo-node-title">{node.title}</div>
+                {node.fields.map((field) => (
+                  <div key={field.name} className={`hero-demo-node-field${field.fk ? ' highlight' : ''}`}>
+                    {field.name}
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         )}
       </div>
