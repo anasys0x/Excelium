@@ -539,59 +539,67 @@
 }
 .hero-demo-dashboard .hero-demo-bar { transform: scaleY(1); }
 
-/* ─── Vue Relations (schéma) ─────────────────────────────────────────────────── */
-.hero-demo-schema {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+/* ─── Vue Relations (schéma) : canevas positionné + connecteurs SVG ──────────── */
+.hero-demo-schema-canvas {
+  position: relative;
+  width: 100%;
+  height: 300px;
   animation: fadeIn .4s ease;
 }
-.hero-demo-node {
-  flex: 1;
-  min-width: 0;
+.hero-demo-schema-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.hero-demo-schema-edge {
+  fill: none;
+  stroke: var(--accent-border);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  opacity: .55;
+  transition: opacity .3s ease, stroke .3s ease, stroke-width .3s ease;
+}
+.hero-demo-schema-edge.active { stroke: var(--accent-text); stroke-width: 2.25; stroke-dasharray: none; opacity: 1; }
+.hero-demo-schema-edge.dim { opacity: .12; }
+
+.hero-demo-schema-node {
+  position: absolute;
   border-radius: 10px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
-  padding: 10px 10px;
+  padding: 9px 10px;
+  overflow: hidden;
+  transition: border-color .3s ease, background-color .3s ease, box-shadow .3s ease, opacity .3s ease, transform .3s ease;
 }
-.hero-demo-node-title {
+.hero-demo-schema-node.active {
+  border-color: var(--accent-text);
+  background: var(--accent-soft);
+  box-shadow: 0 8px 20px -10px var(--glow);
+  transform: translateY(-2px);
+}
+.hero-demo-schema-node.connected { border-color: var(--accent-border); }
+.hero-demo-schema-node.dim { opacity: .4; }
+.hero-demo-schema-node .hero-demo-node-title {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--accent-text);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.hero-demo-node-field {
-  font-size: 10.5px;
+.hero-demo-schema-node .hero-demo-node-field {
+  font-size: 9.5px;
   color: var(--text-2);
-  padding: 3px 0;
+  padding: 2px 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.hero-demo-node-field.highlight { color: var(--accent-text); font-weight: 600; }
-.hero-demo-schema-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  padding: 0 2px;
-}
-.hero-demo-schema-line {
-  width: 28px;
-  height: 1px;
-  background: repeating-linear-gradient(90deg, var(--accent-border) 0 4px, transparent 4px 8px);
-}
-.hero-demo-schema-label {
-  font-size: 8.5px;
-  font-weight: 700;
-  color: var(--text-faint);
-  white-space: nowrap;
-}
+.hero-demo-schema-node .hero-demo-node-field.highlight { color: var(--accent-text); font-weight: 600; }
 
 @keyframes caretBlink { 50% { opacity: 0; } }
 @keyframes sweepDown { from { top: -4px; opacity: 1; } to { top: 100%; opacity: 0; } }
@@ -605,13 +613,14 @@
   .hero-demo-row-action {
     transition: none !important;
   }
-  .hero-demo-caret, .hero-demo-sweep, .hero-demo-dashboard, .hero-demo-schema, .hero-demo-gallery,
+  .hero-demo-caret, .hero-demo-sweep, .hero-demo-dashboard, .hero-demo-schema-canvas, .hero-demo-gallery,
   .hero-demo-apptabs, .hero-demo-tablehead, .hero-demo-card-item {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
   }
   .hero-demo-bar { transition: none !important; }
+  .hero-demo-schema-node, .hero-demo-schema-edge { transition: none !important; }
   .reveal { transition: none; }
 }
 

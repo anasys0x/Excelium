@@ -3,7 +3,7 @@
 <h1 align="center">Excelium</h1>
 
 <p align="center">
-  Application web qui transforme un fichier Excel (.xlsx) en base de données PostgreSQL avec une interface de visualisation et de gestion CRUD, en détectant automatiquement la structure, les types et les dépendances entre feuilles.
+  Application web qui transforme un fichier Excel (.xlsx) en base de données PostgreSQL avec une interface de visualisation et de gestion CRUD personnalisée selon les besoins de l'utilisateur, en détectant automatiquement la structure, les types et les dépendances entre feuilles.
 </p>
 
 ---
@@ -90,29 +90,39 @@ python3 backend/export.py data/excel.xlsx
 ```
 Excelium/
 ├── backend/
-│   ├── api.py                # API FastAPI — endpoints /parse et /create
-│   ├── main.py               # Point d'entrée CLI (insertion PostgreSQL)
-│   ├── export.py             # Script d'export JSON
-│   ├── constants.py          # Constantes (formats de date…)
-│   ├── errors.py             # Hiérarchie d'exceptions
-│   ├── utils.py              # Utilitaires (slugify…)
+│   ├── api.py                 # API FastAPI — endpoints /parse, /create, /sessions, /tables/*
+│   ├── main.py                # Point d'entrée CLI (insertion PostgreSQL)
+│   ├── export.py              # Script d'export JSON
+│   ├── constants.py           # Constantes (formats de date…)
+│   ├── errors.py              # Hiérarchie d'exceptions
+│   ├── utils.py               # Utilitaires (slugify…)
 │   ├── models/
-│   │   ├── excel/            # Workbook, Worksheet, Table, Column, Row, Cell
-│   │   ├── relational/       # Modèle relationnel (tables, contraintes, FK/PK)
-│   │   └── transforms/       # Conversion type Excel → SQL (Strategy pattern)
-│   └── services/             # excel_reader, type_detector, pk/fk_detector,
-│                             # sql_generator, db_creator, database_*
-├── frontend/                 # React + Vite + TypeScript
+│   │   ├── excel/             # Workbook, Worksheet, Table, Column, Row, Cell
+│   │   ├── relational/        # Modèle relationnel (tables, contraintes, FK/PK)
+│   │   └── transforms/        # Conversion type Excel → SQL (Strategy pattern)
+│   ├── services/               # excel_reader, type_detector, pk/fk_detector,
+│   │                           # dependency_detector, sql_generator, db_creator,
+│   │                           # db_crud, database_connection/execute, session_store
+│   └── tests/                  # Tests unitaires (pytest)
+├── frontend/                   # React + Vite + TypeScript
 │   └── src/
-│       ├── App.tsx           # Orchestration des étapes (import → config → création)
-│       ├── index.css         # Thèmes clair/sombre (variables CSS)
+│       ├── App.tsx             # Orchestration du parcours (import → config → questionnaire → création)
+│       ├── index.css           # Thèmes clair/sombre (variables CSS)
+│       ├── App.css             # Styles du parcours et de l'app générée
+│       ├── lib/                # i18n, détection sémantique, moteur de préférences,
+│       │                       # archétypes, propositions d'UI, questions, sessions
 │       └── components/
-│           ├── DropZone.tsx, StepIndicator.tsx
-│           ├── layout/SplitView.tsx
-│           ├── table/TablePreview.tsx
-│           └── steps/        # StepSheetSelector, StepKeySelector, StepTableConfirmation
-├── data/                     # Fichiers Excel de test
-└── docs/                     # Documentation MkDocs
+│           ├── DropZone.tsx, StepIndicator.tsx, SessionResume.tsx
+│           ├── landing/        # Landing.tsx, HeroDemo.tsx (démo animée Excel → app), Faq.tsx
+│           ├── layout/         # SplitView.tsx
+│           ├── table/          # TablePreview.tsx
+│           ├── steps/          # StepSheetSelector, StepKeySelector, StepTableConfirmation,
+│           │                   # StepQuestionnaire, StepUiProposals, QuestionCard, ProposalPreview
+│           ├── widgets/        # CellWidget.tsx
+│           └── app/            # GeneratedApp.tsx + vues Table/Gallery/Dashboard/Cards/Schema,
+│                               # RowForm, DetailPanel, ImpactModal, ConfirmModal, ErdPanel
+├── data/                       # Fichiers Excel de test
+└── docs/                       # Documentation MkDocs
 ```
 
 ---

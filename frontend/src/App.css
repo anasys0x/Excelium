@@ -1767,6 +1767,20 @@
   --p-muted: #897e6f;
   --p-accent: #7d5a40;
 }
+
+/* Highlight pulse : signale la zone d'une proposition qui vient de changer suite à une réponse */
+.hl-pulse { animation: proposalHighlight 900ms ease-out; border-radius: 4px; }
+@keyframes proposalHighlight {
+  0%   { box-shadow: 0 0 0 2px var(--p-accent); background-color: color-mix(in srgb, var(--p-accent) 22%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
+}
+.questionnaire-live-proposal.just-updated .proposal-preview {
+  border-color: var(--accent-border);
+  transition: border-color .3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hl-pulse { animation: none; }
+}
 .proposal-preview-header {
   display: flex;
   align-items: center;
