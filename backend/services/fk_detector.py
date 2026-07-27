@@ -16,17 +16,55 @@ FK_SUBSET_THRESHOLD = 0.95
 # Fonctions Excel qui encodent une relation de lookup vers une autre feuille.
 # Chaque fonction est cherchée sous son nom anglais ET français, car les deux
 # peuvent apparaître selon l'origine du fichier :
-#   VLOOKUP / RECHERCHEV, XLOOKUP / RECHERCHEX, MATCH / EQUIV
-# Les 3 groupes capturés : (1) lettre de la colonne source,
-# (2) nom de la feuille cible, (3) lettre de la première colonne du range cible.
-_LOOKUP_PATTERNS = [
-    re.compile(r'VLOOKUP\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)',    re.IGNORECASE),
-    re.compile(r'RECHERCHEV\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)', re.IGNORECASE),
-    re.compile(r'XLOOKUP\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)',    re.IGNORECASE),
-    re.compile(r'RECHERCHEX\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)', re.IGNORECASE),
-    re.compile(r'MATCH\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)',      re.IGNORECASE),
-    re.compile(r'EQUIV\(\s*([A-Z]+)\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)',      re.IGNORECASE),
+#   VLOOKUP / RECHERCHEV, HLOOKUP / RECHERCHEH, XLOOKUP / RECHERCHEX,
+#   LOOKUP / RECHERCHE, MATCH / EQUIV, XMATCH / EQUIVX
+#
+# Deux familles, selon l'ordre des arguments :
+#   - "valeur d'abord" (VLOOKUP, MATCH...)      : func(valeur_cherchée, Feuille!plage, ...)
+#   - "plage d'abord"  (SUMIF, COUNTIF...)      : func(Feuille!plage, critère, ...)
+#   - "plage décalée"  (SUMIFS)                 : func(somme_plage, Feuille!plage, critère, ...)
+# Dans tous les cas on capture (1) lettre de la colonne source (référence absolue
+# $A2 / A$2 / $A$2 ou relative A2 — le $ est optionnel devant la lettre ET le chiffre),
+# (2) nom de la feuille cible, (3) lettre de la première colonne du range cible —
+# quel que soit l'ordre dans lequel ils apparaissent réellement dans la formule.
+
+_VALUE_FIRST_FUNCTIONS = [
+    'VLOOKUP', 'RECHERCHEV',
+    'HLOOKUP', 'RECHERCHEH',
+    'XLOOKUP', 'RECHERCHEX',
+    'LOOKUP', 'RECHERCHE',
+    'MATCH', 'EQUIV',
+    'XMATCH', 'EQUIVX',
 ]
+# func( valeur_source , 'Feuille'!plage_cible ...
+_VALUE_FIRST_TEMPLATE = r'\b{name}\(\s*\$?([A-Z]+)\$?\d+\s*,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)'
+
+# SUMIF, COUNTIF, COUNTIFS et leurs équivalents français : la plage-critère
+# (référence vers la feuille cible) est le 1er argument, la valeur cherchée le 2e.
+_RANGE_FIRST_FUNCTIONS = [
+    'SUMIF', 'SOMME.SI',
+    'COUNTIF', 'NB.SI',
+    'COUNTIFS', 'NB.SI.ENS',
+]
+# func( 'Feuille'!plage_cible , valeur_source ...
+_RANGE_FIRST_TEMPLATE = r'\b{name}\(\s*\'?([^!\']+?)\'?!\$?([A-Z]+)[^,]*,\s*\$?([A-Z]+)\$?\d+'
+
+# SUMIFS / SOMME.SI.ENS : un 1er argument "somme_plage" précède la plage-critère.
+_SHIFTED_RANGE_FIRST_FUNCTIONS = ['SUMIFS', 'SOMME.SI.ENS']
+# func( somme_plage , 'Feuille'!plage_cible , valeur_source ...
+_SHIFTED_RANGE_FIRST_TEMPLATE = r'\b{name}\(\s*[^,]+,\s*\'?([^!\']+?)\'?!\$?([A-Z]+)[^,]*,\s*\$?([A-Z]+)\$?\d+'
+
+# Chaque entrée : (regex compilée, ordre des groupes capturés dans le pattern).
+# 'value-first'  → groupes (src, sheet, tgt)
+# 'range-first'  → groupes (sheet, tgt, src)
+_LOOKUP_PATTERNS = (
+    [(re.compile(_VALUE_FIRST_TEMPLATE.format(name=name), re.IGNORECASE), 'value-first')
+     for name in _VALUE_FIRST_FUNCTIONS]
+    + [(re.compile(_RANGE_FIRST_TEMPLATE.format(name=re.escape(name)), re.IGNORECASE), 'range-first')
+       for name in _RANGE_FIRST_FUNCTIONS]
+    + [(re.compile(_SHIFTED_RANGE_FIRST_TEMPLATE.format(name=re.escape(name)), re.IGNORECASE), 'range-first')
+       for name in _SHIFTED_RANGE_FIRST_FUNCTIONS]
+)
 
 
 # ─── Utilitaires ──────────────────────────────────────────────────────────────
@@ -130,14 +168,16 @@ def _extract_lookup_hints(excel_workbook):
                 for cell in row.get_cells():
                     if not cell.has_formula():
                         continue
-                    for pat in _LOOKUP_PATTERNS:
+                    for pat, group_order in _LOOKUP_PATTERNS:
                         m = pat.search(cell.formula)
-                        if m:
-                            src_letter = m.group(1).upper()
-                            tgt_sheet  = m.group(2).strip()
-                            tgt_letter = m.group(3).upper()
-                            hints.append((table, src_letter, tgt_sheet, tgt_letter))
-                            break
+                        if not m:
+                            continue
+                        if group_order == 'value-first':
+                            src_letter, tgt_sheet, tgt_letter = m.group(1), m.group(2), m.group(3)
+                        else:
+                            tgt_sheet, tgt_letter, src_letter = m.group(1), m.group(2), m.group(3)
+                        hints.append((table, src_letter.upper(), tgt_sheet.strip(), tgt_letter.upper()))
+                        break
     return hints
 
 
