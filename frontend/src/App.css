@@ -31,6 +31,7 @@
   transition: color .15s;
 }
 .app-lang-opt:hover { color: var(--text); }
+.app-lang-opt:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); border-radius: var(--radius-sm); }
 .app-lang-opt.active { color: var(--accent-text); font-weight: 700; }
 .app-lang-sep { color: var(--border-strong); font-size: 12px; }
 .app-theme-btn {
@@ -46,7 +47,10 @@
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
 }
+.app-theme-btn:hover { background: var(--row-hover); border-color: var(--border-strong); }
+.app-theme-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 .app-main { max-width: 1360px; margin: 0 auto; padding: 40px; }
 
 /* ─── Upload step ────────────────────────────────────────────────────────────── */
@@ -1002,12 +1006,26 @@
   background: var(--warn-bg); border: 1px solid var(--danger-border);
   color: var(--danger-text); font-size: 13px;
 }
+.app-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+}
 .back-btn {
-  margin-top: 24px; padding: 9px 18px;
+  padding: 9px 18px;
   background: var(--surface); color: var(--text-2);
   border: 1px solid var(--border-strong); border-radius: 6px;
   font-size: 13px; cursor: pointer;
 }
+.new-import-btn {
+  padding: 9px 18px;
+  background: var(--surface-alt); color: var(--text-2);
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.new-import-btn:hover { background: var(--row-hover); border-color: var(--border-strong); color: var(--text); }
 
 /* ─── ERD Panel ──────────────────────────────────────────────────────────────── */
 .erd-panel {
@@ -1406,26 +1424,56 @@
   font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 500;
   padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
 }
-.type-badge-select {
+/* ─── Type select (custom dropdown, replaces native <select> so the open
+   menu can be themed — a native select's open-list highlight is drawn by
+   the OS and can't be recolored, which clashed badly with the dark theme) */
+.type-select { position: relative; flex-shrink: 0; }
+.type-select-trigger {
   font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 500;
-  padding: 1px 22px 1px 6px; border-radius: 3px; flex-shrink: 0;
+  padding: 1px 22px 1px 6px; border-radius: 3px;
   cursor: pointer; outline: none; appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpolyline points='1.5,1.5 6,6.5 10.5,1.5' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 6px center;
 }
+.type-select-trigger:focus-visible { box-shadow: 0 0 0 3px var(--focus-ring); }
+.type-select-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+  min-width: 130px; padding: 4px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.type-select-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 4px;
+  font-size: 12px; font-family: 'JetBrains Mono', monospace; font-weight: 500;
+  color: var(--text-2); cursor: pointer;
+  transition: background-color .1s;
+}
+.type-select-option:hover { background: var(--row-hover); }
+.type-select-option.selected { background: var(--accent-soft); color: var(--accent-text); }
 
 /* ─── Common buttons ─────────────────────────────────────────────────────────── */
-.btn { padding: 9px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.btn {
+  padding: 9px 18px; border-radius: 6px; font-size: 13px; cursor: pointer;
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
 .btn-secondary {
-  background: var(--surface); color: var(--text-2);
+  background: var(--accent-soft); color: var(--text-2);
   border: 1px solid var(--border-strong);
 }
+.btn-secondary:hover:not(:disabled) { background: var(--row-hover); color: var(--text); }
+.btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn-primary {
   padding: 9px 20px; background: var(--accent); color: #fff;
   border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background-color .15s, box-shadow .15s;
 }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
 .btn-ml-auto { margin-left: auto; }
 

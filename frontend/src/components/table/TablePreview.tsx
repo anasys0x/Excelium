@@ -1,13 +1,14 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ColumnConfig } from '../../App'
 import { typeLabel } from '../../lib/typeLabels'
 import { useI18n } from '../../lib/i18n'
+import type { Lang } from '../../lib/i18n'
 
 const ALL_TYPES = ['INT', 'FLOAT', 'STRING', 'DATE', 'BOOL', 'MIXED']
 
 const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
   INT:    { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
-  FLOAT:  { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
+  FLOAT:  { bg: 'var(--badge-indigo-bg)', color: 'var(--badge-indigo-text)' },
   STRING: { bg: 'var(--badge-green-bg)',  color: 'var(--badge-green-text)'  },
   DATE:   { bg: 'var(--badge-amber-bg)',  color: 'var(--amber-text)'        },
   BOOL:   { bg: 'var(--badge-violet-bg)', color: 'var(--badge-violet-text)' },
@@ -25,6 +26,65 @@ interface Props {
 }
 
 interface HighlightRect { left: number; top: number; width: number; height: number }
+
+interface TypeSelectProps {
+  value: string
+  badge: { bg: string; color: string }
+  lang: Lang
+  onChange: (newType: string) => void
+}
+
+function TypeSelect({ value, badge, lang, onChange }: TypeSelectProps) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onOutside = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onOutside)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onOutside)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div className="type-select" ref={rootRef} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="type-select-trigger"
+        style={{ backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.bg}` }}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        {typeLabel(value, lang)}
+      </button>
+      {open && (
+        <div className="type-select-menu" role="listbox">
+          {ALL_TYPES.map((ty) => {
+            const selected = ty === value
+            return (
+              <div
+                key={ty}
+                role="option"
+                aria-selected={selected}
+                className={`type-select-option${selected ? ' selected' : ''}`}
+                onClick={() => { onChange(ty); setOpen(false) }}
+              >
+                {typeLabel(ty, lang)}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeChange, onNameChange, onFocusColumn }: Props) {
   const { t, lang } = useI18n()
@@ -98,15 +158,12 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
                           <span className={`preview-th-name${isFocused ? ' focused' : ''}`}>{col.name}</span>
                         )}
                         {onTypeChange ? (
-                          <select
+                          <TypeSelect
                             value={col.type}
-                            onChange={(e) => { e.stopPropagation(); onTypeChange(col.originalName, e.target.value) }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="type-badge-select"
-                            style={{ backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.bg}` }}
-                          >
-                            {ALL_TYPES.map((ty) => <option key={ty} value={ty}>{typeLabel(ty, lang)}</option>)}
-                          </select>
+                            badge={badge}
+                            lang={lang}
+                            onChange={(newType) => onTypeChange(col.originalName, newType)}
+                          />
                         ) : (
                           <span className="type-badge-sm" style={{ background: badge.bg, color: badge.color }}>
                             {typeLabel(col.type, lang)}
