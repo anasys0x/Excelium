@@ -1,6 +1,10 @@
-// Banque de questions du questionnaire de pondération. Les textes sont
-// localisés (FR/EN) via la fonction `t` passée à buildQuestionBank ; la
-// logique (ids, deltas, branches) reste inchangée.
+// Banque de questions du questionnaire de pondération, organisée en arbre :
+// une question racine sur le type de vue voulu (tableau de bord / tableau
+// classique / avec graphique), puis une séquence de 3-4 questions de
+// comportement propres à la branche choisie, puis une fin commune à toutes
+// les branches. Aucune catégorisation de domaine (contacts/ventes/...) :
+// l'archétype reste entièrement piloté par la détection automatique
+// (archetype.ts). Les textes sont localisés (FR/EN) via `t`.
 
 import type { PreferenceDelta } from './preferenceEngine'
 import type { QuestionAnswer } from './preferenceEngine'
@@ -30,25 +34,46 @@ export interface QuestionBankContext {
   answers: Record<string, QuestionAnswer>
 }
 
-const identityQuestion = (t: TFn): Question => ({
-  id: 'identity', category: 'donnees', summaryLabel: t('qb.identity.s'), text: t('qb.identity.t'),
+// ─── Racine ──────────────────────────────────────────────────────────────────
+
+const layoutRootQuestion = (t: TFn): Question => ({
+  id: 'layout-root', category: 'donnees', summaryLabel: t('qb.layoutRoot.s'), text: t('qb.layoutRoot.t'),
   options: [
-    { id: 'contacts', label: t('qb.identity.contacts'), delta: { archetype: { contacts: 5 }, layout: { cards: 1 } } },
-    { id: 'sales', label: t('qb.identity.sales'), delta: { archetype: { sales: 5 }, layout: { table: 1 } } },
-    { id: 'inventory', label: t('qb.identity.inventory'), delta: { archetype: { inventory: 5 }, layout: { cards: 1 } } },
-    { id: 'events', label: t('qb.identity.events'), delta: { archetype: { events: 5 }, layout: { table: 1 } } },
+    { id: 'dashboard', label: t('qb.layoutRoot.dashboard'), delta: { layout: { dashboard: 4 } } },
+    { id: 'table', label: t('qb.layoutRoot.table'), delta: { layout: { table: 4 } } },
+    { id: 'chart', label: t('qb.layoutRoot.chart'), delta: { layout: { dashboard: 3 }, widget: { chart: 3 } } },
   ],
 })
 
-const rowFocusQuestion = (t: TFn): Question => ({
-  id: 'row-focus', category: 'donnees', summaryLabel: t('qb.rowFocus.s'), text: t('qb.rowFocus.t'),
+// ─── Branche A : Tableau de bord ────────────────────────────────────────────
+
+const focusMetricQuestion = (t: TFn): Question => ({
+  id: 'focus-metric', category: 'donnees', summaryLabel: t('qb.focusMetric.s'), text: t('qb.focusMetric.t'),
   options: [
-    { id: 'compare', label: t('qb.rowFocus.compare'), delta: { widget: { stats: 2 }, layout: { dashboard: 1 } } },
-    { id: 'status', label: t('qb.rowFocus.status'), delta: { layout: { table: 1 } } },
-    { id: 'visual', label: t('qb.rowFocus.visual'), delta: { layout: { gallery: 2 } } },
-    { id: 'identifier', label: t('qb.rowFocus.identifier'), delta: { layout: { table: 2 } } },
+    { id: 'total', label: t('qb.focusMetric.total'), delta: { widget: { stats: 3 } } },
+    { id: 'trend', label: t('qb.focusMetric.trend'), delta: { widget: { chart: 3 }, chartPreference: 'time' } },
+    { id: 'category', label: t('qb.focusMetric.category'), delta: { widget: { chart: 3 }, chartPreference: 'category' } },
   ],
 })
+
+const consultFrequencyQuestion = (t: TFn): Question => ({
+  id: 'consult-frequency', category: 'usage', summaryLabel: t('qb.consultFrequency.s'), text: t('qb.consultFrequency.t'),
+  options: [
+    { id: 'often', label: t('qb.consultFrequency.often'), delta: { density: 2 } },
+    { id: 'rarely', label: t('qb.consultFrequency.rarely'), delta: { density: -2 } },
+  ],
+})
+
+const exportsPrefQuestion = (t: TFn): Question => ({
+  id: 'exports-pref', category: 'confort', summaryLabel: t('qb.exportsPref.s'), text: t('qb.exportsPref.t'),
+  options: [
+    { id: 'all', label: t('qb.exportsPref.all'), delta: { exportMode: 'all' } },
+    { id: 'excel', label: t('qb.exportsPref.excel'), delta: { exportMode: 'excel' } },
+    { id: 'none', label: t('qb.exportsPref.none'), delta: { exportMode: 'none' } },
+  ],
+})
+
+// ─── Branche B : Tableau classique ──────────────────────────────────────────
 
 const editQuestion = (t: TFn): Question => ({
   id: 'edit', category: 'usage', summaryLabel: t('qb.edit.s'), text: t('qb.edit.t'),
@@ -58,27 +83,64 @@ const editQuestion = (t: TFn): Question => ({
   ],
 })
 
-const numbersQuestion = (t: TFn): Question => ({
-  id: 'numbers', category: 'donnees', summaryLabel: t('qb.numbers.s'), text: t('qb.numbers.t'),
+const searchQuestion = (t: TFn): Question => ({
+  id: 'search', category: 'usage', summaryLabel: t('qb.search.s'), text: t('qb.search.t'),
   options: [
-    { id: 'chart', label: t('qb.numbers.chart'), delta: { widget: { chart: 3 } } },
-    { id: 'total', label: t('qb.numbers.total'), delta: { widget: { stats: 3 } } },
-    { id: 'consult', label: t('qb.numbers.consult'), delta: { widget: { chart: -1, stats: -1 } } },
+    { id: 'yes', label: t('qb.search.yes'), delta: { searchEnabled: true } },
+    { id: 'no', label: t('qb.search.no'), delta: { searchEnabled: false } },
   ],
 })
 
-const imagesQuestion = (t: TFn): Question => ({
-  id: 'images', category: 'donnees', summaryLabel: t('qb.images.s'), text: t('qb.images.t'),
+const rowPriorityQuestion = (t: TFn): Question => ({
+  id: 'row-priority', category: 'donnees', summaryLabel: t('qb.rowPriority.s'), text: t('qb.rowPriority.t'),
   options: [
-    { id: 'yes', label: t('qb.images.yes'), delta: { layout: { gallery: 3 } } },
-    { id: 'no', label: t('qb.images.no'), delta: { layout: { gallery: -1 } } },
+    { id: 'identifier', label: t('qb.rowPriority.identifier'), delta: { layout: { table: 2 } } },
+    { id: 'status', label: t('qb.rowPriority.status'), delta: { layout: { table: 1 } } },
+    { id: 'compare', label: t('qb.rowPriority.compare'), delta: { widget: { stats: 2 }, layout: { dashboard: 1 } } },
   ],
 })
+
+const navigationPrefQuestion = (t: TFn): Question => ({
+  id: 'navigation-pref', category: 'confort', summaryLabel: t('qb.navigationPref.s'), text: t('qb.navigationPref.t'),
+  options: [
+    { id: 'tabs', label: t('qb.navigationPref.tabs'), delta: { navigation: 'tabs' } },
+    { id: 'sidebar', label: t('qb.navigationPref.sidebar'), delta: { navigation: 'sidebar' } },
+  ],
+})
+
+// ─── Branche C : Avec graphique ─────────────────────────────────────────────
+
+const chartKindQuestion = (t: TFn): Question => ({
+  id: 'chart-kind', category: 'donnees', summaryLabel: t('qb.chartKind.s'), text: t('qb.chartKind.t'),
+  options: [
+    { id: 'time', label: t('qb.chartKind.time'), delta: { chartPreference: 'time' } },
+    { id: 'category', label: t('qb.chartKind.category'), delta: { chartPreference: 'category' } },
+    { id: 'neutral', label: t('qb.chartKind.neutral'), delta: {} },
+  ],
+})
+
+const alsoStatsQuestion = (t: TFn): Question => ({
+  id: 'also-stats', category: 'donnees', summaryLabel: t('qb.alsoStats.s'), text: t('qb.alsoStats.t'),
+  options: [
+    { id: 'yes', label: t('qb.alsoStats.yes'), delta: { widget: { stats: 2 } } },
+    { id: 'no', label: t('qb.alsoStats.no'), delta: {} },
+  ],
+})
+
+const sortPrefQuestion = (t: TFn): Question => ({
+  id: 'sort-pref', category: 'confort', summaryLabel: t('qb.sortPref.s'), text: t('qb.sortPref.t'),
+  options: [
+    { id: 'source', label: t('qb.sortPref.source'), delta: { sortMode: 'source' } },
+    { id: 'alphabetical', label: t('qb.sortPref.alphabetical'), delta: { sortMode: 'alphabetical' } },
+  ],
+})
+
+// ─── Fin commune ─────────────────────────────────────────────────────────────
 
 const volumeQuestion = (t: TFn): Question => ({
   id: 'volume', category: 'usage', summaryLabel: t('qb.volume.s'), text: t('qb.volume.t'),
   options: [
-    { id: 'few', label: t('qb.volume.few'), delta: { density: -2 } },
+    { id: 'few', label: t('qb.volume.few'), delta: { density: -1 } },
     { id: 'many', label: t('qb.volume.many'), delta: { density: 2, widget: { stats: 1 } } },
   ],
 })
@@ -112,101 +174,24 @@ function buildPrimaryTableQuestion(
   }
 }
 
-// ─── Branches : sous-questions insérées après leur question déclenchante ─────
+// ─── Composition de l'arbre ──────────────────────────────────────────────────
 
-const chartKindQuestion = (t: TFn): Question => ({
-  id: 'chart-kind', category: 'donnees', summaryLabel: t('qb.chartKind.s'), text: t('qb.chartKind.t'),
-  options: [
-    { id: 'time', label: t('qb.chartKind.time'), delta: { chartPreference: 'time' } },
-    { id: 'category', label: t('qb.chartKind.category'), delta: { chartPreference: 'category' } },
-    { id: 'neutral', label: t('qb.chartKind.neutral'), delta: {} },
-  ],
-})
-
-const statusEditableQuestion = (t: TFn): Question => ({
-  id: 'status-editable', category: 'donnees', summaryLabel: t('qb.statusEditable.s'), text: t('qb.statusEditable.t'),
-  options: [
-    { id: 'yes', label: t('qb.statusEditable.yes'), delta: { interaction: 2 } },
-    { id: 'no', label: t('qb.statusEditable.no'), delta: { interaction: 0 } },
-    { id: 'neutral', label: t('qb.statusEditable.neutral'), delta: {} },
-  ],
-})
-
-function focusQuestions(t: TFn): Record<string, Question> {
-  return {
-    contacts: {
-      id: 'focus-contacts', category: 'donnees', summaryLabel: t('qb.focusContacts.s'), text: t('qb.focusContacts.t'),
-      options: [
-        { id: 'find', label: t('qb.focusContacts.find'), delta: { layout: { table: 2 } } },
-        { id: 'cards', label: t('qb.focusContacts.cards'), delta: { layout: { cards: 2 } } },
-        { id: 'visual', label: t('qb.focusContacts.visual'), delta: { layout: { gallery: 2 } } },
-      ],
-    },
-    sales: {
-      id: 'focus-sales', category: 'donnees', summaryLabel: t('qb.focusSales.s'), text: t('qb.focusSales.t'),
-      options: [
-        { id: 'total', label: t('qb.focusSales.total'), delta: { widget: { stats: 2 }, archetype: { sales: 2 } } },
-        { id: 'evolution', label: t('qb.focusSales.evolution'), delta: { widget: { chart: 2 }, chartPreference: 'time' } },
-        { id: 'who', label: t('qb.focusSales.who'), delta: { layout: { table: 2 } } },
-      ],
-    },
-    inventory: {
-      id: 'focus-inventory', category: 'donnees', summaryLabel: t('qb.focusInventory.s'), text: t('qb.focusInventory.t'),
-      options: [
-        { id: 'stock', label: t('qb.focusInventory.stock'), delta: { widget: { stats: 2 }, archetype: { inventory: 2 } } },
-        { id: 'visual', label: t('qb.focusInventory.visual'), delta: { layout: { gallery: 2 } } },
-        { id: 'prices', label: t('qb.focusInventory.prices'), delta: { widget: { chart: 2 }, chartPreference: 'category' } },
-      ],
-    },
-    events: {
-      id: 'focus-events', category: 'donnees', summaryLabel: t('qb.focusEvents.s'), text: t('qb.focusEvents.t'),
-      options: [
-        { id: 'upcoming', label: t('qb.focusEvents.upcoming'), delta: { layout: { table: 2 } } },
-        { id: 'history', label: t('qb.focusEvents.history'), delta: { layout: { table: 1 }, widget: { stats: 1 } } },
-        { id: 'calendar', label: t('qb.focusEvents.calendar'), delta: { layout: { cards: 2 } } },
-      ],
-    },
-  }
-}
-
-function insertAfter(questions: Question[], afterId: string, toInsert: Question | null): Question[] {
-  if (!toInsert) return questions
-  const index = questions.findIndex((q) => q.id === afterId)
-  if (index === -1) return questions
-  return [...questions.slice(0, index + 1), toInsert, ...questions.slice(index + 1)]
+function branchQuestions(branch: string | undefined, t: TFn): Question[] {
+  if (branch === 'dashboard') return [focusMetricQuestion(t), consultFrequencyQuestion(t), exportsPrefQuestion(t)]
+  if (branch === 'table') return [editQuestion(t), searchQuestion(t), rowPriorityQuestion(t), navigationPrefQuestion(t)]
+  if (branch === 'chart') return [chartKindQuestion(t), alsoStatsQuestion(t), sortPrefQuestion(t)]
+  return []
 }
 
 export function buildQuestionBank(context: QuestionBankContext, t: TFn = (k) => k): Question[] {
-  const { answers } = context
+  const branch = context.answers['layout-root']?.optionId
+  const primary = buildPrimaryTableQuestion(context.tables, t)
 
-  let questions: Question[] = [
-    identityQuestion(t),
-    rowFocusQuestion(t),
-    editQuestion(t),
-    ...(context.hasMeaningfulChart ? [numbersQuestion(t)] : []),
-    ...(context.hasImages ? [imagesQuestion(t)] : []),
+  return [
+    layoutRootQuestion(t),
+    ...branchQuestions(branch, t),
     volumeQuestion(t),
-    ...(() => {
-      const primary = buildPrimaryTableQuestion(context.tables, t)
-      return primary ? [primary] : []
-    })(),
+    ...(primary ? [primary] : []),
     themeQuestion(t),
   ]
-
-  // Branche B : variante selon l'archétype choisi en question 1.
-  const identityAnswer = answers.identity
-  const focusQuestion = identityAnswer ? focusQuestions(t)[identityAnswer.optionId] ?? null : null
-  questions = insertAfter(questions, 'identity', focusQuestion)
-
-  // Branche C : ce statut est-il modifié souvent.
-  const rowFocusAnswer = answers['row-focus']
-  const statusFollowUp = rowFocusAnswer?.optionId === 'status' ? statusEditableQuestion(t) : null
-  questions = insertAfter(questions, 'row-focus', statusFollowUp)
-
-  // Branche A : quel type de graphique.
-  const numbersAnswer = answers.numbers
-  const chartKindFollowUp = numbersAnswer?.optionId === 'chart' ? chartKindQuestion(t) : null
-  questions = insertAfter(questions, 'numbers', chartKindFollowUp)
-
-  return questions
 }

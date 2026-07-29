@@ -8,39 +8,43 @@ const TWO_TABLES = [
   { tableName: 'Commandes', rowCount: 35 },
 ]
 
-describe('buildQuestionBank — banc de base', () => {
-  it("sans image, sans graphique pertinent et une seule table : identity, row-focus, edit, volume, theme", () => {
+function answer(questionId: string, optionId: string): Record<string, QuestionAnswer> {
+  return { [questionId]: { questionId, optionId, delta: {} } }
+}
+
+describe('buildQuestionBank — racine et fin commune', () => {
+  it('sans réponse à la racine : seules layout-root, volume, theme apparaissent (une table)', () => {
     const questions = buildQuestionBank({
       tables: ONE_TABLE,
       hasImages: false,
       hasMeaningfulChart: false,
       answers: {},
     })
-    expect(questions.map((q) => q.id)).toEqual(['identity', 'row-focus', 'edit', 'volume', 'theme'])
+    expect(questions.map((q) => q.id)).toEqual(['layout-root', 'volume', 'theme'])
   })
 
-  it('avec image, graphique pertinent et deux tables : ajoute numbers, images, primary-table', () => {
+  it('sans réponse à la racine, avec deux tables : primary-table apparaît avant theme', () => {
     const questions = buildQuestionBank({
       tables: TWO_TABLES,
-      hasImages: true,
-      hasMeaningfulChart: true,
+      hasImages: false,
+      hasMeaningfulChart: false,
       answers: {},
     })
-    expect(questions.map((q) => q.id)).toEqual([
-      'identity', 'row-focus', 'edit', 'numbers', 'images', 'volume', 'primary-table', 'theme',
-    ])
+    expect(questions.map((q) => q.id)).toEqual(['layout-root', 'volume', 'primary-table', 'theme'])
   })
 
-  it('chaque question a entre 2 et 4 options', () => {
-    const questions = buildQuestionBank({
-      tables: TWO_TABLES,
-      hasImages: true,
-      hasMeaningfulChart: true,
-      answers: {},
-    })
-    for (const question of questions) {
-      expect(question.options.length).toBeGreaterThanOrEqual(2)
-      expect(question.options.length).toBeLessThanOrEqual(4)
+  it('chaque question a entre 2 et 4 options, quelle que soit la branche', () => {
+    for (const branch of ['dashboard', 'table', 'chart']) {
+      const questions = buildQuestionBank({
+        tables: TWO_TABLES,
+        hasImages: false,
+        hasMeaningfulChart: false,
+        answers: answer('layout-root', branch),
+      })
+      for (const question of questions) {
+        expect(question.options.length).toBeGreaterThanOrEqual(2)
+        expect(question.options.length).toBeLessThanOrEqual(4)
+      }
     }
   })
 
@@ -61,101 +65,72 @@ describe('buildQuestionBank — banc de base', () => {
   })
 })
 
-describe('buildQuestionBank — branches dynamiques', () => {
-  function answer(questionId: string, optionId: string): Record<string, QuestionAnswer> {
-    return { [questionId]: { questionId, optionId, delta: {} } }
-  }
-
-  it('branche B : répondre "sales" à identity insère focus-sales juste après', () => {
+describe('buildQuestionBank — branche A (tableau de bord)', () => {
+  it('répondre "dashboard" insère focus-metric, consult-frequency, exports-pref juste après la racine', () => {
     const questions = buildQuestionBank({
       tables: ONE_TABLE,
       hasImages: false,
       hasMeaningfulChart: false,
-      answers: answer('identity', 'sales'),
+      answers: answer('layout-root', 'dashboard'),
     })
-    const ids = questions.map((q) => q.id)
-    expect(ids.indexOf('focus-sales')).toBe(ids.indexOf('identity') + 1)
-  })
-
-  it('branche B : changer la réponse à identity remplace la sous-question', () => {
-    const questions = buildQuestionBank({
-      tables: ONE_TABLE,
-      hasImages: false,
-      hasMeaningfulChart: false,
-      answers: answer('identity', 'events'),
-    })
-    const ids = questions.map((q) => q.id)
-    expect(ids).toContain('focus-events')
-    expect(ids).not.toContain('focus-sales')
-  })
-
-  it('branche B : aucune sous-question tant que identity est sans réponse', () => {
-    const questions = buildQuestionBank({
-      tables: ONE_TABLE,
-      hasImages: false,
-      hasMeaningfulChart: false,
-      answers: {},
-    })
-    expect(questions.some((q) => q.id.startsWith('focus-'))).toBe(false)
-  })
-
-  it('branche C : répondre "status" à row-focus insère status-editable juste après', () => {
-    const questions = buildQuestionBank({
-      tables: ONE_TABLE,
-      hasImages: false,
-      hasMeaningfulChart: false,
-      answers: answer('row-focus', 'status'),
-    })
-    const ids = questions.map((q) => q.id)
-    expect(ids.indexOf('status-editable')).toBe(ids.indexOf('row-focus') + 1)
-  })
-
-  it('branche C : une autre réponse à row-focus ne déclenche rien', () => {
-    const questions = buildQuestionBank({
-      tables: ONE_TABLE,
-      hasImages: false,
-      hasMeaningfulChart: false,
-      answers: answer('row-focus', 'compare'),
-    })
-    expect(questions.some((q) => q.id === 'status-editable')).toBe(false)
-  })
-
-  it('branche A : répondre "chart" à numbers insère chart-kind juste après (nécessite hasMeaningfulChart)', () => {
-    const questions = buildQuestionBank({
-      tables: ONE_TABLE,
-      hasImages: false,
-      hasMeaningfulChart: true,
-      answers: answer('numbers', 'chart'),
-    })
-    const ids = questions.map((q) => q.id)
-    expect(ids.indexOf('chart-kind')).toBe(ids.indexOf('numbers') + 1)
-  })
-
-  it('branche A : "total" ne déclenche pas chart-kind', () => {
-    const questions = buildQuestionBank({
-      tables: ONE_TABLE,
-      hasImages: false,
-      hasMeaningfulChart: true,
-      answers: answer('numbers', 'total'),
-    })
-    expect(questions.some((q) => q.id === 'chart-kind')).toBe(false)
-  })
-
-  it('les 3 branches peuvent être actives simultanément', () => {
-    const questions = buildQuestionBank({
-      tables: ONE_TABLE,
-      hasImages: false,
-      hasMeaningfulChart: true,
-      answers: {
-        identity: { questionId: 'identity', optionId: 'contacts', delta: {} },
-        'row-focus': { questionId: 'row-focus', optionId: 'status', delta: {} },
-        numbers: { questionId: 'numbers', optionId: 'chart', delta: {} },
-      },
-    })
-    const ids = questions.map((q) => q.id)
-    expect(ids).toEqual([
-      'identity', 'focus-contacts', 'row-focus', 'status-editable', 'edit',
-      'numbers', 'chart-kind', 'volume', 'theme',
+    expect(questions.map((q) => q.id)).toEqual([
+      'layout-root', 'focus-metric', 'consult-frequency', 'exports-pref', 'volume', 'theme',
     ])
+  })
+})
+
+describe('buildQuestionBank — branche B (tableau classique)', () => {
+  it('répondre "table" insère edit, search, row-priority, navigation-pref juste après la racine', () => {
+    const questions = buildQuestionBank({
+      tables: ONE_TABLE,
+      hasImages: false,
+      hasMeaningfulChart: false,
+      answers: answer('layout-root', 'table'),
+    })
+    expect(questions.map((q) => q.id)).toEqual([
+      'layout-root', 'edit', 'search', 'row-priority', 'navigation-pref', 'volume', 'theme',
+    ])
+  })
+})
+
+describe('buildQuestionBank — branche C (avec graphique)', () => {
+  it('répondre "chart" insère chart-kind, also-stats, sort-pref juste après la racine', () => {
+    const questions = buildQuestionBank({
+      tables: ONE_TABLE,
+      hasImages: false,
+      hasMeaningfulChart: false,
+      answers: answer('layout-root', 'chart'),
+    })
+    expect(questions.map((q) => q.id)).toEqual([
+      'layout-root', 'chart-kind', 'also-stats', 'sort-pref', 'volume', 'theme',
+    ])
+  })
+})
+
+describe('buildQuestionBank — changement de branche', () => {
+  it('changer la réponse à la racine remplace entièrement la séquence de branche', () => {
+    const questions = buildQuestionBank({
+      tables: ONE_TABLE,
+      hasImages: false,
+      hasMeaningfulChart: false,
+      answers: answer('layout-root', 'chart'),
+    })
+    const ids = questions.map((q) => q.id)
+    expect(ids).toContain('chart-kind')
+    expect(ids).not.toContain('edit')
+    expect(ids).not.toContain('focus-metric')
+  })
+
+  it("aucune question d'archétype (contacts/ventes/catalogue/événements) n'existe plus dans l'arbre", () => {
+    const removedIds = ['identity', 'focus-contacts', 'focus-sales', 'focus-inventory', 'focus-events', 'row-focus', 'numbers', 'images', 'status-editable']
+    for (const branch of ['dashboard', 'table', 'chart']) {
+      const questions = buildQuestionBank({
+        tables: ONE_TABLE,
+        hasImages: false,
+        hasMeaningfulChart: false,
+        answers: answer('layout-root', branch),
+      })
+      expect(questions.some((q) => removedIds.includes(q.id))).toBe(false)
+    }
   })
 })
