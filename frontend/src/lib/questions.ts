@@ -178,17 +178,21 @@ function buildPrimaryTableQuestion(
 
 function branchQuestions(branch: string | undefined, t: TFn): Question[] {
   if (branch === 'dashboard') return [focusMetricQuestion(t), consultFrequencyQuestion(t), exportsPrefQuestion(t)]
-  if (branch === 'table') return [editQuestion(t), searchQuestion(t), rowPriorityQuestion(t), navigationPrefQuestion(t)]
+  if (branch === 'table') return [searchQuestion(t), rowPriorityQuestion(t), navigationPrefQuestion(t)]
   if (branch === 'chart') return [chartKindQuestion(t), alsoStatsQuestion(t), sortPrefQuestion(t)]
   return []
 }
 
+// `edit` (modifier les données ?) pilote canEdit (bouton "+ Ajouter", formulaires) —
+// une question universelle, pas propre à la branche "Tableau classique" :
+// posée juste après la racine, avant les questions propres à chaque branche.
 export function buildQuestionBank(context: QuestionBankContext, t: TFn = (k) => k): Question[] {
   const branch = context.answers['layout-root']?.optionId
   const primary = buildPrimaryTableQuestion(context.tables, t)
 
   return [
     layoutRootQuestion(t),
+    editQuestion(t),
     ...branchQuestions(branch, t),
     volumeQuestion(t),
     ...(primary ? [primary] : []),

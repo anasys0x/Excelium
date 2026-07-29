@@ -13,14 +13,14 @@ function answer(questionId: string, optionId: string): Record<string, QuestionAn
 }
 
 describe('buildQuestionBank — racine et fin commune', () => {
-  it('sans réponse à la racine : seules layout-root, volume, theme apparaissent (une table)', () => {
+  it('sans réponse à la racine : layout-root, edit, volume, theme apparaissent (une table)', () => {
     const questions = buildQuestionBank({
       tables: ONE_TABLE,
       hasImages: false,
       hasMeaningfulChart: false,
       answers: {},
     })
-    expect(questions.map((q) => q.id)).toEqual(['layout-root', 'volume', 'theme'])
+    expect(questions.map((q) => q.id)).toEqual(['layout-root', 'edit', 'volume', 'theme'])
   })
 
   it('sans réponse à la racine, avec deux tables : primary-table apparaît avant theme', () => {
@@ -30,7 +30,19 @@ describe('buildQuestionBank — racine et fin commune', () => {
       hasMeaningfulChart: false,
       answers: {},
     })
-    expect(questions.map((q) => q.id)).toEqual(['layout-root', 'volume', 'primary-table', 'theme'])
+    expect(questions.map((q) => q.id)).toEqual(['layout-root', 'edit', 'volume', 'primary-table', 'theme'])
+  })
+
+  it('la question "edit" (canEdit) est posée quelle que soit la branche choisie', () => {
+    for (const branch of ['dashboard', 'table', 'chart']) {
+      const questions = buildQuestionBank({
+        tables: ONE_TABLE,
+        hasImages: false,
+        hasMeaningfulChart: false,
+        answers: answer('layout-root', branch),
+      })
+      expect(questions.map((q) => q.id)[1]).toBe('edit')
+    }
   })
 
   it('chaque question a entre 2 et 4 options, quelle que soit la branche', () => {
@@ -66,7 +78,7 @@ describe('buildQuestionBank — racine et fin commune', () => {
 })
 
 describe('buildQuestionBank — branche A (tableau de bord)', () => {
-  it('répondre "dashboard" insère focus-metric, consult-frequency, exports-pref juste après la racine', () => {
+  it('répondre "dashboard" insère focus-metric, consult-frequency, exports-pref après edit', () => {
     const questions = buildQuestionBank({
       tables: ONE_TABLE,
       hasImages: false,
@@ -74,13 +86,13 @@ describe('buildQuestionBank — branche A (tableau de bord)', () => {
       answers: answer('layout-root', 'dashboard'),
     })
     expect(questions.map((q) => q.id)).toEqual([
-      'layout-root', 'focus-metric', 'consult-frequency', 'exports-pref', 'volume', 'theme',
+      'layout-root', 'edit', 'focus-metric', 'consult-frequency', 'exports-pref', 'volume', 'theme',
     ])
   })
 })
 
 describe('buildQuestionBank — branche B (tableau classique)', () => {
-  it('répondre "table" insère edit, search, row-priority, navigation-pref juste après la racine', () => {
+  it('répondre "table" insère search, row-priority, navigation-pref après edit (edit n\'est plus dupliqué)', () => {
     const questions = buildQuestionBank({
       tables: ONE_TABLE,
       hasImages: false,
@@ -94,7 +106,7 @@ describe('buildQuestionBank — branche B (tableau classique)', () => {
 })
 
 describe('buildQuestionBank — branche C (avec graphique)', () => {
-  it('répondre "chart" insère chart-kind, also-stats, sort-pref juste après la racine', () => {
+  it('répondre "chart" insère chart-kind, also-stats, sort-pref après edit', () => {
     const questions = buildQuestionBank({
       tables: ONE_TABLE,
       hasImages: false,
@@ -102,13 +114,13 @@ describe('buildQuestionBank — branche C (avec graphique)', () => {
       answers: answer('layout-root', 'chart'),
     })
     expect(questions.map((q) => q.id)).toEqual([
-      'layout-root', 'chart-kind', 'also-stats', 'sort-pref', 'volume', 'theme',
+      'layout-root', 'edit', 'chart-kind', 'also-stats', 'sort-pref', 'volume', 'theme',
     ])
   })
 })
 
 describe('buildQuestionBank — changement de branche', () => {
-  it('changer la réponse à la racine remplace entièrement la séquence de branche', () => {
+  it('changer la réponse à la racine remplace entièrement la séquence de branche (edit reste, lui)', () => {
     const questions = buildQuestionBank({
       tables: ONE_TABLE,
       hasImages: false,
@@ -117,7 +129,8 @@ describe('buildQuestionBank — changement de branche', () => {
     })
     const ids = questions.map((q) => q.id)
     expect(ids).toContain('chart-kind')
-    expect(ids).not.toContain('edit')
+    expect(ids).toContain('edit')
+    expect(ids).not.toContain('search')
     expect(ids).not.toContain('focus-metric')
   })
 
