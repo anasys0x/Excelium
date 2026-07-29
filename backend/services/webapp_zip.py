@@ -1,0 +1,196 @@
+"""Assemble un zip auto-hébergeable contenant la webapp générée d'un client :
+mini-frontend déjà buildé (dist-export/), backend réutilisable tel quel,
+et un dump SQL qui recrée ses tables de données ainsi que sa session
+(pour que la webapp exportée retrouve directement son thème).
+
+Voir docs/superpowers/specs/2026-07-29-export-webapp-zip-design.md.
+"""
+
+import io
+import re
+import zipfile
+from datetime import date, datetime
+from pathlib import Path
+
+import psycopg2.extras
+
+from services.session_store import CREATE_TABLE_SQL, load_session
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+BACKEND_DIR = REPO_ROOT / "backend"
+DIST_EXPORT_DIR = REPO_ROOT / "frontend" / "dist-export"
+
+# Fichiers/dossiers backend réutilisables tels quels dans le zip. Exclut
+# volontairement .env (secrets locaux), tests/, main.py, export.py,
+# Pipfile et le dossier racine transforms/ (inutilisé, à ne pas confondre
+# avec models/transforms/). api.py n'est pas dans cette liste : il est
+# copié séparément avec le CORS patché (voir _write_backend_source).
+BACKEND_FILES = ["constants.py", "errors.py", "utils.py", "requirements.txt"]
+BACKEND_DIRS = ["models", "services"]
+
+TYPE_MAP = {
+    "INT": "INTEGER", "FLOAT": "DOUBLE PRECISION", "STRING": "TEXT",
+    "DATE": "DATE",   "BOOL": "BOOLEAN",           "MIXED":  "TEXT",
+}
+
+_IDENT_RE = re.compile(r"[^a-zA-Z0-9_]+")
+
+
+def _slugify(name: str) -> str:
+    return _IDENT_RE.sub("_", name).strip("_").lower() or "table"
+
+
+def _sql_value(value) -> str:
+    if value is None:
+        return "NULL"
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, (date, datetime)):
+        return "'" + value.isoformat() + "'"
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+class WebappZipError(Exception):
+    """Erreur attendue (session introuvable, build d'export manquant)."""
+
+    def __init__(self, message: str, status_code: int = 500):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _build_data_sql(db_schema: dict) -> str:
+    parts: list[str] = []
+    for table in db_schema.get("tables", []):
+        safe = _slugify(table["tableName"])
+        columns = table["columns"]
+        col_names = [c["name"] for c in columns]
+
+        col_defs = []
+        for c in columns:
+            defn = f'  "{c["name"]}" {TYPE_MAP.get(c["type"], "TEXT")}'
+            if c.get("isPrimaryKey"):
+                defn += " PRIMARY KEY"
+            col_defs.append(defn)
+        parts.append(f'CREATE TABLE "{safe}" (\n' + ",\n".join(col_defs) + "\n);")
+
+        rows = table.get("rows", [])
+        if rows:
+            col_list = ", ".join(f'"{c}"' for c in col_names)
+            value_rows = [
+                "(" + ", ".join(_sql_value(v) for v in row) + ")"
+                for row in rows
+            ]
+            parts.append(f'INSERT INTO "{safe}" ({col_list}) VALUES\n' + ",\n".join(value_rows) + ";")
+
+    for table in db_schema.get("tables", []):
+        safe = _slugify(table["tableName"])
+        for col in table["columns"]:
+            fk = col.get("foreignKey")
+            if not fk:
+                continue
+            ref_table = _slugify(fk["refTable"])
+            constraint = f'fk_{safe}_{_slugify(col["name"])}'
+            parts.append(
+                f'ALTER TABLE "{safe}" ADD CONSTRAINT "{constraint}" '
+                f'FOREIGN KEY ("{col["name"]}") REFERENCES "{ref_table}" ("{fk["refColumn"]}");'
+            )
+
+    return "\n\n".join(parts)
+
+
+def _build_session_sql(session_id: str, db_schema: dict, preset: dict) -> str:
+    schema_json = psycopg2.extras.Json(db_schema).getquoted().decode("utf-8")
+    preset_json = psycopg2.extras.Json(preset).getquoted().decode("utf-8")
+    return (
+        CREATE_TABLE_SQL.strip() + "\n\n"
+        f"INSERT INTO webapp_sessions (id, schema_json, preset_json) "
+        f"VALUES ('{session_id}', {schema_json}, {preset_json});"
+    )
+
+
+def _write_backend_source(zf: zipfile.ZipFile) -> None:
+    for filename in BACKEND_FILES:
+        zf.write(BACKEND_DIR / filename, f"backend/{filename}")
+    for dirname in BACKEND_DIRS:
+        for path in (BACKEND_DIR / dirname).rglob("*.py"):
+            if "__pycache__" in path.parts or "tests" in path.parts:
+                continue
+            arcname = f"backend/{path.relative_to(BACKEND_DIR).as_posix()}"
+            zf.write(path, arcname)
+
+    # Copie de api.py avec CORS ouvert : cette webapp exportée sert un seul
+    # client depuis une origine que l'utilisateur choisit lui-même (pas
+    # forcément localhost:5173, l'origine du serveur de dev Excelium).
+    api_source = (BACKEND_DIR / "api.py").read_text(encoding="utf-8")
+    patched = api_source.replace(
+        'allow_origins=["http://localhost:5173"]',
+        'allow_origins=["*"]',
+    )
+    zf.writestr("backend/api.py", patched)
+
+
+def _write_frontend(zf: zipfile.ZipFile, session_id: str) -> None:
+    if not DIST_EXPORT_DIR.exists():
+        raise WebappZipError(
+            "Le frontend d'export n'a pas été buildé. "
+            "Lancez `npm run build:export` dans frontend/ avant d'exporter une webapp."
+        )
+    for path in DIST_EXPORT_DIR.rglob("*"):
+        if path.is_file():
+            arcname = f"frontend/{path.relative_to(DIST_EXPORT_DIR).as_posix()}"
+            zf.write(path, arcname)
+    zf.writestr("frontend/config.json", f'{{"sessionId": "{session_id}"}}')
+
+
+ENV_EXAMPLE = """DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=ma_webapp
+DB_USER=postgres
+DB_PASSWORD=
+"""
+
+README = """# Ma WebApp
+
+Webapp générée par Excelium, prête à héberger où tu veux.
+
+## Installation
+
+1. Crée une base PostgreSQL vide.
+2. Copie `.env.example` en `.env` dans `backend/`, renseigne tes identifiants.
+3. Installe les dépendances Python : `cd backend && pip install -r requirements.txt`
+4. Importe tes données : `psql -U <utilisateur> -d <base> -f database/schema.sql`
+5. Lance le backend : `uvicorn api:app --host 0.0.0.0 --port 8000`
+6. Sers le dossier `frontend/` avec un serveur de fichiers statiques
+   (ex. `npx serve frontend`) et ouvre `export.html` dans le navigateur.
+   N'ouvre pas le fichier directement depuis le disque (`file://`) : certains
+   navigateurs bloquent alors le chargement de la configuration.
+
+Le frontend s'attend à un backend accessible sur `localhost:8000`.
+"""
+
+
+def build_webapp_zip(conn, session_id: str) -> bytes:
+    """Assemble et retourne le contenu binaire du zip pour une session."""
+    session = load_session(conn, session_id)
+    if session is None:
+        raise WebappZipError("Session introuvable.", status_code=404)
+
+    db_schema = session["dbSchema"]
+    preset = session["preset"]
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        data_sql = _build_data_sql(db_schema)
+        session_sql = _build_session_sql(session_id, db_schema, preset)
+        zf.writestr("database/schema.sql", data_sql + "\n\n" + session_sql + "\n")
+
+        _write_backend_source(zf)
+        _write_frontend(zf, session_id)
+
+        zf.writestr(".env.example", ENV_EXAMPLE)
+        zf.writestr("README.md", README)
+
+    buffer.seek(0)
+    return buffer.read()

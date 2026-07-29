@@ -18,6 +18,7 @@ from services.fk_detector import detect_foreign_keys
 from services.database_connection import get_connection
 from services.db_creator import create_tables
 from services.session_store import load_session, save_session
+from services.webapp_zip import build_webapp_zip, WebappZipError
 from services.db_crud import (
     get_table_schema, get_table_rows,
     insert_row, update_row, delete_row,
@@ -236,6 +237,37 @@ def read_session(session_id: str):
     if session is None:
         raise HTTPException(status_code=404, detail="Session introuvable.")
     return session
+
+
+@app.get("/export/webapp-zip/{session_id}")
+def export_webapp_zip(session_id: str):
+    try:
+        normalized_id = str(uuid.UUID(session_id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Identifiant de session invalide.")
+
+    try:
+        conn = get_connection()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Connexion à la base de données impossible : {exc}"
+        )
+
+    try:
+        content = build_webapp_zip(conn, normalized_id)
+    except WebappZipError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la génération du zip : {exc}")
+    finally:
+        conn.close()
+
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="webapp-{normalized_id[:8]}.zip"'},
+    )
 
 
 # ─── CRUD generique ───────────────────────────────────────────────────────────

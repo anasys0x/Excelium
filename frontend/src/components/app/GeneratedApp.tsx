@@ -22,8 +22,8 @@ const API = 'http://localhost:8000'
 
 interface Props {
   tables: TableConfig[]
-  onBack: () => void
-  onNewImport: () => void
+  onBack?: () => void
+  onNewImport?: () => void
   initialArchetypeOverrides: Record<string, TableArchetype>
   initialLayoutOverrides: Record<string, LayoutKind>
   initialActiveTableId: string | null
@@ -50,7 +50,7 @@ function GeneratedApp({
   tables, onBack, onNewImport,
   initialArchetypeOverrides, initialLayoutOverrides, initialActiveTableId,
   showChartWidget, showStatsWidget, chartPreference, canEdit, density,
-  navigation, searchEnabled, sortMode, exportMode, sessionId,
+  navigation, searchEnabled, sortMode, sessionId,
 }: Props) {
   const { t } = useI18n()
   const initialTabIndex = initialActiveTableId
@@ -77,7 +77,6 @@ function GeneratedApp({
   const active       = tables[activeIndex]
   const includedCols = useMemo(() => active.columns.filter((c) => !c.excluded), [active.columns])
   const pkCol        = includedCols.find((c) => c.isPrimaryKey)
-  const tableParam   = tables.map((t) => t.tableName).join(',')
 
   const fetchRows = useCallback(async () => {
     setLoading(true)
@@ -359,11 +358,14 @@ function GeneratedApp({
               {t('app.session')} {sessionId.slice(0, 8)}… {copied ? t('app.copied') : '⧉'}
             </button>
           )}
-          {exportMode !== 'none' && (
-            <a href={`${API}/export/excel?tables=${tableParam}`} download="export.xlsx" className="export-btn export-btn-excel">↓ Excel</a>
-          )}
-          {exportMode === 'all' && (
-            <a href={`${API}/export/sql?tables=${tableParam}`} download="export.sql" className="export-btn export-btn-sql">↓ SQL</a>
+          {sessionId && (
+            <a
+              href={`${API}/export/webapp-zip/${sessionId}`}
+              download={`webapp-${sessionId.slice(0, 8)}.zip`}
+              className="export-btn export-btn-zip"
+            >
+              ↓ {t('app.downloadZip')}
+            </a>
           )}
         </div>
       </div>
@@ -462,10 +464,12 @@ function GeneratedApp({
       )}
       </>
       )}
-      <div className="app-footer-actions">
-        <button className="back-btn" onClick={onBack}>← {t('common.back')}</button>
-        <button className="new-import-btn" onClick={onNewImport}>{t('common.importAnother')}</button>
-      </div>
+      {(onBack || onNewImport) && (
+        <div className="app-footer-actions">
+          {onBack && <button className="back-btn" onClick={onBack}>← {t('common.back')}</button>}
+          {onNewImport && <button className="new-import-btn" onClick={onNewImport}>{t('common.importAnother')}</button>}
+        </div>
+      )}
 
       {/* Detail panel */}
       {activeTab !== 'schema' && selectedRow !== null && displayRows[selectedRow] && (

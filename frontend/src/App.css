@@ -908,8 +908,19 @@
   background: var(--surface-alt);
   border-radius: 5px; text-decoration: none; cursor: pointer;
 }
-.export-btn-excel { color: var(--badge-green-text); border: 1px solid var(--ok-border); }
-.export-btn-sql   { color: var(--accent-text); border: 1px solid var(--accent-border); }
+.export-btn-zip { color: var(--accent-text); border: 1px solid var(--accent-border); }
+
+.export-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.export-status-error { flex-direction: column; gap: 6px; color: var(--danger-text); }
+.export-status-error p:first-child { font-weight: 600; color: var(--text); }
 
 .gen-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .gen-title  { font-size: 18px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
