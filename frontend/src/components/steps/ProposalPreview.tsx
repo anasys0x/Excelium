@@ -73,7 +73,10 @@ function ProposalPreview({ proposal, table, changedKeys }: Props) {
 
           {config.showChart && config.layout !== 'dashboard' && (
             <div className={`proposal-preview-chart-line${hl(changedKeys, 'showChart')}`}>
-              <MiniChart columns={analyzed} rows={includedRows} preference={config.chartPreference} height={44} />
+              <MiniChart
+                columns={analyzed} rows={includedRows} preference={config.chartPreference}
+                metricName={config.chartMetric} dimensionName={config.chartDimension} height={44}
+              />
             </div>
           )}
 
@@ -111,7 +114,10 @@ function ProposalPreview({ proposal, table, changedKeys }: Props) {
               {config.showStats && <span><small>Champs</small><strong>{table.columns.length}</strong></span>}
               {config.showChart && (
                 <div className={`proposal-mini-chart${hl(changedKeys, 'showChart')}`}>
-                  <MiniChart columns={analyzed} rows={includedRows} preference={config.chartPreference} height={36} />
+                  <MiniChart
+                    columns={analyzed} rows={includedRows} preference={config.chartPreference}
+                    metricName={config.chartMetric} dimensionName={config.chartDimension} height={36}
+                  />
                 </div>
               )}
             </div>

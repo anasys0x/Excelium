@@ -117,21 +117,45 @@ function isMeaningfulMetric(column: AnalyzedColumn): boolean {
 // catégorie quand les deux existent : 'time' fait tester la date en premier.
 // Sans préférence (ou preference 'category'), comportement inchangé — la
 // catégorie est toujours testée en premier.
+//
+// `metricName`/`dimensionName` (issus du questionnaire, quand la personne a
+// choisi une colonne précise) forcent l'utilisation de cette colonne quand
+// elle existe et convient encore au rôle attendu ; sinon, repli silencieux
+// sur la détection automatique habituelle.
 export function findChartRecommendation(
   columns: AnalyzedColumn[],
   preference?: 'time' | 'category',
+  metricName?: string,
+  dimensionName?: string,
 ): ChartRecommendation | null {
-  const metric = columns.find(isMeaningfulMetric)
+  const chosenMetric = metricName ? columns.find((c) => c.name === metricName && isMetricRole(c.role)) : undefined
+  const metric = chosenMetric ?? columns.find(isMeaningfulMetric)
   if (!metric) return null
 
   const category = columns.find((column) => column.role === 'category' || column.role === 'status')
   const date = columns.find((column) => column.role === 'date' && !PERSONAL_DATE_RE.test(column.name))
+
+  if (dimensionName) {
+    if (date && date.name === dimensionName) return { kind: 'time', dimension: date, metric }
+    if (category && category.name === dimensionName) return { kind: 'category', dimension: category, metric }
+  }
 
   if (preference === 'time' && date) return { kind: 'time', dimension: date, metric }
   if (category) return { kind: 'category', dimension: category, metric }
   if (date) return { kind: 'time', dimension: date, metric }
 
   return null
+}
+
+export interface CountRecommendation { kind: 'count'; dimension: AnalyzedColumn }
+
+// Repli quand la table n'a aucune colonne numérique (ex : une liste de
+// contacts) : plutôt qu'un tableau de bord vide, on répartit le nombre de
+// lignes par colonne catégorie/statut (ex : nombre de clients par ville).
+export function findCountRecommendation(columns: AnalyzedColumn[], dimensionName?: string): CountRecommendation | null {
+  const candidates = columns.filter((c) => c.role === 'category' || c.role === 'status')
+  const dimension = (dimensionName && candidates.find((c) => c.name === dimensionName)) || candidates[0]
+  return dimension ? { kind: 'count', dimension } : null
 }
 
 // Layouts pertinents selon le contenu de la table

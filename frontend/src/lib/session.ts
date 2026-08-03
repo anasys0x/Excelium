@@ -113,6 +113,8 @@ export function restoreSession(
     preset.chartPreference === 'time' || preset.chartPreference === 'category'
       ? preset.chartPreference
       : undefined
+  const chartMetric: string | undefined = typeof preset.chartMetric === 'string' ? preset.chartMetric : undefined
+  const chartDimension: string | undefined = typeof preset.chartDimension === 'string' ? preset.chartDimension : undefined
 
   return {
     sheets: [{ name: sheetName, tables }],
@@ -123,6 +125,8 @@ export function restoreSession(
       showChartWidget: booleanValue(preset.showChartWidget, false),
       showStatsWidget: booleanValue(preset.showStatsWidget, false),
       chartPreference,
+      chartMetric,
+      chartDimension,
       canEdit: booleanValue(preset.canEdit, true),
       density,
       navigation,

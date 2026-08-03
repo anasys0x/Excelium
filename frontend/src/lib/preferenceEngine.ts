@@ -26,6 +26,8 @@ export interface PreferenceDelta {
   exportMode?: ExportMode
   theme?: AppTheme
   chartPreference?: ChartPreference
+  chartMetricName?: string
+  chartDimensionName?: string
 }
 
 export interface QuestionAnswer {
@@ -47,6 +49,8 @@ export interface PreferenceProfile {
   exportMode: ExportMode
   theme: AppTheme
   chartPreference?: ChartPreference
+  chartMetricHint?: string
+  chartDimensionHint?: string
 }
 
 function addRecord<K extends string>(
@@ -93,6 +97,8 @@ export function buildPreferenceProfile(answers: readonly QuestionAnswer[], defau
       exportMode: delta.exportMode ?? profile.exportMode,
       theme: delta.theme ?? profile.theme,
       chartPreference: delta.chartPreference ?? profile.chartPreference,
+      chartMetricHint: delta.chartMetricName ?? profile.chartMetricHint,
+      chartDimensionHint: delta.chartDimensionName ?? profile.chartDimensionHint,
     }
   }, initial)
 }
