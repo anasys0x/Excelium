@@ -54,7 +54,7 @@
 .app-main { max-width: 1360px; margin: 0 auto; padding: 40px; }
 
 /* ─── Upload step ────────────────────────────────────────────────────────────── */
-.upload-section { position: relative; max-width: 520px; margin: 0 auto; }
+.upload-section { position: relative; isolation: isolate; max-width: 520px; margin: 0 auto; }
 /* Le hero de la landing arrive en fondu échelonné ; cet écran juste après
    restait figé — même traitement pour que la transition ne soit pas brutale. */
 .upload-section > * {
