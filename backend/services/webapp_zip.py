@@ -155,20 +155,85 @@ README = """# Ma WebApp
 
 Webapp générée par Excelium, prête à héberger où tu veux.
 
-## Installation
+## Installation (une seule fois)
 
 1. Crée une base PostgreSQL vide.
 2. Copie `.env.example` en `.env` dans `backend/`, renseigne tes identifiants.
 3. Installe les dépendances Python : `cd backend && pip install -r requirements.txt`
 4. Importe tes données : `psql -U <utilisateur> -d <base> -f database/schema.sql`
-5. Lance le backend : `uvicorn api:app --host 0.0.0.0 --port 8000`
-6. Sers le dossier `frontend/` avec un serveur de fichiers statiques
-   (ex. `npx serve frontend`) et ouvre `export.html` dans le navigateur.
-   N'ouvre pas le fichier directement depuis le disque (`file://`) : certains
-   navigateurs bloquent alors le chargement de la configuration.
 
-Le frontend s'attend à un backend accessible sur `localhost:8000`.
+## Lancer la webapp
+
+Une seule commande, depuis la racine du dossier dézippé :
+
+```
+python start.py
+```
+
+Ça démarre le backend (port 8000) et sert le frontend (port 4173), puis
+ouvre ta webapp directement dans le navigateur. `Ctrl+C` arrête les deux.
+
+Pas de Node.js requis. Ne double-clique pas sur `export.html` directement
+(`file://`) : les navigateurs bloquent alors le chargement de la
+configuration — passe toujours par `start.py` ou un serveur de fichiers.
 """
+
+START_PY = '''"""Lance la webapp complète en une seule commande :
+- sert frontend/ en statique sur le port 4173
+- démarre le backend (uvicorn) sur le port 8000
+- ouvre le navigateur sur la webapp
+
+Usage : python start.py (depuis la racine de ce dossier, après avoir suivi
+les étapes d'installation du README).
+"""
+
+import functools
+import http.server
+import socketserver
+import subprocess
+import sys
+import threading
+import time
+import webbrowser
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+FRONTEND_DIR = ROOT / "frontend"
+BACKEND_DIR = ROOT / "backend"
+FRONTEND_PORT = 4173
+BACKEND_PORT = 8000
+
+
+def serve_frontend() -> None:
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(FRONTEND_DIR))
+    with socketserver.TCPServer(("", FRONTEND_PORT), handler) as httpd:
+        httpd.serve_forever()
+
+
+def main() -> None:
+    threading.Thread(target=serve_frontend, daemon=True).start()
+
+    backend = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "api:app", "--host", "0.0.0.0", "--port", str(BACKEND_PORT)],
+        cwd=str(BACKEND_DIR),
+    )
+
+    time.sleep(2)
+    webbrowser.open(f"http://localhost:{FRONTEND_PORT}/export.html")
+
+    print(f"Webapp : http://localhost:{FRONTEND_PORT}/export.html")
+    print(f"API    : http://localhost:{BACKEND_PORT}")
+    print("Ctrl+C pour arrêter.")
+
+    try:
+        backend.wait()
+    except KeyboardInterrupt:
+        backend.terminate()
+
+
+if __name__ == "__main__":
+    main()
+'''
 
 
 def build_webapp_zip(conn, session_id: str) -> bytes:
@@ -191,6 +256,7 @@ def build_webapp_zip(conn, session_id: str) -> bytes:
 
         zf.writestr(".env.example", ENV_EXAMPLE)
         zf.writestr("README.md", README)
+        zf.writestr("start.py", START_PY)
 
     buffer.seek(0)
     return buffer.read()
