@@ -102,18 +102,21 @@
   height: 480px;
   border-radius: 50%;
   filter: blur(90px);
-  opacity: .35;
 }
 .landing-hero::before {
   top: -140px; left: -120px;
   background: var(--accent);
-  animation: heroGlowDriftA 23s ease-in-out infinite;
+  animation: heroGlowDriftA 23s ease-in-out infinite, blobBreathe 5s ease-in-out infinite;
 }
 .landing-hero::after {
   top: 40px; right: -160px;
   background: var(--highlight);
-  animation: heroGlowDriftB 29s ease-in-out infinite;
-  animation-delay: -11s;
+  animation: heroGlowDriftB 29s ease-in-out infinite, blobBreathe 6.5s ease-in-out infinite;
+  animation-delay: -11s, -2.5s;
+}
+@keyframes blobBreathe {
+  0%, 100% { opacity: .28; }
+  50%      { opacity: .42; }
 }
 @keyframes heroGlowDriftA {
   0%   { transform: translate(0, 0) scale(1); }
