@@ -10,6 +10,8 @@ interface Props {
   showChart?: boolean
   showStats?: boolean
   chartPreference?: ChartPreference
+  chartMetric?: string
+  chartDimension?: string
 }
 
 const nf = new Intl.NumberFormat('fr-FR')
@@ -24,7 +26,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-function DashboardView({ columns, rows, showChart = false, showStats = false, chartPreference }: Props) {
+function DashboardView({ columns, rows, showChart = false, showStats = false, chartPreference, chartMetric, chartDimension }: Props) {
   const { t } = useI18n()
   const stats: { label: string; value: string }[] = [{ label: t('app.recordsTitle'), value: nf.format(rows.length) }]
 
@@ -39,6 +41,23 @@ function DashboardView({ columns, rows, showChart = false, showStats = false, ch
       else if (c.role === 'rating')   stats.push({ label: `Moyenne ${c.name}`, value: `${nf.format(avg)} / 5` })
       else                             stats.push({ label: `Moyenne ${c.name}`, value: nf.format(avg) })
     }
+
+    // Aucune colonne numérique (ex : une liste de contacts) : plutôt qu'un
+    // tableau de bord réduit au seul nombre d'enregistrements, on affiche la
+    // répartition de la première colonne catégorie/statut détectée.
+    if (stats.length === 1) {
+      const categoryCol = columns.find((c) => c.role === 'category' || c.role === 'status')
+      if (categoryCol) {
+        const counts = new Map<string, number>()
+        for (const r of rows) {
+          const key = String(r[categoryCol.index] ?? '—')
+          counts.set(key, (counts.get(key) ?? 0) + 1)
+        }
+        const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]
+        if (top) stats.push({ label: `${categoryCol.name} le plus fréquent`, value: `${top[0]} (${top[1]})` })
+        stats.push({ label: `${categoryCol.name} distincts`, value: nf.format(counts.size) })
+      }
+    }
   }
 
   return (
@@ -46,7 +65,12 @@ function DashboardView({ columns, rows, showChart = false, showStats = false, ch
       <div className="dashboard-grid">
         {stats.map((s, i) => <Stat key={i} label={s.label} value={s.value} />)}
       </div>
-      {showChart && <ChartWidget columns={columns} rows={rows} preference={chartPreference} />}
+      {showChart && (
+        <ChartWidget
+          columns={columns} rows={rows} preference={chartPreference}
+          metricName={chartMetric} dimensionName={chartDimension}
+        />
+      )}
     </div>
   )
 }
