@@ -54,7 +54,7 @@
 .app-main { max-width: 1360px; margin: 0 auto; padding: 40px; }
 
 /* ─── Upload step ────────────────────────────────────────────────────────────── */
-.upload-section { max-width: 520px; margin: 0 auto; }
+.upload-section { position: relative; max-width: 520px; margin: 0 auto; }
 /* Le hero de la landing arrive en fondu échelonné ; cet écran juste après
    restait figé — même traitement pour que la transition ne soit pas brutale. */
 .upload-section > * {
@@ -70,6 +70,47 @@
 @keyframes uploadRise { to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {
   .upload-section > * { animation: none; opacity: 1; transform: none; }
+}
+
+/* Petites cellules qui montent doucement derrière la dropzone, comme si les
+   cellules du fichier Excel s'élevaient pour devenir la webapp — clin d'œil
+   au thème plutôt qu'une animation générique. */
+.upload-section > .upload-ambient {
+  position: absolute;
+  inset: -20px -70px auto -70px;
+  height: 420px;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+.upload-cell {
+  position: absolute;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1.5px solid var(--accent-border);
+  background: var(--accent-soft);
+  opacity: 0;
+  animation: uploadCellRise ease-in infinite;
+}
+.upload-cell:nth-child(1) { left: 6%;  width: 16px; height: 16px; animation-duration: 7.5s; animation-delay: 0s; }
+.upload-cell:nth-child(2) { left: 22%; width: 22px; height: 22px; animation-duration: 9s;   animation-delay: -2.2s; }
+.upload-cell:nth-child(3) { left: 40%; width: 14px; height: 14px; animation-duration: 6.5s; animation-delay: -4.5s; }
+.upload-cell:nth-child(4) { left: 58%; width: 20px; height: 20px; animation-duration: 8.2s; animation-delay: -1s; }
+.upload-cell:nth-child(5) { left: 76%; width: 17px; height: 17px; animation-duration: 7s;   animation-delay: -3.6s; }
+.upload-cell:nth-child(6) { left: 90%; width: 15px; height: 15px; animation-duration: 9.5s;  animation-delay: -5.8s; }
+@keyframes uploadCellRise {
+  0%   { transform: translateY(20px) rotate(0deg); opacity: 0; }
+  18%  { opacity: .55; }
+  82%  { opacity: .55; }
+  100% { transform: translateY(-380px) rotate(14deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .upload-section > .upload-ambient { display: none; }
 }
 .upload-title   { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
 .upload-desc    { color: var(--text-2); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
