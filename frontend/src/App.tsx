@@ -15,6 +15,8 @@ import StepUiProposals from './components/steps/StepUiProposals'
 import StepIndicator from './components/StepIndicator'
 import GeneratedApp from './components/app/GeneratedApp'
 import ConfirmModal from './components/app/ConfirmModal'
+import Spinner from './components/Spinner'
+import { useToast } from './lib/toast'
 import { buildQuestionBank } from './lib/questions'
 import { analyzeColumns, findChartRecommendation, findCountRecommendation } from './lib/semantic'
 import type { AnalyzedColumn, LayoutKind } from './lib/semantic'
@@ -99,6 +101,7 @@ export interface GeneratedAppSeed {
 
 function App() {
   const { t, lang, setLang } = useI18n()
+  const { showToast } = useToast()
   const [step, setStep]                        = useState<Step>('landing')
   const [sheets, setSheets]                    = useState<SheetData[]>([])
   const [showPendingModal, setShowPendingModal] = useState(false)
@@ -110,7 +113,6 @@ function App() {
   const [activeTableId, setActiveTableId]      = useState<string | null>(null)
   const [focusedColumn, setFocusedColumn]      = useState<string | null>(null)
   const [isLoading, setIsLoading]              = useState(false)
-  const [error, setError]                      = useState<string | null>(null)
   const [isResuming, setIsResuming]            = useState(false)
   const [resumeError, setResumeError]          = useState<string | null>(null)
   const [isCreating, setIsCreating]            = useState(false)
@@ -138,7 +140,6 @@ function App() {
 
   const handleFileSelected = async (file: File) => {
     setIsLoading(true)
-    setError(null)
     setResumeError(null)
     const formData = new FormData()
     formData.append('file', file)
@@ -166,7 +167,7 @@ function App() {
       }))
       const totalTables = sheetsData.reduce((sum, s) => sum + s.tables.length, 0)
       if (totalTables === 0) {
-        setError(t('app.emptyFileError'))
+        showToast(t('app.emptyFileError'))
         return
       }
 
@@ -180,7 +181,7 @@ function App() {
         setStep('select')
       }
     } catch {
-      setError(t('app.parseError'))
+      showToast(t('app.parseError'))
     } finally {
       setIsLoading(false)
     }
@@ -196,7 +197,6 @@ function App() {
   const handleResumeSession = async (sessionId: string) => {
     setIsResuming(true)
     setResumeError(null)
-    setError(null)
 
     try {
       const response = await fetch(`http://localhost:8000/sessions/${encodeURIComponent(sessionId)}`)
@@ -474,7 +474,6 @@ function App() {
     setFocusedColumn(null)
     setCreatedTables([])
     setCreateError(null)
-    setError(null)
     setResumeError(null)
     setAnswers({})
     setQuestionnaireIndex(0)
@@ -651,8 +650,7 @@ function App() {
             <h1 className="upload-title">{t('upload.title')}</h1>
             <p className="upload-desc">{t('upload.desc')}</p>
             <DropZone onFileSelected={handleFileSelected} />
-            {isLoading && <p className="upload-loading">{t('upload.loading')}</p>}
-            {error    && <p className="upload-error">{error}</p>}
+            {isLoading && <div className="upload-loading"><Spinner label={t('upload.loading')} /></div>}
             <SessionResume
               onResume={handleResumeSession}
               isLoading={isResuming}

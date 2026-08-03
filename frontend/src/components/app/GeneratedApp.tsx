@@ -16,7 +16,9 @@ import type { Reference } from './ImpactModal'
 import SchemaView from './SchemaView'
 import RowDependencyGraph from './RowDependencyGraph'
 import ConfirmModal from './ConfirmModal'
+import SkeletonRows from '../SkeletonRows'
 import { useI18n } from '../../lib/i18n'
+import { useToast } from '../../lib/toast'
 
 const API = 'http://localhost:8000'
 
@@ -55,6 +57,7 @@ function GeneratedApp({
   navigation, searchEnabled, sortMode, sessionId,
 }: Props) {
   const { t } = useI18n()
+  const { showToast } = useToast()
   const initialTabIndex = initialActiveTableId
     ? Math.max(0, tables.findIndex((t) => t.id === initialActiveTableId))
     : 0
@@ -68,7 +71,6 @@ function GeneratedApp({
   const [copied, setCopied] = useState(false)
   const [liveRows, setLiveRows]       = useState<Record<string, unknown>[]>([])
   const [loading, setLoading]         = useState(true)
-  const [fetchError, setFetchError]   = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [formMode, setFormMode]       = useState<FormMode>(null)
   const [editingRow, setEditingRow]   = useState<Record<string, unknown> | null>(null)
@@ -85,14 +87,13 @@ function GeneratedApp({
 
   const fetchRows = useCallback(async () => {
     setLoading(true)
-    setFetchError(null)
     try {
       const res = await fetch(`${API}/tables/${active.tableName}/rows`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setLiveRows(data.rows ?? [])
     } catch {
-      setFetchError(t('app.fetchError'))
+      showToast(t('app.fetchError'))
     } finally {
       setLoading(false)
     }
@@ -110,7 +111,7 @@ function GeneratedApp({
         if (!cancelled) setLiveRows(data.rows ?? [])
       })
       .catch(() => {
-        if (!cancelled) setFetchError(t('app.fetchError'))
+        if (!cancelled) showToast(t('app.fetchError'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -200,7 +201,7 @@ function GeneratedApp({
     const res = await fetch(url, { method: 'DELETE' })
     if (!res.ok) {
       const err = await res.json()
-      setFetchError(err.detail ?? t('app.errDelete'))
+      showToast(err.detail ?? t('app.errDelete'))
     }
     setSelectedRow(null)
     setPendingOp(null)
@@ -297,7 +298,6 @@ function GeneratedApp({
   const selectTable = (i: number) => {
     if (activeTab === i) return
     setLoading(true)
-    setFetchError(null)
     setSearchQuery('')
     setActiveTab(i)
     setSelectedRow(null)
@@ -438,9 +438,9 @@ function GeneratedApp({
         </div>
       </div>
 
-      {fetchError && <div className="fetch-error">{fetchError}</div>}
+      {loading && <SkeletonRows />}
 
-      {!loading && !fetchError && (
+      {!loading && (
         <>
           {effectiveLayout !== 'dashboard' && (showStatsWidget || showChartWidget) && (
             <div className="gen-insights">
