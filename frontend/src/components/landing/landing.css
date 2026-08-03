@@ -90,7 +90,9 @@
   isolation: isolate;
 }
 /* Halos de fond animés, en arrière-plan du hero : sans ça la page se sentait
-   plate à côté des cartes/animations du reste de la landing. */
+   plate à côté des cartes/animations du reste de la landing. Deux keyframes
+   à plusieurs points (pas juste un aller-retour à deux points) et deux
+   durées différentes, non synchronisées, pour un mouvement moins mécanique. */
 .landing-hero::before,
 .landing-hero::after {
   content: '';
@@ -101,20 +103,33 @@
   border-radius: 50%;
   filter: blur(90px);
   opacity: .35;
-  animation: heroGlowDrift 16s ease-in-out infinite alternate;
 }
 .landing-hero::before {
   top: -140px; left: -120px;
   background: var(--accent);
+  animation: heroGlowDriftA 23s ease-in-out infinite;
 }
 .landing-hero::after {
   top: 40px; right: -160px;
   background: var(--highlight);
-  animation-delay: -8s;
+  animation: heroGlowDriftB 29s ease-in-out infinite;
+  animation-delay: -11s;
 }
-@keyframes heroGlowDrift {
-  from { transform: translate(0, 0) scale(1); }
-  to   { transform: translate(30px, 40px) scale(1.12); }
+@keyframes heroGlowDriftA {
+  0%   { transform: translate(0, 0) scale(1); }
+  20%  { transform: translate(45px, -30px) scale(1.1); }
+  47%  { transform: translate(-25px, 20px) scale(0.94); }
+  68%  { transform: translate(15px, 45px) scale(1.05); }
+  85%  { transform: translate(-35px, -15px) scale(1.08); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes heroGlowDriftB {
+  0%   { transform: translate(0, 0) scale(1); }
+  25%  { transform: translate(-40px, 25px) scale(1.12); }
+  52%  { transform: translate(20px, -35px) scale(0.92); }
+  74%  { transform: translate(30px, 15px) scale(1.06); }
+  90%  { transform: translate(-15px, -25px) scale(0.98); }
+  100% { transform: translate(0, 0) scale(1); }
 }
 .landing-hero-copy > * {
   opacity: 0;
