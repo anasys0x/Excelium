@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent } from 'react'
+import { useEffect, useState } from 'react'
 import './landing.css'
 import logoDark from '../../assets/logo-dark.png'
 import logoLight from '../../assets/logo-light.png'
@@ -26,7 +25,6 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
 function Landing({ onStart, theme, onToggleTheme }: Props) {
   const { t, lang, setLang } = useI18n()
   const [scrolled, setScrolled] = useState(false)
-  const spotlightRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -34,14 +32,6 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
-
-  const onHeroMouseMove = (e: ReactMouseEvent<HTMLElement>) => {
-    const node = spotlightRef.current
-    if (!node) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    node.style.setProperty('--spot-x', `${((e.clientX - rect.left) / rect.width) * 100}%`)
-    node.style.setProperty('--spot-y', `${((e.clientY - rect.top) / rect.height) * 100}%`)
-  }
 
   const STEPS = [
     { n: '01', title: t('landing.step1.title'), body: t('landing.step1.body') },
@@ -107,13 +97,7 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
         </div>
       </header>
 
-      <section className="landing-hero" onMouseMove={onHeroMouseMove}>
-        <div className="landing-hero-glow" aria-hidden="true">
-          <div className="glow-blob glow-1" />
-          <div className="glow-blob glow-2" />
-          <div className="glow-blob glow-3" />
-          <div className="landing-hero-spotlight" ref={spotlightRef} />
-        </div>
+      <section className="landing-hero">
         <div className="landing-hero-copy">
           <p className="landing-eyebrow">{t('landing.eyebrow')}</p>
           <p className="landing-formula">{t('landing.formula')}</p>
