@@ -6,6 +6,11 @@ import type { Lang } from '../../lib/i18n'
 
 const ALL_TYPES = ['INT', 'FLOAT', 'STRING', 'DATE', 'BOOL', 'MIXED']
 
+// Aperçu uniquement : affiche un extrait, pas les 5000+ lignes d'un gros
+// fichier (ça fige le navigateur pour rien, ce panneau ne sert qu'à
+// configurer les colonnes/clés, pas à consulter toutes les données).
+const PREVIEW_ROW_LIMIT = 20
+
 const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
   INT:    { bg: 'var(--badge-blue-bg)',   color: 'var(--badge-blue-text)'   },
   FLOAT:  { bg: 'var(--badge-indigo-bg)', color: 'var(--badge-indigo-text)' },
@@ -23,6 +28,8 @@ interface Props {
   onTypeChange?: (originalName: string, newType: string) => void
   onNameChange?: (originalName: string, newName: string) => void
   onFocusColumn?: (name: string | null) => void
+  // Bascule l'exclusion d'une colonne (exclure si incluse, restaurer si déjà exclue).
+  onExcludeColumn?: (originalName: string) => void
 }
 
 interface HighlightRect { left: number; top: number; width: number; height: number }
@@ -86,7 +93,7 @@ function TypeSelect({ value, badge, lang, onChange }: TypeSelectProps) {
   )
 }
 
-function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeChange, onNameChange, onFocusColumn }: Props) {
+function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeChange, onNameChange, onFocusColumn, onExcludeColumn }: Props) {
   const { t, lang } = useI18n()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const scrollRef  = useRef<HTMLDivElement>(null)
@@ -119,11 +126,14 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
     return () => { window.removeEventListener('resize', compute); scroller?.removeEventListener('scroll', compute) }
   }, [focusedColumn, columns, rows])
 
+  const previewRows = rows.length > PREVIEW_ROW_LIMIT ? rows.slice(0, PREVIEW_ROW_LIMIT) : rows
+
   return (
     <div>
       {showMeta && (
         <p className="preview-meta">
           {rows.length} {t('word.row', { count: rows.length })} · {columns.length} {t('word.column', { count: columns.length })} — {t('preview.readonly')}
+          {rows.length > PREVIEW_ROW_LIMIT && ` — ${t('preview.truncated', { shown: PREVIEW_ROW_LIMIT })}`}
         </p>
       )}
       <div ref={wrapperRef} className="preview-wrapper">
@@ -132,42 +142,71 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
             <thead>
               <tr>
                 {columns.map((col) => {
-                  const badge     = TYPE_BADGE[col.type] ?? { bg: 'var(--line)', color: 'var(--cell-text)' }
-                  const isFocused = focusedColumn === col.originalName
+                  const badge      = TYPE_BADGE[col.type] ?? { bg: 'var(--line)', color: 'var(--cell-text)' }
+                  const isFocused  = focusedColumn === col.originalName
+                  const isExcluded = col.excluded === true
                   return (
                     <th
                       key={col.originalName}
                       ref={(el) => { thRefs.current[col.originalName] = el }}
-                      className={`preview-th${isFocused ? ' focused' : ''}`}
+                      className={`preview-th${isFocused ? ' focused' : ''}${isExcluded ? ' excluded' : ''}`}
                     >
                       <div className="preview-th-inner">
-                        {col.isPrimaryKey && <span className="preview-th-key" title={t('preview.idTitle')}>{t('common.identifier')}</span>}
-                        {onNameChange ? (
-                          <input
-                            className={`preview-th-name-input${isFocused ? ' focused' : ''}`}
-                            value={col.name}
-                            onChange={(e) => onNameChange(col.originalName, e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            onFocus={() => onFocusColumn?.(col.originalName)}
-                            onBlur={() => onFocusColumn?.(null)}
-                            spellCheck={false}
-                            title={t('preview.rename')}
-                            style={{ width: `${Math.max(col.name.length, 3) + 1.5}ch` }}
-                          />
+                        {isExcluded ? (
+                          <>
+                            <span className="preview-th-name excluded-name">{col.name}</span>
+                            {onExcludeColumn && (
+                              <button
+                                type="button"
+                                className="preview-th-restore"
+                                onClick={() => onExcludeColumn(col.originalName)}
+                                title={t('preview.restoreColumn')}
+                              >
+                                ↺
+                              </button>
+                            )}
+                          </>
                         ) : (
-                          <span className={`preview-th-name${isFocused ? ' focused' : ''}`}>{col.name}</span>
-                        )}
-                        {onTypeChange ? (
-                          <TypeSelect
-                            value={col.type}
-                            badge={badge}
-                            lang={lang}
-                            onChange={(newType) => onTypeChange(col.originalName, newType)}
-                          />
-                        ) : (
-                          <span className="type-badge-sm" style={{ background: badge.bg, color: badge.color }}>
-                            {typeLabel(col.type, lang)}
-                          </span>
+                          <>
+                            {col.isPrimaryKey && <span className="preview-th-key" title={t('preview.idTitle')}>{t('common.identifier')}</span>}
+                            {onNameChange ? (
+                              <input
+                                className={`preview-th-name-input${isFocused ? ' focused' : ''}`}
+                                value={col.name}
+                                onChange={(e) => onNameChange(col.originalName, e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                onFocus={() => onFocusColumn?.(col.originalName)}
+                                onBlur={() => onFocusColumn?.(null)}
+                                spellCheck={false}
+                                title={t('preview.rename')}
+                                style={{ width: `${Math.max(col.name.length, 3) + 1.5}ch` }}
+                              />
+                            ) : (
+                              <span className={`preview-th-name${isFocused ? ' focused' : ''}`}>{col.name}</span>
+                            )}
+                            {onTypeChange ? (
+                              <TypeSelect
+                                value={col.type}
+                                badge={badge}
+                                lang={lang}
+                                onChange={(newType) => onTypeChange(col.originalName, newType)}
+                              />
+                            ) : (
+                              <span className="type-badge-sm" style={{ background: badge.bg, color: badge.color }}>
+                                {typeLabel(col.type, lang)}
+                              </span>
+                            )}
+                            {onExcludeColumn && !col.isAuto && (
+                              <button
+                                type="button"
+                                className="preview-th-remove"
+                                onClick={() => onExcludeColumn(col.originalName)}
+                                title={t('preview.removeColumn')}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </th>
@@ -176,7 +215,7 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, rowIndex) => (
+              {previewRows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {row.map((cell, cellIndex) => {
                     const col       = columns[cellIndex]
@@ -189,6 +228,7 @@ function TablePreview({ columns, rows, focusedColumn, showMeta = true, onTypeCha
                           'preview-td',
                           isFocused ? 'focused' : rowIndex % 2 !== 0 ? 'alt' : '',
                           isEmpty ? 'empty' : '',
+                          col?.excluded ? 'excluded' : '',
                         ].filter(Boolean).join(' ')}
                       >
                         {isEmpty ? 'vide' : String(cell)}

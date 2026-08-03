@@ -8,6 +8,10 @@ interface Props {
   table: TableConfig
   allTables: TableConfig[]
   onClose: () => void
+  // 'overlay' (défaut) : panneau flottant à droite, comme DetailPanel.
+  // 'inline' : pas de fond assombri ni de tiroir, pensé pour être injecté
+  // directement dans le flux (ex : déroulé sous une ligne de TableView).
+  variant?: 'overlay' | 'inline'
 }
 
 interface ParentRow {
@@ -46,7 +50,7 @@ function MiniTable({ columns, rows }: { columns: string[]; rows: Record<string, 
   )
 }
 
-function RowDependencyGraph({ row, table, onClose }: Props) {
+function RowDependencyGraph({ row, table, onClose, variant = 'overlay' }: Props) {
   const { t } = useI18n()
   const [refs, setRefs]           = useState<Reference[]>([])
   const [parents, setParents]     = useState<ParentRow[]>([])
@@ -101,8 +105,8 @@ function RowDependencyGraph({ row, table, onClose }: Props) {
   const hasParents  = fkCols.length > 0
   const hasChildren = refs.length > 0
 
-  return (
-    <div className="dep-panel">
+  const panel = (
+    <div className="dep-panel" onClick={variant === 'overlay' ? (e) => e.stopPropagation() : undefined}>
       <div className="dep-panel-header">
         <span className="dep-panel-title">
           Dépendances de <strong>{val(pkValue)}</strong>
@@ -179,6 +183,14 @@ function RowDependencyGraph({ row, table, onClose }: Props) {
           )}
         </div>
       )}
+    </div>
+  )
+
+  if (variant === 'inline') return panel
+
+  return (
+    <div className="dep-overlay" onClick={onClose}>
+      {panel}
     </div>
   )
 }

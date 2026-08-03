@@ -1,3 +1,14 @@
+/* ─── Transition douce entre thèmes clair/sombre ──────────────────────────
+   Scopée à une classe temporaire (posée puis retirée par App.tsx autour du
+   changement de thème) plutôt qu'en permanence sur `*` : sinon ça ralentirait
+   aussi tous les survols (hover) de boutons/lignes dans toute l'appli. */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color .4s ease, color .4s ease, border-color .4s ease, fill .4s ease, stroke .4s ease !important;
+}
+
 /* ─── Thème par défaut : Dark Mode ──────────────────────────────────────── */
 :root {
   --bg-app:        #152128;

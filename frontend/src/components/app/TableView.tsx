@@ -45,6 +45,8 @@ function TableView({ columns, rows, onRowClick, onEdit, onDelete, onDependency, 
                     style={{ background: isExpanded ? 'var(--accent-soft)' : base, transition: 'background .12s' }}
                     onMouseEnter={(e) => { if (!isExpanded) e.currentTarget.style.background = 'var(--row-hover)' }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = isExpanded ? 'var(--accent-soft)' : base }}
+                    onDoubleClick={onEdit ? () => onEdit(ri) : undefined}
+                    title={onEdit ? t('app.dblClickToEdit') : undefined}
                   >
                     {columns.map((c) => (
                       <td key={c.index} onClick={() => onRowClick(ri)} className={`data-td${isMetricRole(c.role) ? ' right' : ''}`}>

@@ -126,8 +126,14 @@ function App() {
   )
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
+    const root = document.documentElement
+    // Fenêtre de transition douce : évite le changement radical de couleurs
+    // sans ralentir en permanence les survols (hover) partout ailleurs.
+    root.classList.add('theme-transitioning')
+    root.dataset.theme = theme
     localStorage.setItem('excelium-theme', theme)
+    const timeout = setTimeout(() => root.classList.remove('theme-transitioning'), 400)
+    return () => clearTimeout(timeout)
   }, [theme])
 
   const handleFileSelected = async (file: File) => {
@@ -602,8 +608,6 @@ function App() {
           <img src={logoDark} alt="Excelium" className="app-header-logo-img logo-dark" />
           <img src={logoLight} alt="Excelium" className="app-header-logo-img logo-light" />
         </button>
-        <span className="app-header-sep">|</span>
-        <span className="app-header-tagline">{t('header.tagline')}</span>
         <button
           className="app-theme-btn"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -745,6 +749,14 @@ function App() {
                       })
                     }}
                     onFocusColumn={setFocusedColumn}
+                    onExcludeColumn={(originalName) => {
+                      updateTable({
+                        ...activeTable,
+                        columns: activeTable.columns.map((c) =>
+                          c.originalName === originalName ? { ...c, excluded: !c.excluded } : c
+                        ),
+                      })
+                    }}
                   />
                 </>
               }

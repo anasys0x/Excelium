@@ -30,6 +30,8 @@ interface Props {
   showChartWidget: boolean
   showStatsWidget: boolean
   chartPreference?: ChartPreference
+  chartMetric?: string
+  chartDimension?: string
   canEdit: boolean
   density: DisplayDensity
   navigation: NavigationMode
@@ -49,7 +51,7 @@ interface PendingOp {
 function GeneratedApp({
   tables, onBack, onNewImport,
   initialArchetypeOverrides, initialLayoutOverrides, initialActiveTableId,
-  showChartWidget, showStatsWidget, chartPreference, canEdit, density,
+  showChartWidget, showStatsWidget, chartPreference, chartMetric, chartDimension, canEdit, density,
   navigation, searchEnabled, sortMode, sessionId,
 }: Props) {
   const { t } = useI18n()
@@ -59,6 +61,9 @@ function GeneratedApp({
   // Onglet actif : index de table, ou 'schema' pour le schéma de dépendances
   const [activeTab, setActiveTab] = useState<number | 'schema'>(initialTabIndex)
   const activeIndex = typeof activeTab === 'number' ? activeTab : 0
+  // Vue choisie manuellement par table, en plus de la suggestion du questionnaire :
+  // celle-ci reste toujours modifiable après génération (cf. layout-toggle).
+  const [layoutOverride, setLayoutOverride] = useState<Record<string, LayoutKind>>({})
   const [selectedRow, setSelectedRow] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
   const [liveRows, setLiveRows]       = useState<Record<string, unknown>[]>([])
@@ -257,7 +262,8 @@ function GeneratedApp({
     return [...new Set([...suggested, ...preset.extraLayouts, ...(preferred ? [preferred] : [])])]
   }, [active.id, analyzed, initialLayoutOverrides, preset])
 
-  const chosenLayout = initialLayoutOverrides[active.id]
+  // Priorité : choix manuel fait dans l'app générée > suggestion du questionnaire > défaut de l'archétype.
+  const chosenLayout = layoutOverride[active.id] ?? initialLayoutOverrides[active.id]
   const effectiveLayout = chosenLayout && layouts.includes(chosenLayout)
     ? chosenLayout
     : layouts.includes(preset.defaultLayout) ? preset.defaultLayout : layouts[0]
@@ -406,9 +412,24 @@ function GeneratedApp({
               />
             </label>
           )}
-          <span className="gen-mode-badge">
-            {t(`app.layout.${effectiveLayout}`)} · {canEdit ? t('app.editMode') : t('app.readOnly')}
-          </span>
+          {layouts.length > 1 ? (
+            <div className="layout-toggle" role="group" aria-label={t('app.layout.switchAria')}>
+              {layouts.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  className={`layout-btn${effectiveLayout === l ? ' active' : ''}`}
+                  aria-pressed={effectiveLayout === l}
+                  onClick={() => setLayoutOverride((prev) => ({ ...prev, [active.id]: l }))}
+                >
+                  {t(`app.layout.${l}`)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="gen-mode-badge">{t(`app.layout.${effectiveLayout}`)}</span>
+          )}
+          <span className="gen-mode-badge">{canEdit ? t('app.editMode') : t('app.readOnly')}</span>
           {canEdit && (
             <button className="add-btn" onClick={() => { setFormMode('create'); setEditingRow(null) }}>
               + {t('app.add')}
@@ -429,6 +450,8 @@ function GeneratedApp({
                 showChart={showChartWidget}
                 showStats={showStatsWidget}
                 chartPreference={chartPreference}
+                chartMetric={chartMetric}
+                chartDimension={chartDimension}
               />
             </div>
           )}
@@ -443,7 +466,7 @@ function GeneratedApp({
             }}
             expandedRowIndex={depRowIndex}
             expandedContent={depRow
-              ? <RowDependencyGraph row={depRow} table={active} allTables={tables} onClose={() => { setDepRow(null); setDepRowIndex(null) }} />
+              ? <RowDependencyGraph variant="inline" row={depRow} table={active} allTables={tables} onClose={() => { setDepRow(null); setDepRowIndex(null) }} />
               : null}
           />}
           {effectiveLayout === 'gallery'   && <GalleryView columns={analyzed} rows={displayRows} onRowClick={setSelectedRow} />}
@@ -455,11 +478,13 @@ function GeneratedApp({
               else { setDepRow(liveRowAt(ri)); setDepRowIndex(ri) }
             }}
             expandedRowIndex={depRowIndex}
-            expandedContent={depRow
-              ? <RowDependencyGraph row={depRow} table={active} allTables={tables} onClose={() => { setDepRow(null); setDepRowIndex(null) }} />
-              : null}
           />}
-          {effectiveLayout === 'dashboard' && <DashboardView columns={analyzed} rows={displayRows} showChart={showChartWidget} showStats={showStatsWidget} chartPreference={chartPreference} />}
+          {effectiveLayout === 'dashboard' && (
+            <DashboardView
+              columns={analyzed} rows={displayRows} showChart={showChartWidget} showStats={showStatsWidget}
+              chartPreference={chartPreference} chartMetric={chartMetric} chartDimension={chartDimension}
+            />
+          )}
         </>
       )}
       </>
@@ -479,6 +504,17 @@ function GeneratedApp({
           onClose={() => setSelectedRow(null)}
           onEdit={canEdit ? () => openEdit(liveRowAt(selectedRow!)) : undefined}
           onDelete={canEdit ? () => handleDeleteIntent(liveRowAt(selectedRow!)) : undefined}
+        />
+      )}
+
+      {/* Dependency panel flottant : vue cartes uniquement (la vue table l'affiche
+          en ligne, cf. expandedContent ci-dessus). */}
+      {depRow && effectiveLayout !== 'table' && (
+        <RowDependencyGraph
+          row={depRow}
+          table={active}
+          allTables={tables}
+          onClose={() => { setDepRow(null); setDepRowIndex(null) }}
         />
       )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AnalyzedColumn } from '../../lib/semantic'
 import { renderCell } from '../widgets/CellWidget'
 import { useI18n } from '../../lib/i18n'
@@ -9,10 +9,9 @@ interface Props {
   onRowClick: (rowIndex: number) => void
   onDependency?: (rowIndex: number) => void
   expandedRowIndex?: number | null
-  expandedContent?: ReactNode
 }
 
-function CardListView({ columns, rows, onRowClick, onDependency, expandedRowIndex, expandedContent }: Props) {
+function CardListView({ columns, rows, onRowClick, onDependency, expandedRowIndex }: Props) {
   const { t } = useI18n()
   const titleCol  = columns.find((c) => c.role === 'title') ?? columns.find((c) => c.role === 'text')
   const badgeCols = columns.filter((c) => c.role === 'status' || c.role === 'category').slice(0, 2)
@@ -48,10 +47,6 @@ function CardListView({ columns, rows, onRowClick, onDependency, expandedRowInde
   for (let i = 0; i < rows.length; i += cols) {
     rowGroups.push(Array.from({ length: Math.min(cols, rows.length - i) }, (_, j) => i + j))
   }
-
-  const expandedGroup = expandedRowIndex != null
-    ? rowGroups.findIndex((g) => g.includes(expandedRowIndex))
-    : -1
 
   return (
     <div>
@@ -90,19 +85,13 @@ function CardListView({ columns, rows, onRowClick, onDependency, expandedRowInde
                       className={`card-dep-btn${isExpanded ? ' active' : ''}`}
                       onClick={(e) => { e.stopPropagation(); onDependency(ri) }}
                     >
-                      {t('app.dependencies')} {isExpanded ? '▲' : '▼'}
+                      ⛓ {t('app.dependencies')}
                     </button>
                   )}
                 </div>
               )
             })}
           </div>
-
-          {gi === expandedGroup && expandedContent && (
-            <div className="card-dep-below">
-              {expandedContent}
-            </div>
-          )}
         </div>
       ))}
     </div>
