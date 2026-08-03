@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import './landing.css'
 import logoDark from '../../assets/logo-dark.png'
 import logoLight from '../../assets/logo-light.png'
@@ -23,6 +24,14 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
 
 function Landing({ onStart, theme, onToggleTheme }: Props) {
   const { t, lang, setLang } = useI18n()
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const STEPS = [
     { n: '01', title: t('landing.step1.title'), body: t('landing.step1.body') },
@@ -55,33 +64,35 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
 
   return (
     <div className="landing">
-      <header className="landing-nav">
-        <button
-          className="landing-nav-logo"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          aria-label="Excelium"
-        >
-          <img src={logoDark} alt="Excelium" className="landing-nav-logo-img logo-dark" />
-          <img src={logoLight} alt="Excelium" className="landing-nav-logo-img logo-light" />
-        </button>
-        <div className="landing-nav-actions">
-          <button className="landing-nav-theme" onClick={onToggleTheme}>
-            {theme === 'dark' ? '🌙' : '☀️'}
+      <header className={`landing-nav${scrolled ? ' scrolled' : ''}`}>
+        <div className="landing-nav-inner">
+          <button
+            className="landing-nav-logo"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label="Excelium"
+          >
+            <img src={logoDark} alt="Excelium" className="landing-nav-logo-img logo-dark" />
+            <img src={logoLight} alt="Excelium" className="landing-nav-logo-img logo-light" />
           </button>
-          <div className="landing-lang" role="group" aria-label="Language">
-            <button
-              className={`landing-lang-btn${lang === 'fr' ? ' active' : ''}`}
-              onClick={() => setLang('fr')}
-            >
-              FR
+          <div className="landing-nav-actions">
+            <button className="landing-nav-theme" onClick={onToggleTheme}>
+              {theme === 'dark' ? '🌙' : '☀️'}
             </button>
-            <span className="landing-lang-sep">|</span>
-            <button
-              className={`landing-lang-btn${lang === 'en' ? ' active' : ''}`}
-              onClick={() => setLang('en')}
-            >
-              EN
-            </button>
+            <div className="landing-lang" role="group" aria-label="Language">
+              <button
+                className={`landing-lang-btn${lang === 'fr' ? ' active' : ''}`}
+                onClick={() => setLang('fr')}
+              >
+                FR
+              </button>
+              <span className="landing-lang-sep">|</span>
+              <button
+                className={`landing-lang-btn${lang === 'en' ? ' active' : ''}`}
+                onClick={() => setLang('en')}
+              >
+                EN
+              </button>
+            </div>
           </div>
         </div>
       </header>

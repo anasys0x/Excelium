@@ -6,12 +6,30 @@
 }
 
 .landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 22px 32px;
+  transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
+  border-bottom: 1px solid transparent;
+}
+.landing-nav.scrolled {
+  background: var(--bg-app);
+  border-bottom-color: var(--border);
+  box-shadow: 0 4px 20px rgba(0,0,0,.08);
+}
+.landing-nav-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   max-width: 1180px;
+  width: 100%;
   margin: 0 auto;
-  padding: 22px 32px 0;
 }
 .landing-nav-logo {
   display: flex;
@@ -61,6 +79,7 @@
 
 /* ─── Hero ────────────────────────────────────────────────────────────────── */
 .landing-hero {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 560px);
   gap: 56px;
@@ -68,6 +87,34 @@
   max-width: 1180px;
   margin: 0 auto;
   padding: 64px 32px 88px;
+  isolation: isolate;
+}
+/* Halos de fond animés, en arrière-plan du hero : sans ça la page se sentait
+   plate à côté des cartes/animations du reste de la landing. */
+.landing-hero::before,
+.landing-hero::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: .35;
+  animation: heroGlowDrift 16s ease-in-out infinite alternate;
+}
+.landing-hero::before {
+  top: -140px; left: -120px;
+  background: var(--accent);
+}
+.landing-hero::after {
+  top: 40px; right: -160px;
+  background: var(--highlight);
+  animation-delay: -8s;
+}
+@keyframes heroGlowDrift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(30px, 40px) scale(1.12); }
 }
 .landing-hero-copy > * {
   opacity: 0;
@@ -609,6 +656,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .landing-hero-copy > * { animation: none; opacity: 1; transform: none; }
+  .landing-hero::before, .landing-hero::after { animation: none; }
   .hero-demo-row, .hero-demo-tag, .hero-demo-dots i, .hero-demo-filename,
   .hero-demo-name, .hero-demo-email, .hero-demo-city, .hero-demo-status, .hero-demo-status-dot,
   .hero-demo-row-action {

@@ -55,6 +55,22 @@
 
 /* ─── Upload step ────────────────────────────────────────────────────────────── */
 .upload-section { max-width: 520px; margin: 0 auto; }
+/* Le hero de la landing arrive en fondu échelonné ; cet écran juste après
+   restait figé — même traitement pour que la transition ne soit pas brutale. */
+.upload-section > * {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: uploadRise .6s cubic-bezier(.16,1,.3,1) forwards;
+}
+.upload-section > *:nth-child(1) { animation-delay: .04s; }
+.upload-section > *:nth-child(2) { animation-delay: .1s; }
+.upload-section > *:nth-child(3) { animation-delay: .18s; }
+.upload-section > *:nth-child(4) { animation-delay: .26s; }
+.upload-section > *:nth-child(5) { animation-delay: .32s; }
+@keyframes uploadRise { to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .upload-section > * { animation: none; opacity: 1; transform: none; }
+}
 .upload-title   { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
 .upload-desc    { color: var(--text-2); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
 .upload-code    {
