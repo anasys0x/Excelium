@@ -1,4 +1,6 @@
 import './landing.css'
+import logoDark from '../../assets/logo-dark.png'
+import logoLight from '../../assets/logo-light.png'
 import HeroDemo from './HeroDemo'
 import Faq from './Faq'
 import { useReveal } from './useReveal'
@@ -57,8 +59,10 @@ function Landing({ onStart, theme, onToggleTheme }: Props) {
         <button
           className="landing-nav-logo"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="Excelium"
         >
-          Excelium
+          <img src={logoDark} alt="Excelium" className="landing-nav-logo-img logo-dark" />
+          <img src={logoLight} alt="Excelium" className="landing-nav-logo-img logo-light" />
         </button>
         <div className="landing-nav-actions">
           <button className="landing-nav-theme" onClick={onToggleTheme}>

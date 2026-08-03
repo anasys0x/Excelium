@@ -11,10 +11,8 @@
   gap: 12px;
 }
 .app-header-logo {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 500;
-  font-size: 15px;
-  color: var(--accent-text);
+  display: flex;
+  align-items: center;
   background: none;
   border: none;
   padding: 0;
@@ -22,6 +20,10 @@
   transition: opacity .15s ease;
 }
 .app-header-logo:hover { opacity: .8; }
+.app-header-logo-img { height: 26px; width: auto; display: block; }
+.app-header-logo-img.logo-light { display: none; }
+:root[data-theme="light"] .app-header-logo-img.logo-dark  { display: none; }
+:root[data-theme="light"] .app-header-logo-img.logo-light { display: block; }
 .app-header-sep { color: var(--border-strong); }
 .app-header-tagline { font-size: 13px; color: var(--text-muted); }
 .app-lang { display: flex; align-items: center; gap: 6px; margin-left: 14px; }

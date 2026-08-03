@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import logoDark from './assets/logo-dark.png'
+import logoLight from './assets/logo-light.png'
 import Landing from './components/landing/Landing'
 import DropZone from './components/DropZone'
 import SessionResume from './components/SessionResume'
@@ -14,7 +16,7 @@ import StepIndicator from './components/StepIndicator'
 import GeneratedApp from './components/app/GeneratedApp'
 import ConfirmModal from './components/app/ConfirmModal'
 import { buildQuestionBank } from './lib/questions'
-import { analyzeColumns, findChartRecommendation } from './lib/semantic'
+import { analyzeColumns, findChartRecommendation, findCountRecommendation } from './lib/semantic'
 import type { AnalyzedColumn, LayoutKind } from './lib/semantic'
 import { ARCHETYPE_PRESETS, computeArchetypeScores, detectArchetype } from './lib/archetype'
 import type { TableArchetype } from './lib/archetype'
@@ -84,6 +86,8 @@ export interface GeneratedAppSeed {
   showChartWidget: boolean
   showStatsWidget: boolean
   chartPreference: ChartPreference | undefined
+  chartMetric: string | undefined
+  chartDimension: string | undefined
   canEdit: boolean
   density: DisplayDensity
   navigation: NavigationMode
@@ -375,6 +379,8 @@ function App() {
       showChart: showChartWidget,
       showStats: showStatsWidget,
       chartPreference,
+      chartMetric,
+      chartDimension,
       canEdit,
       density,
       navigation,
@@ -401,6 +407,8 @@ function App() {
               showChartWidget,
               showStatsWidget,
               chartPreference,
+              chartMetric,
+              chartDimension,
               canEdit,
               density,
               navigation,
@@ -427,6 +435,8 @@ function App() {
         showChartWidget,
         showStatsWidget,
         chartPreference,
+        chartMetric,
+        chartDimension,
         canEdit,
         density,
         navigation,
@@ -528,6 +538,7 @@ function App() {
   )?.analyzed ?? questionnaireTables[0]?.analyzed ?? []
   const hasImages = previewAnalyzed.some((column) => column.role === 'image')
   const hasMeaningfulChart = findChartRecommendation(previewAnalyzed) !== null
+    || findCountRecommendation(previewAnalyzed) !== null
   const questionBank = buildQuestionBank({
     tables: questionnaireTables,
     hasImages,
@@ -587,7 +598,10 @@ function App() {
     <div className="app-shell">
 
       <header className="app-header">
-        <button className="app-header-logo" onClick={() => setStep('landing')}>Excelium</button>
+        <button className="app-header-logo" onClick={() => setStep('landing')} aria-label="Excelium">
+          <img src={logoDark} alt="Excelium" className="app-header-logo-img logo-dark" />
+          <img src={logoLight} alt="Excelium" className="app-header-logo-img logo-light" />
+        </button>
         <span className="app-header-sep">|</span>
         <span className="app-header-tagline">{t('header.tagline')}</span>
         <button
@@ -914,6 +928,8 @@ function App() {
             showChartWidget={appSeed.showChartWidget}
             showStatsWidget={appSeed.showStatsWidget}
             chartPreference={appSeed.chartPreference}
+            chartMetric={appSeed.chartMetric}
+            chartDimension={appSeed.chartDimension}
             canEdit={appSeed.canEdit}
             density={appSeed.density}
             navigation={appSeed.navigation}

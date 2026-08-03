@@ -14,11 +14,8 @@
   padding: 22px 32px 0;
 }
 .landing-nav-logo {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: -0.02em;
-  color: var(--text);
+  display: flex;
+  align-items: center;
   background: none;
   border: none;
   padding: 0;
@@ -26,6 +23,10 @@
   transition: opacity .15s ease;
 }
 .landing-nav-logo:hover { opacity: .8; }
+.landing-nav-logo-img { height: 30px; width: auto; display: block; }
+.landing-nav-logo-img.logo-light { display: none; }
+:root[data-theme="light"] .landing-nav-logo-img.logo-dark  { display: none; }
+:root[data-theme="light"] .landing-nav-logo-img.logo-light { display: block; }
 .landing-nav-actions { display: flex; align-items: center; gap: 18px; }
 .landing-nav-link {
   font-size: 13px;
