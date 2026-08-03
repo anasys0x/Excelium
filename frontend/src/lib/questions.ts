@@ -8,6 +8,8 @@
 
 import type { PreferenceDelta } from './preferenceEngine'
 import type { QuestionAnswer } from './preferenceEngine'
+import { isMetricRole } from './semantic'
+import type { AnalyzedColumn } from './semantic'
 
 export type QuestionCategory = 'donnees' | 'usage' | 'confort'
 
@@ -28,10 +30,23 @@ export interface Question {
 }
 
 export interface QuestionBankContext {
-  tables: readonly { tableName: string; rowCount: number }[]
+  tables: readonly { tableName: string; rowCount: number; analyzed: readonly AnalyzedColumn[] }[]
   hasImages: boolean
   hasMeaningfulChart: boolean
   answers: Record<string, QuestionAnswer>
+}
+
+// Colonnes de la table réellement prévisualisée (celle choisie en réponse à
+// "primary-table", sinon la première) : permet de construire des questions
+// qui citent de vraies colonnes détectées plutôt que des catégories génériques.
+function primaryColumns(context: QuestionBankContext): readonly AnalyzedColumn[] {
+  const primaryName = context.answers['primary-table']?.delta.primaryTableName
+  const table = context.tables.find((t) => t.tableName === primaryName) ?? context.tables[0]
+  return table?.analyzed ?? []
+}
+
+function metricColumns(context: QuestionBankContext, limit = 3): AnalyzedColumn[] {
+  return primaryColumns(context).filter((c) => isMetricRole(c.role)).slice(0, limit)
 }
 
 // ─── Racine ──────────────────────────────────────────────────────────────────
@@ -45,33 +60,53 @@ const layoutRootQuestion = (t: TFn): Question => ({
   ],
 })
 
-// ─── Branche A : Tableau de bord ────────────────────────────────────────────
+// ─── Branche A : Vue chiffrée ────────────────────────────────────────────
 
-const focusMetricQuestion = (t: TFn): Question => ({
-  id: 'focus-metric', category: 'donnees', summaryLabel: t('qb.focusMetric.s'), text: t('qb.focusMetric.t'),
-  options: [
-    { id: 'total', label: t('qb.focusMetric.total'), delta: { widget: { stats: 3 } } },
-    { id: 'trend', label: t('qb.focusMetric.trend'), delta: { widget: { chart: 3 }, chartPreference: 'time' } },
-    { id: 'category', label: t('qb.focusMetric.category'), delta: { widget: { chart: 3 }, chartPreference: 'category' } },
-  ],
-})
+// Colonne à suivre en priorité : construite uniquement à partir des vraies
+// colonnes numériques détectées (prix, montant, note...). Appelée seulement
+// quand metricColumns(context) n'est pas vide (cf. dashboardBranchQuestions) :
+// sans colonne numérique réelle, il n'y a rien de honnête à proposer comme
+// "Total" ou "Tendance", donc pas de repli générique ici.
+const focusMetricQuestion = (context: QuestionBankContext, t: TFn): Question => {
+  const columns = metricColumns(context)
 
-const consultFrequencyQuestion = (t: TFn): Question => ({
-  id: 'consult-frequency', category: 'usage', summaryLabel: t('qb.consultFrequency.s'), text: t('qb.consultFrequency.t'),
-  options: [
-    { id: 'often', label: t('qb.consultFrequency.often'), delta: { density: 2 } },
-    { id: 'rarely', label: t('qb.consultFrequency.rarely'), delta: { density: -2 } },
-  ],
-})
+  const options: QuestionOption[] = columns.map((c) => ({
+    id: `metric-${c.name}`, label: c.name, delta: { widget: { stats: 3 } },
+  }))
+  // Échappatoire : rien à suivre pour cette table (pas obligé de forcer un
+  // chiffre sur un tableau de bord qui n'en a pas besoin).
+  options.push({ id: 'none', label: t('qb.focusMetric.none'), delta: {} })
 
-const exportsPrefQuestion = (t: TFn): Question => ({
-  id: 'exports-pref', category: 'confort', summaryLabel: t('qb.exportsPref.s'), text: t('qb.exportsPref.t'),
-  options: [
-    { id: 'all', label: t('qb.exportsPref.all'), delta: { exportMode: 'all' } },
-    { id: 'excel', label: t('qb.exportsPref.excel'), delta: { exportMode: 'excel' } },
-    { id: 'none', label: t('qb.exportsPref.none'), delta: { exportMode: 'none' } },
-  ],
-})
+  return { id: 'focus-metric', category: 'donnees', summaryLabel: t('qb.focusMetric.s'), text: t('qb.focusMetric.t'), options }
+}
+
+// Se spécialise selon la colonne choisie juste avant : ne propose une
+// évolution dans le temps ou une répartition que si une vraie colonne date
+// ou catégorie a été détectée dans la même table.
+const metricViewQuestion = (context: QuestionBankContext, t: TFn): Question => {
+  const columns = primaryColumns(context)
+  const dateColumn = columns.find((c) => c.role === 'date')
+  const categoryColumn = columns.find((c) => c.role === 'category' || c.role === 'status')
+
+  const options: QuestionOption[] = [
+    { id: 'total', label: t('qb.metricView.total'), delta: { widget: { stats: 3 } } },
+  ]
+  if (dateColumn) {
+    options.push({ id: 'time', label: t('qb.metricView.time'), delta: { widget: { chart: 3 }, chartPreference: 'time' } })
+  }
+  if (categoryColumn) {
+    options.push({
+      id: 'category',
+      label: t('qb.metricView.category', { column: categoryColumn.name }),
+      delta: { widget: { chart: 3 }, chartPreference: 'category' },
+    })
+  }
+  if (options.length === 1) {
+    options.push({ id: 'trend', label: t('qb.focusMetric.trend'), delta: { widget: { chart: 3 }, chartPreference: 'time' } })
+  }
+
+  return { id: 'metric-view', category: 'donnees', summaryLabel: t('qb.metricView.s'), text: t('qb.metricView.t'), options }
+}
 
 // ─── Branche B : Tableau classique ──────────────────────────────────────────
 
@@ -110,14 +145,56 @@ const navigationPrefQuestion = (t: TFn): Question => ({
 
 // ─── Branche C : Avec graphique ─────────────────────────────────────────────
 
-const chartKindQuestion = (t: TFn): Question => ({
-  id: 'chart-kind', category: 'donnees', summaryLabel: t('qb.chartKind.s'), text: t('qb.chartKind.t'),
-  options: [
-    { id: 'time', label: t('qb.chartKind.time'), delta: { chartPreference: 'time' } },
-    { id: 'category', label: t('qb.chartKind.category'), delta: { chartPreference: 'category' } },
-    { id: 'neutral', label: t('qb.chartKind.neutral'), delta: {} },
-  ],
-})
+// Quelle donnée visualiser : construite à partir des vraies colonnes
+// numériques détectées, comme focus-metric. Sans colonne numérique, il n'y a
+// rien de pertinent à choisir précisément : repli sur l'ancien choix
+// générique (temps/catégorie/peu importe), sans question de dimension à la
+// suite (cf. chartBranchQuestions).
+const chartMetricQuestion = (context: QuestionBankContext, t: TFn): Question => {
+  const columns = metricColumns(context)
+  if (columns.length === 0) {
+    return {
+      id: 'chart-kind', category: 'donnees', summaryLabel: t('qb.chartKind.s'), text: t('qb.chartKind.t'),
+      options: [
+        { id: 'time', label: t('qb.chartKind.time'), delta: { chartPreference: 'time' } },
+        { id: 'category', label: t('qb.chartKind.category'), delta: { chartPreference: 'category' } },
+        { id: 'neutral', label: t('qb.chartKind.neutral'), delta: {} },
+      ],
+    }
+  }
+  return {
+    id: 'chart-metric', category: 'donnees', summaryLabel: t('qb.chartMetric.s'), text: t('qb.chartMetric.t'),
+    options: columns.map((c) => ({
+      id: `metric-${c.name}`, label: c.name, delta: { widget: { chart: 3 }, chartMetricName: c.name },
+    })),
+  }
+}
+
+// Selon quoi la répartir : ne propose "dans le temps"/"par <colonne>" que si
+// une vraie colonne date/catégorie existe dans la table — se spécialise donc
+// à la fois sur la donnée réelle et sur la colonne choisie juste avant.
+const chartDimensionQuestion = (context: QuestionBankContext, t: TFn): Question => {
+  const columns = primaryColumns(context)
+  const dateColumn = columns.find((c) => c.role === 'date')
+  const categoryColumn = columns.find((c) => c.role === 'category' || c.role === 'status')
+
+  const options: QuestionOption[] = []
+  if (dateColumn) {
+    options.push({
+      id: 'time', label: t('qb.chartDimension.time'),
+      delta: { chartPreference: 'time', chartDimensionName: dateColumn.name },
+    })
+  }
+  if (categoryColumn) {
+    options.push({
+      id: 'category', label: t('qb.chartDimension.category', { column: categoryColumn.name }),
+      delta: { chartPreference: 'category', chartDimensionName: categoryColumn.name },
+    })
+  }
+  options.push({ id: 'neutral', label: t('qb.chartDimension.neutral'), delta: {} })
+
+  return { id: 'chart-dimension', category: 'donnees', summaryLabel: t('qb.chartDimension.s'), text: t('qb.chartDimension.t'), options }
+}
 
 const alsoStatsQuestion = (t: TFn): Question => ({
   id: 'also-stats', category: 'donnees', summaryLabel: t('qb.alsoStats.s'), text: t('qb.alsoStats.t'),
@@ -136,22 +213,9 @@ const sortPrefQuestion = (t: TFn): Question => ({
 })
 
 // ─── Fin commune ─────────────────────────────────────────────────────────────
-
-const volumeQuestion = (t: TFn): Question => ({
-  id: 'volume', category: 'usage', summaryLabel: t('qb.volume.s'), text: t('qb.volume.t'),
-  options: [
-    { id: 'few', label: t('qb.volume.few'), delta: { density: -1 } },
-    { id: 'many', label: t('qb.volume.many'), delta: { density: 2, widget: { stats: 1 } } },
-  ],
-})
-
-const themeQuestion = (t: TFn): Question => ({
-  id: 'theme', category: 'confort', summaryLabel: t('qb.theme.s'), text: t('qb.theme.t'),
-  options: [
-    { id: 'dark', label: t('qb.theme.dark'), delta: { theme: 'dark' } },
-    { id: 'light', label: t('qb.theme.light'), delta: { theme: 'light' } },
-  ],
-})
+// Le volume de lignes et le thème ne sont plus demandés en amont : le thème
+// se change directement dans la webapp générée (bouton dans l'en-tête), et
+// le volume n'apportait pas de signal assez utile pour justifier une question.
 
 function buildPrimaryTableQuestion(
   tables: readonly { tableName: string; rowCount: number }[],
@@ -159,9 +223,11 @@ function buildPrimaryTableQuestion(
 ): Question | null {
   if (tables.length < 2) return null
 
+  // Toutes les tables sont proposées (pas de plafond arbitraire) : rien ne
+  // garantit que la table la plus « importante » pour la personne soit
+  // celle avec le plus de lignes.
   const options = [...tables]
     .sort((a, b) => b.rowCount - a.rowCount)
-    .slice(0, 3)
     .map((table) => ({
       id: `primary-${table.tableName}`,
       label: table.tableName,
@@ -176,16 +242,44 @@ function buildPrimaryTableQuestion(
 
 // ─── Composition de l'arbre ──────────────────────────────────────────────────
 
-function branchQuestions(branch: string | undefined, t: TFn): Question[] {
-  if (branch === 'dashboard') return [focusMetricQuestion(t), consultFrequencyQuestion(t), exportsPrefQuestion(t)]
+function chartBranchQuestions(context: QuestionBankContext, t: TFn): Question[] {
+  const metricQuestion = chartMetricQuestion(context, t)
+  // Pas de colonne numérique détectée : metricQuestion est déjà le repli
+  // générique (temps/catégorie/peu importe), une question de dimension à la
+  // suite n'apporterait rien de plus précis.
+  if (metricQuestion.id === 'chart-kind') return [metricQuestion, alsoStatsQuestion(t), sortPrefQuestion(t)]
+  return [metricQuestion, chartDimensionQuestion(context, t), alsoStatsQuestion(t), sortPrefQuestion(t)]
+}
+
+function dashboardBranchQuestions(context: QuestionBankContext, t: TFn): Question[] {
+  // Aucune colonne numérique réelle dans la table (ex : une feuille
+  // d'employés sans montant/quantité/note) : il n'y a rien à totaliser ou à
+  // suivre, donc pas de question dessus. Le tableau de bord se rabat sur le
+  // nombre d'enregistrements et la répartition par catégorie (DashboardView).
+  if (metricColumns(context).length === 0) return []
+
+  const focusMetric = focusMetricQuestion(context, t)
+  // "Rien de précis" : pas de colonne choisie, donc metric-view (qui se
+  // spécialise sur cette colonne) n'a plus de sens à poser.
+  if (context.answers['focus-metric']?.optionId === 'none') return [focusMetric]
+  return [focusMetric, metricViewQuestion(context, t)]
+}
+
+function branchQuestions(branch: string | undefined, context: QuestionBankContext, t: TFn): Question[] {
+  if (branch === 'dashboard') return dashboardBranchQuestions(context, t)
   if (branch === 'table') return [searchQuestion(t), rowPriorityQuestion(t), navigationPrefQuestion(t)]
-  if (branch === 'chart') return [chartKindQuestion(t), alsoStatsQuestion(t), sortPrefQuestion(t)]
+  if (branch === 'chart') return chartBranchQuestions(context, t)
   return []
 }
 
 // `edit` (modifier les données ?) pilote canEdit (bouton "+ Ajouter", formulaires) —
 // une question universelle, pas propre à la branche "Tableau classique" :
 // posée juste après la racine, avant les questions propres à chaque branche.
+// "Table principale" est posée avant les questions de branche : focus-metric,
+// metric-view, chart-metric et chart-dimension lisent les colonnes réelles de
+// cette table (via primaryColumns) — il faut donc connaître la réponse avant
+// de les construire, sinon elles retombent sur la première table du classeur,
+// qui n'est pas forcément celle qui intéresse la personne.
 export function buildQuestionBank(context: QuestionBankContext, t: TFn = (k) => k): Question[] {
   const branch = context.answers['layout-root']?.optionId
   const primary = buildPrimaryTableQuestion(context.tables, t)
@@ -193,9 +287,7 @@ export function buildQuestionBank(context: QuestionBankContext, t: TFn = (k) => 
   return [
     layoutRootQuestion(t),
     editQuestion(t),
-    ...branchQuestions(branch, t),
-    volumeQuestion(t),
     ...(primary ? [primary] : []),
-    themeQuestion(t),
+    ...branchQuestions(branch, context, t),
   ]
 }
