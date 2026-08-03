@@ -647,14 +647,6 @@ function App() {
         {/* Étape 1 : Importer */}
         {step === 'upload' && (
           <div className="upload-section">
-            <div className="upload-ambient" aria-hidden="true">
-              <span className="upload-cell" />
-              <span className="upload-cell" />
-              <span className="upload-cell" />
-              <span className="upload-cell" />
-              <span className="upload-cell" />
-              <span className="upload-cell" />
-            </div>
             <h1 className="upload-title">{t('upload.title')}</h1>
             <p className="upload-desc">{t('upload.desc')}</p>
             <DropZone onFileSelected={handleFileSelected} />
