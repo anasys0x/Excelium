@@ -100,27 +100,34 @@ Excelium/
 │   │   ├── excel/             # Workbook, Worksheet, Table, Column, Row, Cell
 │   │   ├── relational/        # Modèle relationnel (tables, contraintes, FK/PK)
 │   │   └── transforms/        # Conversion type Excel → SQL (Strategy pattern)
-│   ├── services/               # excel_reader, type_detector, pk/fk_detector,
-│   │                           # dependency_detector, sql_generator, db_creator,
-│   │                           # db_crud, database_connection/execute, session_store
+│   ├── services/               # excel_reader, excel_to_relational, type_detector, pk/fk_detector,
+│   │                           # dependency_detector, sql_generator, db_creator, db_crud,
+│   │                           # database_connection/execute, session_store, webapp_zip
 │   └── tests/                  # Tests unitaires (pytest)
 ├── frontend/                   # React + Vite + TypeScript
+│   ├── vitest.config.ts        # Config des tests (jsdom + testing-library)
 │   └── src/
 │       ├── App.tsx             # Orchestration du parcours (import → config → questionnaire → création)
+│       ├── setupTests.ts       # Setup global des tests (jest-dom, mock ResizeObserver)
 │       ├── index.css           # Thèmes clair/sombre (variables CSS)
 │       ├── App.css             # Styles du parcours et de l'app générée
-│       ├── lib/                # i18n, détection sémantique, moteur de préférences,
-│       │                       # archétypes, propositions d'UI, questions, sessions
+│       ├── export/             # Point d'entrée du build export autonome (ExportApp, main)
+│       ├── lib/                # i18n, détection sémantique, moteur de préférences, données de
+│       │                       # graphiques, archétypes, propositions d'UI, questions, sessions
+│       │                       # (chaque module a son *.test.ts en regard)
 │       └── components/
-│           ├── DropZone.tsx, StepIndicator.tsx, SessionResume.tsx
+│           ├── DropZone.tsx, StepIndicator.tsx, SessionResume.tsx, Spinner.tsx, SkeletonRows.tsx
 │           ├── landing/        # Landing.tsx, HeroDemo.tsx (démo animée Excel → app), Faq.tsx
 │           ├── layout/         # SplitView.tsx
 │           ├── table/          # TablePreview.tsx
 │           ├── steps/          # StepSheetSelector, StepKeySelector, StepTableConfirmation,
-│           │                   # StepQuestionnaire, StepUiProposals, QuestionCard, ProposalPreview
+│           │                   # StepQuestionnaire, StepUiProposals, QuestionCard,
+│           │                   # ProposalPreview, MiniChart
 │           ├── widgets/        # CellWidget.tsx
 │           └── app/            # GeneratedApp.tsx + vues Table/Gallery/Dashboard/Cards/Schema,
-│                               # RowForm, DetailPanel, ImpactModal, ConfirmModal, ErdPanel
+│                               # ChartWidget, RowForm, RowDependencyGraph, DetailPanel,
+│                               # ImpactModal, ConfirmModal, ErdPanel
+│           (chaque composant testable a son *.test.tsx en regard)
 ├── data/                       # Fichiers Excel de test
 └── docs/                       # Documentation MkDocs
 ```
