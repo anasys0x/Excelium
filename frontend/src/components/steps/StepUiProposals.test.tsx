@@ -20,8 +20,8 @@ function makeProposal(id: string, recommended = false): UiProposal {
     description: `Description ${id}`,
     recommended,
     config: {
-      layout: 'table', density: 'comfortable', navigation: 'none', searchEnabled: false,
-      sortMode: 'default', exportMode: 'none', theme: 'light', canEdit: false,
+      layout: 'table', density: 'comfortable', navigation: 'sidebar', searchEnabled: false,
+      sortMode: 'source', exportMode: 'none', theme: 'light', canEdit: false,
       showStats: false, showChart: false,
     },
   }

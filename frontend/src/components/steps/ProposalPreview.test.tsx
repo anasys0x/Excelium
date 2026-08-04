@@ -17,8 +17,8 @@ const table: TableConfig = {
 
 function makeConfig(overrides: Partial<UiConfiguration> = {}): UiConfiguration {
   return {
-    layout: 'table', density: 'comfortable', navigation: 'none', searchEnabled: false,
-    sortMode: 'default', exportMode: 'none', theme: 'light', canEdit: false,
+    layout: 'table', density: 'comfortable', navigation: 'sidebar', searchEnabled: false,
+    sortMode: 'source', exportMode: 'none', theme: 'light', canEdit: false,
     showStats: false, showChart: false,
     ...overrides,
   }
