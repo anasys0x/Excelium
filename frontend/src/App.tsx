@@ -141,6 +141,17 @@ function App() {
   const handleFileSelected = async (file: File) => {
     setIsLoading(true)
     setResumeError(null)
+    setCreatedTables([])
+    setCreateError(null)
+    setAnswers({})
+    setQuestionnaireIndex(0)
+    setUiProposals([])
+    setSelectedProposalId(null)
+    setAppSeed(null)
+    setHasVisitedApp(false)
+    setActiveSheetName(null)
+    setActiveTableId(null)
+    setFocusedColumn(null)
     const formData = new FormData()
     formData.append('file', file)
     try {
