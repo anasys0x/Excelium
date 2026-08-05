@@ -41,6 +41,10 @@ interface Props {
   sortMode: SortMode
   exportMode: ExportMode
   sessionId: string | null
+  // Le bouton "Télécharger ma WebApp" n'a de sens que dans l'atelier
+  // Excelium (avant que le client héberge son zip) : une fois sur sa vraie
+  // webapp exportée, il n'a plus besoin de se re-télécharger lui-même.
+  showDownload?: boolean
 }
 type FormMode = 'create' | 'edit' | null
 
@@ -54,7 +58,7 @@ function GeneratedApp({
   tables, onBack, onNewImport,
   initialArchetypeOverrides, initialLayoutOverrides, initialActiveTableId,
   showChartWidget, showStatsWidget, chartPreference, chartMetric, chartDimension, canEdit, density,
-  navigation, searchEnabled, sortMode, sessionId,
+  navigation, searchEnabled, sortMode, sessionId, showDownload = true,
 }: Props) {
   const { t } = useI18n()
   const { showToast } = useToast()
@@ -364,7 +368,7 @@ function GeneratedApp({
               {t('app.session')} {sessionId.slice(0, 8)}… {copied ? t('app.copied') : '⧉'}
             </button>
           )}
-          {sessionId && (
+          {sessionId && showDownload && (
             <a
               href={`${API}/export/webapp-zip/${sessionId}`}
               download={`webapp-${sessionId.slice(0, 8)}.zip`}

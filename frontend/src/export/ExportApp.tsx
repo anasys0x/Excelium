@@ -57,36 +57,54 @@ function ExportApp() {
   }, [t])
 
   if (state.status === 'loading') {
-    return <div className="export-status">{t('export.loading')}</div>
-  }
-
-  if (state.status === 'error') {
     return (
-      <div className="export-status export-status-error">
-        <p>{t('export.errorTitle')}</p>
-        <p>{state.message}</p>
-        <p>{t('export.errorHint')}</p>
+      <div className="app-shell">
+        <main className="app-main">
+          <div className="export-status">{t('export.loading')}</div>
+        </main>
       </div>
     )
   }
 
+  if (state.status === 'error') {
+    return (
+      <div className="app-shell">
+        <main className="app-main">
+          <div className="export-status export-status-error">
+            <p>{t('export.errorTitle')}</p>
+            <p>{state.message}</p>
+            <p>{t('export.errorHint')}</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // .app-shell/.app-main : mêmes classes que l'app principale autour de
+  // GeneratedApp, pour que la webapp exportée ait les mêmes marges — sans
+  // ce conteneur, le contenu colle aux bords de la fenêtre.
   return (
-    <GeneratedApp
-      tables={state.tables}
-      initialArchetypeOverrides={state.seed.archetypeOverrides}
-      initialLayoutOverrides={state.seed.layoutOverrides}
-      initialActiveTableId={state.seed.primaryTableId}
-      showChartWidget={state.seed.showChartWidget}
-      showStatsWidget={state.seed.showStatsWidget}
-      chartPreference={state.seed.chartPreference}
-      canEdit={state.seed.canEdit}
-      density={state.seed.density}
-      navigation={state.seed.navigation}
-      searchEnabled={state.seed.searchEnabled}
-      sortMode={state.seed.sortMode}
-      exportMode={state.seed.exportMode}
-      sessionId={state.seed.sessionId}
-    />
+    <div className="app-shell">
+      <main className="app-main">
+        <GeneratedApp
+          tables={state.tables}
+          initialArchetypeOverrides={state.seed.archetypeOverrides}
+          initialLayoutOverrides={state.seed.layoutOverrides}
+          initialActiveTableId={state.seed.primaryTableId}
+          showChartWidget={state.seed.showChartWidget}
+          showStatsWidget={state.seed.showStatsWidget}
+          chartPreference={state.seed.chartPreference}
+          canEdit={state.seed.canEdit}
+          density={state.seed.density}
+          navigation={state.seed.navigation}
+          searchEnabled={state.seed.searchEnabled}
+          sortMode={state.seed.sortMode}
+          exportMode={state.seed.exportMode}
+          sessionId={state.seed.sessionId}
+          showDownload={false}
+        />
+      </main>
+    </div>
   )
 }
 
