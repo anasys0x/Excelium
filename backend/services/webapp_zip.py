@@ -157,6 +157,18 @@ Webapp générée par Excelium, prête à héberger où tu veux.
 
 ## Installation (une seule fois)
 
+Il te faut PostgreSQL installé (le serveur, pas forcément avec une base déjà
+créée) et Python 3. Depuis la racine du dossier dézippé :
+
+```
+python setup.py
+```
+
+Ce script installe les dépendances Python, te demande tes identifiants
+PostgreSQL (avec des valeurs par défaut), crée la base si besoin, écrit
+`backend/.env`, et importe automatiquement tes tables et tes données.
+
+Tu peux aussi faire chaque étape à la main si tu préfères :
 1. Crée une base PostgreSQL vide.
 2. Copie `.env.example` en `.env` dans `backend/`, renseigne tes identifiants.
 3. Installe les dépendances Python : `cd backend && pip install -r requirements.txt`
@@ -177,6 +189,112 @@ Pas de Node.js requis. Ne double-clique pas sur `export.html` directement
 (`file://`) : les navigateurs bloquent alors le chargement de la
 configuration — passe toujours par `start.py` ou un serveur de fichiers.
 """
+
+SETUP_PY = '''"""Installation en une seule commande :
+- installe les dépendances Python du backend
+- demande les identifiants PostgreSQL (avec valeurs par défaut)
+- crée la base si elle n'existe pas encore
+- écrit backend/.env
+- importe les tables et les données (database/schema.sql)
+
+Usage : python setup.py (depuis la racine de ce dossier). À ne lancer
+qu'une fois — relance-le si tu changes de base ou d'identifiants.
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+BACKEND_DIR = ROOT / "backend"
+SCHEMA_SQL = ROOT / "database" / "schema.sql"
+
+
+def ask(label: str, default: str) -> str:
+    value = input(f"{label} [{default}]: ").strip()
+    return value or default
+
+
+def install_dependencies() -> None:
+    print("Installation des dépendances Python...")
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-r", str(BACKEND_DIR / "requirements.txt")],
+        check=True,
+    )
+
+
+def collect_credentials() -> dict:
+    print("\\nIdentifiants PostgreSQL (le serveur doit déjà être installé et démarré) :")
+    return {
+        "host": ask("Hôte", "localhost"),
+        "port": ask("Port", "5432"),
+        "user": ask("Utilisateur", "postgres"),
+        "password": ask("Mot de passe", ""),
+        "dbname": ask("Nom de la base", "ma_webapp"),
+    }
+
+
+def create_database_if_missing(creds: dict) -> None:
+    import psycopg2
+    from psycopg2 import errors
+
+    admin_conn = psycopg2.connect(
+        host=creds["host"], port=creds["port"], user=creds["user"],
+        password=creds["password"], dbname="postgres",
+    )
+    admin_conn.autocommit = True
+    try:
+        with admin_conn.cursor() as cur:
+            try:
+                cur.execute(f'CREATE DATABASE "{creds["dbname"]}"')
+                print(f"Base « {creds['dbname']} » créée.")
+            except errors.DuplicateDatabase:
+                print(f"Base « {creds['dbname']} » déjà existante, réutilisée.")
+    finally:
+        admin_conn.close()
+
+
+def write_env_file(creds: dict) -> None:
+    env_content = (
+        f"DB_HOST={creds['host']}\\n"
+        f"DB_PORT={creds['port']}\\n"
+        f"DB_NAME={creds['dbname']}\\n"
+        f"DB_USER={creds['user']}\\n"
+        f"DB_PASSWORD={creds['password']}\\n"
+    )
+    (BACKEND_DIR / ".env").write_text(env_content, encoding="utf-8")
+    print("backend/.env écrit.")
+
+
+def import_schema(creds: dict) -> None:
+    if not SCHEMA_SQL.exists():
+        print("database/schema.sql introuvable, import ignoré.")
+        return
+    print("Import des tables et des données...")
+    env = {"PGPASSWORD": creds["password"]} if creds["password"] else {}
+    import os
+    subprocess.run(
+        [
+            "psql", "-h", creds["host"], "-p", creds["port"], "-U", creds["user"],
+            "-d", creds["dbname"], "-f", str(SCHEMA_SQL),
+        ],
+        check=True,
+        env={**os.environ, **env},
+    )
+
+
+def main() -> None:
+    install_dependencies()
+    creds = collect_credentials()
+    create_database_if_missing(creds)
+    write_env_file(creds)
+    import_schema(creds)
+    print("\\nInstallation terminée. Lance la webapp avec : python start.py")
+
+
+if __name__ == "__main__":
+    main()
+'''
 
 START_PY = '''"""Lance la webapp complète en une seule commande :
 - sert frontend/ en statique sur le port 4173
@@ -257,6 +375,7 @@ def build_webapp_zip(conn, session_id: str) -> bytes:
         zf.writestr(".env.example", ENV_EXAMPLE)
         zf.writestr("README.md", README)
         zf.writestr("start.py", START_PY)
+        zf.writestr("setup.py", SETUP_PY)
 
     buffer.seek(0)
     return buffer.read()

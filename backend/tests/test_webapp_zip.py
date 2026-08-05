@@ -78,6 +78,7 @@ def test_zip_contains_expected_files():
     assert "README.md" in names
     assert ".env.example" in names
     assert "start.py" in names
+    assert "setup.py" in names
 
 
 def test_zip_never_contains_env_or_tests():
