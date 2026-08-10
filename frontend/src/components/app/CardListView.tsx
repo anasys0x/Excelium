@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { AnalyzedColumn } from '../../lib/semantic'
 import { renderCell } from '../widgets/CellWidget'
 import { useI18n } from '../../lib/i18n'
@@ -9,9 +10,10 @@ interface Props {
   onRowClick: (rowIndex: number) => void
   onDependency?: (rowIndex: number) => void
   expandedRowIndex?: number | null
+  expandedContent?: ReactNode
 }
 
-function CardListView({ columns, rows, onRowClick, onDependency, expandedRowIndex }: Props) {
+function CardListView({ columns, rows, onRowClick, onDependency, expandedRowIndex, expandedContent }: Props) {
   const { t } = useI18n()
   const titleCol  = columns.find((c) => c.role === 'title') ?? columns.find((c) => c.role === 'text')
   const badgeCols = columns.filter((c) => c.role === 'status' || c.role === 'category').slice(0, 2)
@@ -92,6 +94,9 @@ function CardListView({ columns, rows, onRowClick, onDependency, expandedRowInde
               )
             })}
           </div>
+          {group.includes(expandedRowIndex ?? -1) && expandedContent && (
+            <div className="dep-inline-cards">{expandedContent}</div>
+          )}
         </div>
       ))}
     </div>
