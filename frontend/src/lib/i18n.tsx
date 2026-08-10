@@ -36,6 +36,7 @@ const dict: Record<Lang, Record<string, string>> = {
     // DropZone
     'dropzone.hint': 'Glissez un fichier .xlsx ici, ou cliquez pour en choisir un',
     'dropzone.errorXlsx': 'Seuls les fichiers .xlsx sont acceptés.',
+    'dropzone.cancel': 'Annuler',
     // Reprise de session
     'resume.or': 'ou',
     'resume.title': 'Reprendre une session',
@@ -295,7 +296,7 @@ const dict: Record<Lang, Record<string, string>> = {
     'archetype.inventory': 'Inventaire',
     'archetype.events': 'Événements',
     'archetype.generic': 'Générique',
-    'app.parseError': 'Impossible de lire le fichier. Vérifiez que le backend est lancé.',
+    'app.parseError': 'Une erreur est survenue pendant la lecture du fichier. Réessaie dans un instant.',
     'app.emptyFileError': "Aucune donnée exploitable n'a été trouvée dans ce fichier. Vérifie que tes feuilles contiennent bien des tableaux avec des en-têtes et des lignes de données.",
     'app.sessionLoadError': 'Impossible de charger cette session.',
     'export.loading': 'Chargement de ta webapp…',
@@ -405,6 +406,7 @@ const dict: Record<Lang, Record<string, string>> = {
     'upload.loading': 'Analyzing file…',
     'dropzone.hint': 'Drag a .xlsx file here, or click to choose one',
     'dropzone.errorXlsx': 'Only .xlsx files are accepted.',
+    'dropzone.cancel': 'Cancel',
     'resume.or': 'or',
     'resume.title': 'Resume a session',
     'resume.desc': 'Paste the identifier you received when creating it to reopen the web app.',
@@ -649,7 +651,7 @@ const dict: Record<Lang, Record<string, string>> = {
     'archetype.inventory': 'Inventory',
     'archetype.events': 'Events',
     'archetype.generic': 'Generic',
-    'app.parseError': 'Could not read the file. Make sure the backend is running.',
+    'app.parseError': 'Something went wrong while reading the file. Please try again in a moment.',
     'app.emptyFileError': "No usable data was found in this file. Make sure your sheets contain tables with headers and data rows.",
     'app.sessionLoadError': 'Could not load this session.',
     'export.loading': 'Loading your webapp…',

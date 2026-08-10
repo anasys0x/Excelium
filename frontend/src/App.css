@@ -359,6 +359,15 @@
 .dropzone-filesize { color: var(--text-muted); font-size: 12px; margin: 4px 0 0; }
 .dropzone-hint     { color: var(--text-muted); margin: 0; }
 .dropzone-error    { color: var(--danger-text); margin-top: 8px; }
+.dropzone-cancel {
+  position: absolute; top: 12px; right: 12px; z-index: 1;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: none; background: transparent;
+  color: var(--text-muted); font-size: 13px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.dropzone-cancel:hover { background: var(--surface-alt); color: var(--text); }
 
 /* ─── SplitView ──────────────────────────────────────────────────────────────── */
 .split-view  { display: flex; gap: 0; align-items: flex-start; }
