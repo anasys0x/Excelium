@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import logoDark from './assets/logo-dark.png'
 import logoLight from './assets/logo-light.png'
@@ -138,7 +138,16 @@ function App() {
     return () => clearTimeout(timeout)
   }, [theme])
 
+  const uploadAbortRef = useRef<AbortController | null>(null)
+
+  const handleCancelUpload = () => {
+    uploadAbortRef.current?.abort()
+    setIsLoading(false)
+  }
+
   const handleFileSelected = async (file: File) => {
+    const controller = new AbortController()
+    uploadAbortRef.current = controller
     setIsLoading(true)
     setResumeError(null)
     setCreatedTables([])
@@ -155,27 +164,31 @@ function App() {
     const formData = new FormData()
     formData.append('file', file)
     try {
-      const response = await fetch('http://localhost:8000/parse', { method: 'POST', body: formData })
+      const response = await fetch('http://localhost:8000/parse', { method: 'POST', body: formData, signal: controller.signal })
       if (!response.ok) throw new Error()
       const data: ParseResponse = await response.json()
-      const sheetsData: SheetData[] = data.sheets.map((sheet, si) => ({
-        name: sheet.name,
-        tables: sheet.tables.map((table, ti) => ({
-          id: `${si}-${ti}`,
-          sheetName: sheet.name,
-          tableName: table.name,
-          columns: table.columns.map((col) => ({
-            originalName: col.name,
-            name: col.name,
-            type: col.type,
-            isPrimaryKey: col.isPrimaryKey,
-            isPkCandidate: col.isPkCandidate,
-            pkScore: col.pkScore,
-            foreignKey: col.foreignKey ?? null,
+      const sheetsData: SheetData[] = data.sheets
+        .map((sheet, si) => ({
+          name: sheet.name,
+          tables: sheet.tables.map((table, ti) => ({
+            id: `${si}-${ti}`,
+            sheetName: sheet.name,
+            tableName: table.name,
+            columns: table.columns.map((col) => ({
+              originalName: col.name,
+              name: col.name,
+              type: col.type,
+              isPrimaryKey: col.isPrimaryKey,
+              isPkCandidate: col.isPkCandidate,
+              pkScore: col.pkScore,
+              foreignKey: col.foreignKey ?? null,
+            })),
+            rows: table.rows,
           })),
-          rows: table.rows,
-        })),
-      }))
+        }))
+        // Feuilles vides (aucun tableau détecté) : on les ignore silencieusement,
+        // elles ne doivent pas être sélectionnables ni casser l'écran de config.
+        .filter((sheet) => sheet.tables.length > 0)
       const totalTables = sheetsData.reduce((sum, s) => sum + s.tables.length, 0)
       if (totalTables === 0) {
         showToast(t('app.emptyFileError'))
@@ -191,10 +204,11 @@ function App() {
       } else {
         setStep('select')
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       showToast(t('app.parseError'))
     } finally {
-      setIsLoading(false)
+      if (uploadAbortRef.current === controller) setIsLoading(false)
     }
   }
 
@@ -660,7 +674,7 @@ function App() {
           <div className="upload-section">
             <h1 className="upload-title">{t('upload.title')}</h1>
             <p className="upload-desc">{t('upload.desc')}</p>
-            <DropZone onFileSelected={handleFileSelected} />
+            <DropZone onFileSelected={handleFileSelected} onCancel={handleCancelUpload} />
             {isLoading && <div className="upload-loading"><Spinner label={t('upload.loading')} /></div>}
             <SessionResume
               onResume={handleResumeSession}

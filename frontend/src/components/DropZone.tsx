@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import type { DragEvent, ChangeEvent } from 'react'
 import { useI18n } from '../lib/i18n'
 
-interface Props { onFileSelected: (file: File) => void }
+interface Props { onFileSelected: (file: File) => void; onCancel?: () => void }
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`
@@ -19,12 +19,19 @@ function FileIcon() {
   )
 }
 
-function DropZone({ onFileSelected }: Props) {
+function DropZone({ onFileSelected, onCancel }: Props) {
   const { t } = useI18n()
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile]             = useState<File | null>(null)
   const [error, setError]           = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleCancel = () => {
+    setFile(null)
+    setError(null)
+    if (inputRef.current) inputRef.current.value = ''
+    onCancel?.()
+  }
 
   const handleFile = (f: File) => {
     if (!f.name.endsWith('.xlsx')) { setError(t('dropzone.errorXlsx')); return }
@@ -48,6 +55,17 @@ function DropZone({ onFileSelected }: Props) {
       className={`dropzone${isDragging ? ' dragging' : ''}${file ? ' has-file' : ''}`}
     >
       <input ref={inputRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={(e: ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+      {file && (
+        <button
+          type="button"
+          className="dropzone-cancel"
+          aria-label={t('dropzone.cancel')}
+          title={t('dropzone.cancel')}
+          onClick={(e) => { e.stopPropagation(); handleCancel() }}
+        >
+          ✕
+        </button>
+      )}
       <div className="dropzone-icon">
         {file ? <span className="dropzone-check">✓</span> : <FileIcon />}
       </div>
