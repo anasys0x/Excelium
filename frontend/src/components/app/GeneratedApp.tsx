@@ -482,6 +482,9 @@ function GeneratedApp({
               else { setDepRow(liveRowAt(ri)); setDepRowIndex(ri) }
             }}
             expandedRowIndex={depRowIndex}
+            expandedContent={depRow
+              ? <RowDependencyGraph variant="inline" row={depRow} table={active} allTables={tables} onClose={() => { setDepRow(null); setDepRowIndex(null) }} />
+              : null}
           />}
           {effectiveLayout === 'dashboard' && (
             <DashboardView
@@ -511,9 +514,9 @@ function GeneratedApp({
         />
       )}
 
-      {/* Dependency panel flottant : vue cartes uniquement (la vue table l'affiche
-          en ligne, cf. expandedContent ci-dessus). */}
-      {depRow && effectiveLayout !== 'table' && (
+      {/* Dependency panel flottant : autres vues seulement (table et cards
+          l'affichent en ligne, cf. expandedContent ci-dessus). */}
+      {depRow && effectiveLayout !== 'table' && effectiveLayout !== 'cards' && (
         <RowDependencyGraph
           row={depRow}
           table={active}

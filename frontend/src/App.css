@@ -1204,7 +1204,16 @@
 .dep-inline-row { background: var(--surface-alt) !important; }
 .dep-inline-cell { padding: 0 !important; border-top: 2px solid var(--accent); }
 
-/* variant="overlay" (CardListView) : panneau flottant, comme DetailPanel */
+/* variant="inline" (CardListView) : déroulé sous la rangée de cartes cliquée */
+.dep-inline-cards {
+  grid-column: 1 / -1;
+  margin: -4px 24px 20px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* variant="overlay" (autres vues) : panneau flottant, comme DetailPanel */
 .dep-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.45);
   display: flex; justify-content: flex-end; z-index: 50;
